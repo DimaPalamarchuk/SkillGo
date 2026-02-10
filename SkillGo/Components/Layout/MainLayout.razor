@@ -1,0 +1,105 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@using MudBlazor
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+
+    <MudAppBar Elevation="0" Class="sg-appbar">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
+
+        <MudText Typo="Typo.h6" Class="sg-brand-text">SkillGo</MudText>
+
+        <MudSpacer />
+
+        <AuthorizeView>
+            <Authorized>
+                <MudChip T="string"
+                         Variant="Variant.Filled"
+                         Color="Color.Primary"
+                         Class="sg-user-chip">
+                    @context.User.Identity?.Name
+                </MudChip>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Inherit"
+                           Class="sg-btn-outline ms-2"
+                           Href="Account/Manage">
+                    ACCOUNT
+                </MudButton>
+
+                <form class="d-inline ms-2" action="Account/Logout" method="post">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@CurrentUrl" />
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Inherit"
+                               Class="sg-btn-outline"
+                               ButtonType="ButtonType.Submit">
+                        LOGOUT
+                    </MudButton>
+                </form>
+            </Authorized>
+
+            <NotAuthorized>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           Href="Account/Login">
+                    Login
+                </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Class="sg-btn ms-2"
+                           Href="Account/Register">
+                    Sign up
+                </MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               Elevation="0"
+               Class="sg-drawer"
+               ClipMode="DrawerClipMode.Always">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private string? CurrentUrl;
+
+    private readonly MudTheme _theme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#5b4de6",
+            Secondary = "#22c55e",
+        },
+        LayoutProperties = new LayoutProperties()
+        {
+            DrawerWidthLeft = "260px"
+        }
+    };
+
+    protected override void OnInitialized()
+    {
+        CurrentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+}

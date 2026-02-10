@@ -1,0 +1,84 @@
+﻿@page "/"
+@using SkillGo.Data
+@using SkillGo.Repository.IRepository
+@inject ICategoryRepository CategoryRepo
+@inject NavigationManager Nav
+
+<PageTitle>SkillGo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <MudText Typo="Typo.h3" Align="Align.Center" Class="fw-bold">
+        Find the right freelancer for your project
+    </MudText>
+
+    <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="sg-muted mt-1">
+        Browse professionals by category and get started today.
+    </MudText>
+
+    <MudStack AlignItems="AlignItems.Center" Class="mt-4 mb-8">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Class="sg-btn"
+                   OnClick="@ScrollToCategories">
+            Browse categories
+        </MudButton>
+    </MudStack>
+
+    <MudText Typo="Typo.h5" Id="categories" Class="fw-bold mb-4">
+        Categories
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudGrid Spacing="4">
+            @for (int i = 0; i < 8; i++)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <div class="cat-card skeleton"></div>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_categories is null || !_categories.Any())
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+            No categories available yet.
+        </MudAlert>
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            @foreach (var c in _categories)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <a class="cat-link" href="@($"/freelancers/category/{c.Id}")">
+                        <div class="cat-card">
+                            <div class="cat-title">@c.Name</div>
+                            <div class="cat-sub">
+                                Browse freelancers in this category
+                            </div>
+                        </div>
+                    </a>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+</MudContainer>
+
+@code {
+    private List<Category>? _categories;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = (await CategoryRepo.GetAllAsync()).ToList();
+        _loading = false;
+    }
+
+    private void ScrollToCategories()
+    {
+        Nav.NavigateTo("/#categories");
+    }
+}

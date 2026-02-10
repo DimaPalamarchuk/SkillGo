@@ -1,0 +1,50 @@
+:root {
+    --sg-purple: #5b4de6;
+    --sg-purple-soft: #eef2ff;
+    --sg-text: #111827;
+    --sg-muted: rgba(0,0,0,.6);
+    --sg-border: rgba(0,0,0,.10);
+    --sg-radius: 16px;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: #fff;
+    color: var(--sg-text);
+}
+
+.sg-appbar {
+    background: var(--sg-purple) !important;
+    color: #fff !important;
+}
+
+.sg-brand-text {
+    font-weight: 800;
+    letter-spacing: .2px;
+    color: #fff !important;
+}
+
+.sg-btn {
+    background: linear-gradient(135deg,#6d5dfc,#5b4de6) !important;
+    color: #fff !important;
+    border-radius: 12px !important;
+}
+
+.sg-btn-outline {
+    border-color: rgba(255,255,255,.7) !important;
+    color: #fff !important;
+    border-radius: 12px !important;
+}
+
+.sg-drawer {
+    background: #fff !important;
+    border-right: 1px solid var(--sg-border);
+}
+
+.sg-muted {
+    color: var(--sg-muted);
+}

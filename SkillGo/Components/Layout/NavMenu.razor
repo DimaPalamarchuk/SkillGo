@@ -1,0 +1,47 @@
+﻿@using MudBlazor
+
+<MudStack Spacing="1" Class="sg-navwrap">
+    <MudNavMenu Class="sg-navmenu">
+
+        <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
+            Home
+        </MudNavLink>
+
+        <MudNavLink Href="category" Icon="@Icons.Material.Filled.Category">
+            Category
+        </MudNavLink>
+
+        <MudNavLink Href="auth" Icon="@Icons.Material.Filled.Lock">
+            Auth Required
+        </MudNavLink>
+
+        <MudDivider Class="my-2" />
+
+        <MudNavGroup Title="Settings" Icon="@Icons.Material.Filled.Settings" Expanded="true">
+            <AuthorizeView>
+                <Authorized>
+                    <MudNavLink Href="Account/Manage"
+                                Icon="@Icons.Material.Filled.Person"
+                                Class="sg-nav-user">
+                        @context.User.Identity?.Name
+                    </MudNavLink>
+
+                    <MudNavLink Disabled="true" Icon="@Icons.Material.Filled.Security">
+                        Security
+                    </MudNavLink>
+                </Authorized>
+
+                <NotAuthorized>
+                    <MudNavLink Href="Account/Login" Icon="@Icons.Material.Filled.Login">
+                        Login
+                    </MudNavLink>
+
+                    <MudNavLink Href="Account/Register" Icon="@Icons.Material.Filled.PersonAdd">
+                        Sign up
+                    </MudNavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </MudNavGroup>
+
+    </MudNavMenu>
+</MudStack>

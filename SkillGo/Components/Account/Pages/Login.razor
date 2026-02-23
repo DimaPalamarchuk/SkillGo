@@ -12,57 +12,270 @@
 
 <PageTitle>Log in</PageTitle>
 
-<h1>Log in</h1>
-<div class="row">
-    <div class="col-md-4">
-        <section>
+<div class="sg-auth">
+    <div class="sg-auth-shell">
+
+        <div class="sg-auth-card">
+            <div class="sg-auth-head">
+                <div class="sg-auth-badge">SG</div>
+                <div>
+                    <h1 class="sg-auth-title">Welcome back</h1>
+                    <div class="sg-auth-sub">Log in to your account</div>
+                </div>
+            </div>
+
             <StatusMessage Message="@errorMessage" />
+
             <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
                 <DataAnnotationsValidator />
-                <h2>Use a local account to log in.</h2>
-                <hr />
-                <ValidationSummary class="text-danger" role="alert" />
-                <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                    <label for="email" class="form-label">Email</label>
-                    <ValidationMessage For="() => Input.Email" class="text-danger" />
+                <ValidationSummary class="sg-valsum" />
+
+                <div class="sg-field">
+                    <label class="sg-label">Email</label>
+                    <InputText @bind-Value="Input.Email"
+                               class="sg-input"
+                               autocomplete="username"
+                               aria-required="true"
+                               placeholder="name@example.com" />
+                    <ValidationMessage For="() => Input.Email" class="sg-val" />
                 </div>
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                    <label for="password" class="form-label">Password</label>
-                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+
+                <div class="sg-field">
+                    <label class="sg-label">Password</label>
+                    <InputText type="password"
+                               @bind-Value="Input.Password"
+                               class="sg-input"
+                               autocomplete="current-password"
+                               aria-required="true"
+                               placeholder="••••••••" />
+                    <ValidationMessage For="() => Input.Password" class="sg-val" />
                 </div>
-                <div class="checkbox mb-3">
-                    <label class="form-label">
-                        <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
+
+                <div class="sg-row">
+                    <label class="sg-check">
+                        <InputCheckbox @bind-Value="Input.RememberMe" />
                         Remember me
                     </label>
+
+                    <a class="sg-link" href="Account/ForgotPassword">
+                        Forgot password?
+                    </a>
                 </div>
-                <div>
-                    <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+
+                <button type="submit" class="sg-btn-primary">
+                    Log in
+                </button>
+
+                <div class="sg-divider"><span>or</span></div>
+
+                <div class="sg-external">
+                    <ExternalLoginPicker />
                 </div>
-                <div>
-                    <p>
-                        <a href="Account/ForgotPassword">Forgot your password?</a>
-                    </p>
-                    <p>
-                        <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a>
-                    </p>
-                    <p>
-                        <a href="Account/ResendEmailConfirmation">Resend email confirmation</a>
-                    </p>
+
+                <div class="sg-foot">
+                    <a class="sg-link"
+                       href="@(NavigationManager.GetUriWithQueryParameters(
+                            "Account/Register",
+                            new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+                        Create account
+                    </a>
                 </div>
             </EditForm>
-        </section>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to log in.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
+        </div>
+
+        <div class="sg-auth-side">
+            <h2>Find the right freelancer faster</h2>
+            <p>Browse categories, compare profiles, and start working today.</p>
+            <ul>
+                <li>Clean & modern UI</li>
+                <li>Secure authentication</li>
+                <li>Mobile friendly</li>
+            </ul>
+        </div>
+
     </div>
 </div>
+
+<style>
+    .sg-auth {
+        min-height: calc(100vh - 92px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        background: #f5f7fb;
+        color: #1f2937;
+    }
+
+    .sg-auth-shell {
+        width: 100%;
+        max-width: 980px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .sg-auth-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.08);
+    }
+
+    .sg-auth-head {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .sg-auth-badge {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+    }
+
+    .sg-auth-title {
+        margin: 0;
+        font-size: 26px;
+    }
+
+    .sg-auth-sub {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .sg-field {
+        margin-bottom: 14px;
+    }
+
+    .sg-label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+        color: #374151;
+    }
+
+    .sg-input {
+        width: 100%;
+        padding: 12px;
+        border-radius: 14px;
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        color: #111827;
+    }
+
+        .sg-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .sg-input:focus {
+            outline: none;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124,58,237,.2);
+        }
+
+    .sg-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 10px 0 16px;
+        font-size: 13px;
+    }
+
+    .sg-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #374151;
+    }
+
+    .sg-btn-primary {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 14px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+        cursor: pointer;
+    }
+
+    .sg-divider {
+        text-align: center;
+        margin: 16px 0;
+        color: #9ca3af;
+    }
+
+    .sg-external {
+        padding: 10px;
+        border-radius: 14px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+    }
+
+    .sg-link {
+        color: #7c3aed;
+        text-decoration: none;
+    }
+
+        .sg-link:hover {
+            text-decoration: underline;
+        }
+
+    .sg-foot {
+        margin-top: 14px;
+        text-align: center;
+    }
+
+    .sg-val {
+        color: #dc2626;
+        font-size: 12px;
+    }
+
+    .sg-valsum {
+        color: #dc2626;
+        margin-bottom: 10px;
+    }
+
+    .sg-auth-side {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.06);
+    }
+
+        .sg-auth-side h2 {
+            margin-top: 0;
+        }
+
+        .sg-auth-side p {
+            color: #6b7280;
+        }
+
+        .sg-auth-side ul {
+            padding-left: 18px;
+            color: #374151;
+        }
+
+    @@media(max-width:900px) {
+        .sg-auth-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .sg-auth-side {
+            display: none;
+        }
+    }
+</style>
 
 @code {
     private string? errorMessage;
@@ -80,35 +293,25 @@
     {
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
-            // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
     }
 
     public async Task LoginUser()
     {
-        // This doesn't count login failures towards account lockout
-        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        var result = await SignInManager.PasswordSignInAsync(
+            Input.Email,
+            Input.Password,
+            Input.RememberMe,
+            false);
+
         if (result.Succeeded)
         {
-            Logger.LogInformation("User logged in.");
             RedirectManager.RedirectTo(ReturnUrl);
-        }
-        else if (result.RequiresTwoFactor)
-        {
-            RedirectManager.RedirectTo(
-                "Account/LoginWith2fa",
-                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
-        }
-        else if (result.IsLockedOut)
-        {
-            Logger.LogWarning("User account locked out.");
-            RedirectManager.RedirectTo("Account/Lockout");
         }
         else
         {
-            errorMessage = "Error: Invalid login attempt.";
+            errorMessage = "Invalid login attempt.";
         }
     }
 
@@ -122,7 +325,6 @@
         [DataType(DataType.Password)]
         public string Password { get; set; } = "";
 
-        [Display(Name = "Remember me?")]
         public bool RememberMe { get; set; }
     }
 }

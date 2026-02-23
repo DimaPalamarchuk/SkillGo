@@ -2,7 +2,187 @@
 
 <PageTitle>Locked out</PageTitle>
 
-<header>
-    <h1 class="text-danger">Locked out</h1>
-    <p class="text-danger">This account has been locked out, please try again later.</p>
-</header>
+<div class="sg-auth">
+    <div class="sg-auth-shell">
+
+        <div class="sg-auth-card">
+            <div class="sg-auth-head">
+                <div class="sg-auth-badge">SG</div>
+                <div>
+                    <h1 class="sg-auth-title">Account locked</h1>
+                    <div class="sg-auth-sub">Too many unsuccessful attempts</div>
+                </div>
+            </div>
+
+            <div class="sg-note">
+                <div class="sg-note-title">Security protection</div>
+                <div class="sg-note-text">
+                    This account has been temporarily locked due to multiple unsuccessful login attempts.
+                    Please try again later or reset your password.
+                </div>
+
+                <div class="sg-actions">
+                    <a class="sg-btn-primary" href="Account/ForgotPassword">
+                        Reset password
+                    </a>
+                    <a class="sg-btn-secondary" href="Account/Login">
+                        Back to login
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="sg-auth-side">
+            <h2>Why this happens</h2>
+            <p>Account lockouts help protect against unauthorized access.</p>
+            <ul>
+                <li>Prevents brute-force attacks</li>
+                <li>Automatically unlocks later</li>
+                <li>Keeps your data safe</li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .sg-auth {
+        min-height: calc(100vh - 92px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        background: #f5f7fb;
+        color: #1f2937;
+    }
+
+    .sg-auth-shell {
+        width: 100%;
+        max-width: 980px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .sg-auth-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.08);
+    }
+
+    .sg-auth-head {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .sg-auth-badge {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+    }
+
+    .sg-auth-title {
+        margin: 0;
+        font-size: 26px;
+    }
+
+    .sg-auth-sub {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .sg-note {
+        margin-top: 10px;
+        padding: 16px;
+        border-radius: 16px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+    }
+
+    .sg-note-title {
+        font-weight: 800;
+        font-size: 14px;
+        color: #111827;
+        margin-bottom: 6px;
+    }
+
+    .sg-note-text {
+        font-size: 14px;
+        color: #4b5563;
+        line-height: 1.5;
+    }
+
+    .sg-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+    }
+
+    .sg-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 14px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+        text-decoration: none;
+    }
+
+    .sg-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 16px;
+        border-radius: 14px;
+        font-weight: 700;
+        color: #111827;
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        text-decoration: none;
+    }
+
+    .sg-auth-side {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.06);
+    }
+
+        .sg-auth-side h2 {
+            margin-top: 0;
+        }
+
+        .sg-auth-side p {
+            color: #6b7280;
+        }
+
+        .sg-auth-side ul {
+            padding-left: 18px;
+            color: #374151;
+        }
+
+    @@media (max-width:900px) {
+        .sg-auth-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .sg-auth-side {
+            display: none;
+        }
+    }
+</style>

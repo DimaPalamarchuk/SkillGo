@@ -12,21 +12,220 @@
 
 <PageTitle>Register confirmation</PageTitle>
 
-<h1>Register confirmation</h1>
+<div class="sg-auth">
+    <div class="sg-auth-shell">
 
-<StatusMessage Message="@statusMessage" />
+        <div class="sg-auth-card">
+            <div class="sg-auth-head">
+                <div class="sg-auth-badge">SG</div>
+                <div>
+                    <h1 class="sg-auth-title">Confirm your email</h1>
+                    <div class="sg-auth-sub">One more step to activate your account</div>
+                </div>
+            </div>
 
-@if (emailConfirmationLink is not null)
-{
-    <p>
-        This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
-        Normally this would be emailed: <a href="@emailConfirmationLink">Click here to confirm your account</a>
-    </p>
-}
-else
-{
-    <p>Please check your email to confirm your account.</p>
-}
+            <StatusMessage Message="@statusMessage" />
+
+            @if (emailConfirmationLink is not null)
+            {
+                <div class="sg-note">
+                    <div class="sg-note-title">Email sender is not configured</div>
+                    <div class="sg-note-text">
+                        This app does not currently have a real email sender registered. Configure it using the documentation.
+                    </div>
+                    <div class="sg-actions">
+                        <a class="sg-btn-secondary" href="https://aka.ms/aspaccountconf" target="_blank" rel="noopener noreferrer">
+                            Open docs
+                        </a>
+                        <a class="sg-btn-primary" href="@emailConfirmationLink">
+                            Confirm account
+                        </a>
+                    </div>
+                    <div class="sg-small">
+                        Normally this confirmation link would be sent to your email.
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="sg-note">
+                    <div class="sg-note-title">Check your inbox</div>
+                    <div class="sg-note-text">
+                        We sent a confirmation link to your email. Please open it to activate your account.
+                    </div>
+                    <div class="sg-actions">
+                        <a class="sg-btn-secondary"
+                           href="@(NavigationManager.GetUriWithQueryParameters(
+                                "Account/Login",
+                                new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+                            Back to login
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="sg-auth-side">
+            <h2>Why confirm email?</h2>
+            <p>Email confirmation helps secure your account and ensures you can recover access later.</p>
+            <ul>
+                <li>Protects your profile</li>
+                <li>Enables password reset</li>
+                <li>Improves platform safety</li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .sg-auth {
+        min-height: calc(100vh - 92px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        background: #f5f7fb;
+        color: #1f2937;
+    }
+
+    .sg-auth-shell {
+        width: 100%;
+        max-width: 980px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .sg-auth-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.08);
+    }
+
+    .sg-auth-head {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 18px;
+    }
+
+    .sg-auth-badge {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+    }
+
+    .sg-auth-title {
+        margin: 0;
+        font-size: 26px;
+    }
+
+    .sg-auth-sub {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .sg-note {
+        margin-top: 10px;
+        padding: 16px;
+        border-radius: 16px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+    }
+
+    .sg-note-title {
+        font-weight: 800;
+        font-size: 14px;
+        color: #111827;
+        margin-bottom: 6px;
+    }
+
+    .sg-note-text {
+        font-size: 14px;
+        color: #4b5563;
+        line-height: 1.5;
+    }
+
+    .sg-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+    }
+
+    .sg-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border: none;
+        border-radius: 14px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .sg-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border-radius: 14px;
+        font-weight: 700;
+        color: #111827;
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        text-decoration: none;
+    }
+
+    .sg-small {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .sg-auth-side {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.06);
+    }
+
+        .sg-auth-side h2 {
+            margin-top: 0;
+        }
+
+        .sg-auth-side p {
+            color: #6b7280;
+        }
+
+        .sg-auth-side ul {
+            padding-left: 18px;
+            color: #374151;
+        }
+
+    @@media(max-width:900px) {
+        .sg-auth-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .sg-auth-side {
+            display: none;
+        }
+    }
+</style>
 
 @code {
     private string? emailConfirmationLink;
@@ -56,7 +255,6 @@ else
         }
         else if (EmailSender is IdentityNoOpEmailSender)
         {
-            // Once you add a real email sender, you should remove this code that lets you confirm the account
             var userId = await UserManager.GetUserIdAsync(user);
             var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));

@@ -17,42 +17,260 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<div class="sg-auth">
+    <div class="sg-auth-shell">
 
-<div class="row">
-    <div class="col-md-4">
-        <StatusMessage Message="@Message" />
-        <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
-            <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
-            <hr />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                <label for="email">Email</label>
-                <ValidationMessage For="() => Input.Email" class="text-danger" />
+        <div class="sg-auth-card">
+            <div class="sg-auth-head">
+                <div class="sg-auth-badge">SG</div>
+                <div>
+                    <h1 class="sg-auth-title">Create account</h1>
+                    <div class="sg-auth-sub">Join SkillGo in a minute</div>
+                </div>
             </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="password">Password</label>
-                <ValidationMessage For="() => Input.Password" class="text-danger" />
-            </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="confirm-password">Confirm Password</label>
-                <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
-        </EditForm>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to register.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
+
+            <StatusMessage Message="@Message" />
+
+            <EditForm Model="Input"
+                      asp-route-returnUrl="@ReturnUrl"
+                      method="post"
+                      OnValidSubmit="RegisterUser"
+                      FormName="register">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="sg-valsum" />
+
+                <div class="sg-field">
+                    <label class="sg-label">Email</label>
+                    <InputText @bind-Value="Input.Email"
+                               class="sg-input"
+                               autocomplete="username"
+                               aria-required="true"
+                               placeholder="name@example.com" />
+                    <ValidationMessage For="() => Input.Email" class="sg-val" />
+                </div>
+
+                <div class="sg-field">
+                    <label class="sg-label">Password</label>
+                    <InputText type="password"
+                               @bind-Value="Input.Password"
+                               class="sg-input"
+                               autocomplete="new-password"
+                               aria-required="true"
+                               placeholder="Create a password" />
+                    <ValidationMessage For="() => Input.Password" class="sg-val" />
+                </div>
+
+                <div class="sg-field">
+                    <label class="sg-label">Confirm password</label>
+                    <InputText type="password"
+                               @bind-Value="Input.ConfirmPassword"
+                               class="sg-input"
+                               autocomplete="new-password"
+                               aria-required="true"
+                               placeholder="Repeat the password" />
+                    <ValidationMessage For="() => Input.ConfirmPassword" class="sg-val" />
+                </div>
+
+                <button type="submit" class="sg-btn-primary">
+                    Register
+                </button>
+
+                <div class="sg-divider"><span>or</span></div>
+
+                <div class="sg-external">
+                    <ExternalLoginPicker />
+                </div>
+
+                <div class="sg-foot">
+                    <a class="sg-link"
+                       href="@(NavigationManager.GetUriWithQueryParameters(
+                            "Account/Login",
+                            new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+                        Already have an account? Log in
+                    </a>
+                </div>
+            </EditForm>
+        </div>
+
+        <div class="sg-auth-side">
+            <h2>Start hiring or freelancing</h2>
+            <p>Create an account to browse categories, save freelancers, and start projects.</p>
+            <ul>
+                <li>Fast sign up</li>
+                <li>Email confirmation</li>
+                <li>Secure by design</li>
+            </ul>
+        </div>
+
     </div>
 </div>
+
+<style>
+    .sg-auth {
+        min-height: calc(100vh - 92px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        background: #f5f7fb;
+        color: #1f2937;
+    }
+
+    .sg-auth-shell {
+        width: 100%;
+        max-width: 980px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .sg-auth-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.08);
+    }
+
+    .sg-auth-head {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .sg-auth-badge {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+    }
+
+    .sg-auth-title {
+        margin: 0;
+        font-size: 26px;
+    }
+
+    .sg-auth-sub {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .sg-field {
+        margin-bottom: 14px;
+    }
+
+    .sg-label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+        color: #374151;
+    }
+
+    .sg-input {
+        width: 100%;
+        padding: 12px;
+        border-radius: 14px;
+        background: #f9fafb;
+        border: 1px solid #d1d5db;
+        color: #111827;
+    }
+
+        .sg-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .sg-input:focus {
+            outline: none;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124,58,237,.2);
+        }
+
+    .sg-btn-primary {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 14px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg,#7c3aed,#22c55e);
+        cursor: pointer;
+        margin-top: 6px;
+    }
+
+    .sg-divider {
+        text-align: center;
+        margin: 16px 0;
+        color: #9ca3af;
+    }
+
+    .sg-external {
+        padding: 10px;
+        border-radius: 14px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+    }
+
+    .sg-link {
+        color: #7c3aed;
+        text-decoration: none;
+    }
+
+        .sg-link:hover {
+            text-decoration: underline;
+        }
+
+    .sg-foot {
+        margin-top: 14px;
+        text-align: center;
+    }
+
+    .sg-val {
+        color: #dc2626;
+        font-size: 12px;
+    }
+
+    .sg-valsum {
+        color: #dc2626;
+        margin-bottom: 10px;
+    }
+
+    .sg-auth-side {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 20px 50px rgba(0,0,0,.06);
+    }
+
+        .sg-auth-side h2 {
+            margin-top: 0;
+        }
+
+        .sg-auth-side p {
+            color: #6b7280;
+        }
+
+        .sg-auth-side ul {
+            padding-left: 18px;
+            color: #374151;
+        }
+
+    @@media(max-width:900px) {
+        .sg-auth-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .sg-auth-side {
+            display: none;
+        }
+    }
+</style>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;

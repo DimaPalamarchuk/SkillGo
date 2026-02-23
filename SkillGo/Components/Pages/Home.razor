@@ -12,7 +12,7 @@
         Find the right freelancer for your project
     </MudText>
 
-    <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="sg-muted mt-1">
+    <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="home-muted mt-1">
         Browse professionals by category and get started today.
     </MudText>
 
@@ -40,16 +40,10 @@
             }
         </MudGrid>
     }
-    else if (_categories is null || !_categories.Any())
-    {
-        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
-            No categories available yet.
-        </MudAlert>
-    }
     else
     {
         <MudGrid Spacing="4">
-            @foreach (var c in _categories)
+            @foreach (var c in _categories!)
             {
                 <MudItem xs="12" sm="6" md="4" lg="3">
                     <a class="cat-link" href="@($"/freelancers/category/{c.Id}")">
@@ -66,6 +60,85 @@
     }
 
 </MudContainer>
+
+<style>
+    .home-muted{
+        color:rgba(0,0,0,.6);
+    }
+
+    .cat-link{
+        display:block;
+        text-decoration:none;
+        color:inherit;
+    }
+
+    .cat-card{
+        height:180px;
+        border-radius:20px;
+        padding:28px 26px;
+        background:linear-gradient(135deg,#eef2ff,#e0e7ff);
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        gap:8px;
+        box-shadow:0 12px 28px rgba(99,102,241,.18);
+        transition:transform .18s ease, box-shadow .18s ease;
+        position:relative;
+        overflow:hidden;
+    }
+
+    .cat-card::before{
+        content:"";
+        position:absolute;
+        inset:-40% -60%;
+        background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.45), transparent 55%);
+        transform:rotate(12deg);
+        opacity:.8;
+        pointer-events:none;
+    }
+
+    .cat-link:hover .cat-card{
+        transform:translateY(-6px);
+        box-shadow:0 20px 48px rgba(99,102,241,.28);
+    }
+
+    .cat-title{
+        position:relative;
+        z-index:1;
+        color:#1f2937;
+        font-weight:900;
+        letter-spacing:.2px;
+        font-size:1.15rem;
+    }
+
+    .cat-sub{
+        position:relative;
+        z-index:1;
+        color:rgba(31,41,55,.65);
+        font-size:.95rem;
+    }
+
+    .skeleton{
+        background:#fff;
+        border-radius:20px;
+        position:relative;
+        overflow:hidden;
+    }
+
+    .skeleton::before{
+        content:"";
+        position:absolute;
+        inset:0;
+        background:linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+        background-size:200% 100%;
+        animation:shimmer 1.2s infinite linear;
+    }
+
+    @@keyframes shimmer{
+        0%{background-position:0% 0}
+        100%{background-position:200% 0}
+    }
+</style>
 
 @code {
     private List<Category>? _categories;

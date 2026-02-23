@@ -1,12 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SkillGo.Data
-{
-    public class Category
-    {
-        public int Id { get; set; }
+namespace SkillGo.Data;
 
-        [Required(ErrorMessage = "Please enter name...")]
-        public string Name { get; set; }
-    }
+public class Category
+{
+    public int Id { get; set; }
+
+    [Required, MaxLength(80)]
+    public string Name { get; set; } = "";
 }

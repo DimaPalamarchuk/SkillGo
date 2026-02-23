@@ -11,6 +11,18 @@
             Category
         </MudNavLink>
 
+        <MudNavLink Href="freelancers" Icon="@Icons.Material.Filled.Search">
+            Find Freelancers
+        </MudNavLink>
+
+        <AuthorizeView>
+            <Authorized>
+                <MudNavLink Href="freelancer/setup" Icon="@Icons.Material.Filled.Work">
+                    Become a Freelancer
+                </MudNavLink>
+            </Authorized>
+        </AuthorizeView>
+
         <MudNavLink Href="auth" Icon="@Icons.Material.Filled.Lock">
             Auth Required
         </MudNavLink>

@@ -1,13 +1,13 @@
 ﻿using SkillGo.Data;
 
-namespace SkillGo.Repository.IRepository
+namespace SkillGo.Repository.IRepository;
+
+public interface ICategoryRepository
 {
-    public interface ICategoryRepository
-    {
-        public Task<Category> CreateAsync(Category obj);
-        public Task<Category> UpdateAsync(Category obj);
-        public Task<bool> DeleteAsync(int id);
-        public Task<IEnumerable<Category>> GetAllAsync();
-        public Task<Category> GetAsync(int id);
-    }
+    Task<List<Category>> GetAllAsync();
+    Task<Category?> GetAsync(int id);
+
+    Task<Category> CreateAsync(Category obj);
+    Task<Category> UpdateAsync(Category obj);
+    Task<bool> DeleteAsync(int id);
 }

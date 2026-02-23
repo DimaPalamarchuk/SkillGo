@@ -1,0 +1,142 @@
+﻿@page "/freelancer/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using SkillGo.Data
+@using SkillGo.Repository.IRepository
+@using MudBlazor
+@attribute [Authorize]
+
+@inject IFreelancerRepository FreelancerRepo
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_item is null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            Freelancer not found.
+        </MudAlert>
+    }
+    else
+    {
+        <MudPaper Elevation="0"
+                  Class="pa-5"
+                  Style="border:1px solid rgba(0,0,0,.08); border-radius:18px;">
+
+            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center">
+
+                <MudAvatar Size="Size.Large"
+                           Image="@(_item.AvatarUrl ?? string.Empty)"
+                           Icon="@Icons.Material.Filled.Person" />
+
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h4">@_item.Title</MudText>
+
+                    <MudText Typo="Typo.body2" Class="text-muted">
+                        @(_item.Category?.Name ?? "No category")
+                        • @_item.HourlyRate.ToString("0") @(" $/h")
+                    </MudText>
+
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="mt-2">
+                        <MudRating ReadOnly="true" Value="@_item.Rating" MaxValue="5" />
+                        <MudText Typo="Typo.caption" Class="text-muted">
+                            @_item.Rating.ToString("0.0") • @_item.ReviewsCount @(" reviews")
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+
+            </MudStack>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.h6">About</MudText>
+            <MudText Typo="Typo.body1" Class="mt-2">
+                @(!string.IsNullOrWhiteSpace(_item.Bio) ? _item.Bio : "No bio yet.")
+            </MudText>
+
+            <MudDivider Class="my-4" />
+
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="@(() => Nav.NavigateTo("/order/create/" + _item.Id))">
+                    Hire
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                           OnClick="@(() => Nav.NavigateTo("/review/create/" + _item.Id))">
+                    Leave review
+                </MudButton>
+
+                <MudButton Variant="Variant.Text"
+                           OnClick="@(() => Nav.NavigateTo("/u/" + _item.UserId))">
+                    View user profile
+                </MudButton>
+            </MudStack>
+
+            <MudDivider Class="my-4" />
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" JustifyContent="Justify.SpaceBetween">
+                <MudText Typo="Typo.h6">Reviews</MudText>
+
+                <MudText Typo="Typo.caption" Class="text-muted">
+                    @_item.ReviewsCount @(" total")
+                </MudText>
+            </MudStack>
+
+            @if (_item.Reviews is null || !_item.Reviews.Any())
+            {
+                <MudText Typo="Typo.body2" Class="text-muted mt-2">
+                    No reviews yet.
+                </MudText>
+            }
+            else
+            {
+                @foreach (var r in _item.Reviews.OrderByDescending(x => x.CreatedAt))
+                {
+                    <MudPaper Elevation="0" Class="pa-3 mt-3"
+                              Style="border:1px solid rgba(0,0,0,.06); border-radius:12px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" JustifyContent="Justify.SpaceBetween">
+                            <MudRating ReadOnly="true" Value="@r.Rating" MaxValue="5" />
+
+                            <MudText Typo="Typo.caption" Class="text-muted">
+                                @r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")
+                            </MudText>
+                        </MudStack>
+
+                        @if (!string.IsNullOrWhiteSpace(r.Comment))
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2">
+                                @r.Comment
+                            </MudText>
+                        }
+                    </MudPaper>
+                }
+            }
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.caption" Class="text-muted">
+                User: @(_item.User?.UserName ?? "User")
+            </MudText>
+
+        </MudPaper>
+    }
+
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool _loading = true;
+    private FreelancerProfile? _item;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _item = await FreelancerRepo.GetByIdAsync(Id);
+        _loading = false;
+    }
+}

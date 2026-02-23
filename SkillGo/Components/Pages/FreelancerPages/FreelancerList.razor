@@ -1,0 +1,137 @@
+﻿@page "/freelancers"
+@using Microsoft.AspNetCore.Authorization
+@using SkillGo.Data
+@using SkillGo.Repository.IRepository
+@attribute [Authorize]
+
+@inject IFreelancerRepository FreelancerRepo
+@inject ICategoryRepository CategoryRepo
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <MudText Typo="Typo.h4" Class="mb-2">Find freelancers</MudText>
+
+    <MudPaper Class="pa-4" Elevation="0"
+              Style="border:1px solid rgba(0,0,0,.08); border-radius:18px;">
+
+        <MudGrid Spacing="2">
+
+            <MudItem xs="12" md="7">
+                <MudTextField T="string"
+                              Value="_q"
+                              ValueChanged="@(v => OnSearchChanged(v))"
+                              Placeholder="Search by title/bio/username..."
+                              Immediate="true"
+                              DebounceInterval="300"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+
+            <MudItem xs="12" md="5">
+                <MudSelect T="int?"
+                           Label="Category"
+                           Value="_categoryId"
+                           ValueChanged="@(v => OnCategoryChanged(v))"
+                           Variant="Variant.Outlined">
+
+                    <MudSelectItem T="int?" Value="@( (int?)null )">
+                        All
+                    </MudSelectItem>
+
+                    @foreach (var c in _categories)
+                    {
+                        <MudSelectItem T="int?" Value="@c.Id">
+                            @c.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+            </MudItem>
+
+        </MudGrid>
+
+    </MudPaper>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Class="mt-4" />
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+            No freelancers found.
+        </MudAlert>
+    }
+    else
+    {
+        <MudGrid Spacing="3" Class="mt-4">
+            @foreach (var f in _items)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudPaper Elevation="0"
+                              Class="sg-cat-card"
+                              Role="button"
+                              tabindex="0"
+                              @onclick='() => Nav.NavigateTo("/freelancer/" + f.Id)'>
+
+                        <MudText Typo="Typo.h6" Class="sg-cat-title">
+                            @f.Title
+                        </MudText>
+
+                        <MudText Typo="Typo.body2" Class="sg-cat-sub">
+                            @(f.Category?.Name ?? "No category")
+                            • @f.HourlyRate.ToString("0") @(" $/h")
+                        </MudText>
+
+                        <MudText Typo="Typo.caption" Class="sg-cat-action">
+                            @(f.User?.UserName ?? "User") →
+                        </MudText>
+
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+
+    private string? _q;
+    private int? _categoryId;
+
+    private List<Category> _categories = new();
+    private List<FreelancerProfile> _items = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = (await CategoryRepo.GetAllAsync()).ToList();
+        await LoadAsync();
+    }
+
+    private async Task OnSearchChanged(string? value)
+    {
+        _q = value;
+        await LoadAsync();
+    }
+
+    private async Task OnCategoryChanged(int? value)
+    {
+        _categoryId = value;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        _items = await FreelancerRepo.SearchAsync(_q, _categoryId);
+
+        _loading = false;
+        StateHasChanged();
+    }
+}

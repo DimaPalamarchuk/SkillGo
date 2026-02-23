@@ -1,4 +1,5 @@
-﻿@page "/Account/Register"
+﻿@inject SkillGo.Data.ApplicationDbContext Db
+@page "/Account/Register"
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -294,8 +295,13 @@
 
         if (!result.Succeeded)
         {
-            identityErrors = result.Errors;
-            return;
+            Db.UserProfiles.Add(new SkillGo.Data.UserProfile
+                {
+                    UserId = user.Id,
+                    DisplayName = user.UserName ?? "User",
+                    About = null
+                });
+            await Db.SaveChangesAsync();
         }
 
         Logger.LogInformation("User created a new account with password.");

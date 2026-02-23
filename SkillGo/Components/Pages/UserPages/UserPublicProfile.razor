@@ -1,0 +1,79 @@
+﻿@page "/u/{UserId}"
+@using Microsoft.AspNetCore.Authorization
+@using SkillGo.Data
+@using SkillGo.Repository.IRepository
+@attribute [Authorize]
+
+@inject IUserProfileRepository ProfileRepo
+@inject IFreelancerRepository FreelancerRepo
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_profile is null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            User profile not found.
+        </MudAlert>
+    }
+    else
+    {
+        <MudPaper Elevation="0" Class="pa-5" Style="border:1px solid rgba(0,0,0,.08); border-radius:18px;">
+            <MudText Typo="Typo.h4">@_profile.DisplayName</MudText>
+            <MudText Typo="Typo.body2" Class="text-muted mt-1">@UserId</MudText>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.h6">About</MudText>
+            <MudText Typo="Typo.body1" Class="mt-2">
+                @(!string.IsNullOrWhiteSpace(_profile.About) ? _profile.About : "No description.")
+            </MudText>
+
+            @if (_freelancer is not null)
+            {
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.h6">Freelancer</MudText>
+                <MudText Typo="Typo.body2" Class="text-muted">
+                    @_freelancer.Title • @_freelancer.HourlyRate.ToString("0") @(" $/h")
+                </MudText>
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
+                           OnClick="@(() => Nav.NavigateTo("/freelancer/" + _freelancer.Id))">
+                    Open freelancer profile
+                </MudButton>
+            }
+        </MudPaper>
+    }
+
+</MudContainer>
+
+@code {
+    [Parameter] public string UserId { get; set; } = "";
+
+    private bool _loading = true;
+    private UserProfile? _profile;
+    private FreelancerProfile? _freelancer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _profile = await ProfileRepo.GetByUserIdAsync(UserId);
+
+        if (_profile is null)
+        {
+            _profile = await ProfileRepo.UpsertAsync(new UserProfile
+                {
+                    UserId = UserId,
+                    DisplayName = "User",
+                    About = null
+                });
+        }
+
+        _freelancer = await FreelancerRepo.GetByUserIdAsync(UserId);
+
+        _loading = false;
+    }
+}

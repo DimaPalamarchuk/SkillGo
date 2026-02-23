@@ -1,0 +1,149 @@
+﻿@page "/freelancer/setup"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using SkillGo.Data
+@using SkillGo.Repository.IRepository
+@attribute [Authorize]
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject IFreelancerRepository FreelancerRepo
+@inject ICategoryRepository CategoryRepo
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+
+    <MudText Typo="Typo.h4">Become a freelancer</MudText>
+    <MudText Typo="Typo.body2" Class="text-muted">Fill your freelancer profile</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Class="mt-4" />
+    }
+    else
+    {
+        <MudPaper Elevation="0" Class="pa-5 mt-4"
+                  Style="border:1px solid rgba(0,0,0,.08); border-radius:18px;">
+            <MudForm @ref="_form">
+
+                <MudTextField T="string"
+                              Label="Title"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Value="@_model.Title"
+                              ValueChanged="@(v => _model.Title = v ?? string.Empty)" />
+
+                <MudTextField T="string"
+                              Label="Bio"
+                              Variant="Variant.Outlined"
+                              Lines="4"
+                              Class="mt-3"
+                              Value="@_model.Bio"
+                              ValueChanged="@(v => _model.Bio = v)" />
+
+                <MudNumericField T="decimal"
+                                 Label="Hourly rate ($/h)"
+                                 Variant="Variant.Outlined"
+                                 Class="mt-3"
+                                 Value="@_model.HourlyRate"
+                                 ValueChanged="@(v => _model.HourlyRate = v)" />
+
+                <MudSelect T="int?"
+                           Label="Category"
+                           Variant="Variant.Outlined"
+                           Class="mt-3"
+                           Value="@_model.CategoryId"
+                           ValueChanged="@(v => _model.CategoryId = v)">
+
+                    <MudSelectItem T="int?" Value="@( (int?)null )">None</MudSelectItem>
+
+                    @foreach (var c in _categories)
+                    {
+                        <MudSelectItem T="int?" Value="@c.Id">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Class="mt-4"
+                           OnClick="SaveAsync">
+                    Save
+                </MudButton>
+
+                @if (!string.IsNullOrWhiteSpace(_message))
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mt-4">
+                        @_message
+                    </MudAlert>
+                }
+
+            </MudForm>
+        </MudPaper>
+    }
+
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private MudForm? _form;
+
+    private string? _message;
+    private ApplicationUser? _user;
+
+    private List<Category> _categories = new();
+    private FreelancerProfile _model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = (await CategoryRepo.GetAllAsync()).ToList();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        _user = await UserManager.GetUserAsync(principal);
+        if (_user is null)
+        {
+            Nav.NavigateTo("/Account/Login", true);
+            return;
+        }
+
+        var existing = await FreelancerRepo.GetByUserIdAsync(_user.Id);
+        if (existing is not null)
+        {
+            _model = existing;
+        }
+        else
+        {
+            _model = new FreelancerProfile
+                {
+                    UserId = _user.Id,
+                    Title = "",
+                    Bio = "",
+                    HourlyRate = 0,
+                    CategoryId = null
+                };
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_form is null) return;
+        await _form.Validate();
+
+        if (!_form.IsValid) return;
+        if (_user is null) return;
+
+        _model.UserId = _user.Id;
+
+        await FreelancerRepo.UpsertAsync(_model);
+
+        // Role: Freelancer
+        if (!await UserManager.IsInRoleAsync(_user, "Freelancer"))
+            await UserManager.AddToRoleAsync(_user, "Freelancer");
+
+        _message = "Saved! You are now a freelancer.";
+    }
+}

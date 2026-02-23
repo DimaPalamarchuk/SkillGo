@@ -1,0 +1,71 @@
+﻿@page "/freelancers/category/{CategoryId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using SkillGo.Data
+@using SkillGo.Repository.IRepository
+@attribute [Authorize]
+
+@inject IFreelancerRepository FreelancerRepo
+@inject ICategoryRepository CategoryRepo
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <MudText Typo="Typo.h4">@_title</MudText>
+    <MudText Typo="Typo.body2" Class="text-muted">Freelancers in this category</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Class="mt-4" />
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+            No freelancers found in this category.
+        </MudAlert>
+    }
+    else
+    {
+        <MudGrid Spacing="3" Class="mt-4">
+            @foreach (var f in _items)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudPaper Elevation="0"
+                              Class="sg-cat-card"
+                              Role="button"
+                              tabindex="0"
+                              @onclick='() => Nav.NavigateTo("/freelancer/" + f.Id)'>
+
+                        <MudText Typo="Typo.h6" Class="sg-cat-title">@f.Title</MudText>
+
+                        <MudText Typo="Typo.body2" Class="sg-cat-sub">
+                            @f.HourlyRate.ToString("0") @(" $/h")
+                        </MudText>
+
+                        <MudText Typo="Typo.caption" Class="sg-cat-action">
+                            @(f.User?.UserName ?? "User") →
+                        </MudText>
+
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+</MudContainer>
+
+@code {
+    [Parameter] public int CategoryId { get; set; }
+
+    private bool _loading = true;
+    private string _title = "Category";
+    private List<FreelancerProfile> _items = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cat = await CategoryRepo.GetAsync(CategoryId);
+        _title = cat?.Name ?? "Category";
+
+        _items = await FreelancerRepo.GetByCategoryAsync(CategoryId);
+        _loading = false;
+    }
+}

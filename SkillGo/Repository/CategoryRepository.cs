@@ -2,61 +2,46 @@
 using SkillGo.Data;
 using SkillGo.Repository.IRepository;
 
-namespace SkillGo.Repository
+namespace SkillGo.Repository;
+
+public class CategoryRepository : ICategoryRepository
 {
-    public class CategoryRepository : ICategoryRepository
+    private readonly ApplicationDbContext _db;
+
+    public CategoryRepository(ApplicationDbContext db)
     {
-        private readonly ApplicationDbContext _db;
+        _db = db;
+    }
 
-        public CategoryRepository(ApplicationDbContext db)
-        {
-            _db = db;
-        }
+    public async Task<List<Category>> GetAllAsync()
+        => await _db.Categories.AsNoTracking().ToListAsync();
 
-        public async Task<Category> CreateAsync(Category obj)
-        {
-            await _db.Category.AddAsync(obj);
-            await _db.SaveChangesAsync();
-            return obj;
-        }   
+    public async Task<Category?> GetAsync(int id)
+        => await _db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
 
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var obj = await _db.Category.FirstOrDefaultAsync(u => u.Id == id);
-            if (obj != null)
-            {
-                _db.Category.Remove(obj);
-                return (await _db.SaveChangesAsync()) > 0;
-            }
-            return false;
-        }
+    public async Task<Category> CreateAsync(Category obj)
+    {
+        _db.Categories.Add(obj);
+        await _db.SaveChangesAsync();
+        return obj;
+    }
 
-        public async Task<Category> GetAsync(int id)
-        {
-            var obj = _db.Category.FirstOrDefault(u => u.Id == id);
-            if(obj == null)
-            {
-                return new Category();
-            }
-            return obj;
-        }
+    public async Task<Category> UpdateAsync(Category obj)
+    {
+        var fromDb = await _db.Categories.FirstOrDefaultAsync(x => x.Id == obj.Id);
+        if (fromDb is null) return obj;
 
-        public async Task<IEnumerable<Category>> GetAllAsync()
-        {
-            return await _db.Category.ToListAsync();
-        }   
+        fromDb.Name = obj.Name;
+        await _db.SaveChangesAsync();
+        return fromDb;
+    }
 
-        public async Task<Category> UpdateAsync(Category obj)
-        {
-            var objFromDb = await _db.Category.FirstOrDefaultAsync(u => u.Id == obj.Id);
-            if (objFromDb != null)
-            {
-                objFromDb.Name = obj.Name;
-                _db.Category.Update(obj);
-                await _db.SaveChangesAsync();
-                return objFromDb;
-            }
-            return obj;
-        }
+    public async Task<bool> DeleteAsync(int id)
+    {
+        var obj = await _db.Categories.FirstOrDefaultAsync(x => x.Id == id);
+        if (obj is null) return false;
+
+        _db.Categories.Remove(obj);
+        return (await _db.SaveChangesAsync()) > 0;
     }
 }

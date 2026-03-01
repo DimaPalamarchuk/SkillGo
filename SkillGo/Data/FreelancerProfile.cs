@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using SkillGo.Data.Models;
 
 namespace SkillGo.Data;
 

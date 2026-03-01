@@ -1,0 +1,80 @@
+﻿@namespace SkillGo.Components.Shared
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@inject ApplicationDbContext Db
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="fw-bold">Report</MudText>
+        <MudText Typo="Typo.body2" Style="color:rgba(0,0,0,.65);" Class="mt-1">
+            Describe the issue with this service.
+        </MudText>
+
+        <MudTextField Label="Reason" Variant="Variant.Outlined" Lines="5" Class="mt-4"
+                      @bind-Value="_reason" />
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3">
+                @_message
+            </MudAlert>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="_saving" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="_saving" OnClick="Submit">
+            @(_saving ? "Submitting..." : "Submit")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance DialogInstance { get; set; } = default!;
+
+    [Parameter] public string ReporterUserId { get; set; } = default!;
+    [Parameter] public string TargetUserId { get; set; } = default!;
+    [Parameter] public int ServiceOfferId { get; set; }
+
+    private bool _saving;
+    private string _reason = "";
+    private string _message = "";
+
+    private async Task Submit()
+    {
+        _message = "";
+
+        if (string.IsNullOrWhiteSpace(_reason) || _reason.Trim().Length < 5)
+        {
+            _message = "Please enter at least 5 characters.";
+            return;
+        }
+
+        _saving = true;
+
+        try
+        {
+            Db.Reports.Add(new Report
+                {
+                    ReporterUserId = ReporterUserId,
+                    TargetUserId = TargetUserId,
+                    ServiceOfferId = ServiceOfferId,
+                    Reason = _reason.Trim(),
+                    CreatedAt = DateTime.UtcNow
+                });
+
+            await Db.SaveChangesAsync();
+            DialogInstance.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        DialogInstance.Cancel();
+    }
+}

@@ -31,13 +31,13 @@
                 <ValidationSummary class="sg-valsum" />
 
                 <div class="sg-field">
-                    <label class="sg-label">Email</label>
-                    <InputText @bind-Value="Input.Email"
+                    <label class="sg-label">Username</label>
+                    <InputText @bind-Value="Input.UserName"
                                class="sg-input"
                                autocomplete="username"
                                aria-required="true"
-                               placeholder="name@example.com" />
-                    <ValidationMessage For="() => Input.Email" class="sg-val" />
+                               placeholder="username" />
+                    <ValidationMessage For="() => Input.UserName" class="sg-val" />
                 </div>
 
                 <div class="sg-field">
@@ -300,7 +300,7 @@
     public async Task LoginUser()
     {
         var result = await SignInManager.PasswordSignInAsync(
-            Input.Email,
+            Input.UserName,
             Input.Password,
             Input.RememberMe,
             false);
@@ -318,8 +318,7 @@
     private sealed class InputModel
     {
         [Required]
-        [EmailAddress]
-        public string Email { get; set; } = "";
+        public string UserName { get; set; } = "";
 
         [Required]
         [DataType(DataType.Password)]

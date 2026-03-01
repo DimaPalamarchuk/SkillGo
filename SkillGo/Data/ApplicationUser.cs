@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Identity;
 
 namespace SkillGo.Data
 {
-    // Add profile data for application users by adding properties to the ApplicationUser class
     public class ApplicationUser : IdentityUser
     {
+        public string? DisplayName { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? Bio { get; set; }
     }
 
 }

@@ -1,0 +1,194 @@
+﻿@page "/categories/{CategoryId:int}/services"
+@using Microsoft.EntityFrameworkCore
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@inject ApplicationDbContext Db
+
+<PageTitle>Services</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <MudText Typo="Typo.h4" Class="fw-bold mb-2">Services</MudText>
+    <MudText Typo="Typo.subtitle2" Class="home-muted mb-6">
+        Choose a service and view details.
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudGrid Spacing="4">
+            @for (int i = 0; i < 8; i++)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <div class="service-card skeleton"></div>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_services.Count == 0)
+    {
+        <MudPaper Class="pa-4" Elevation="0" Style="border-radius:16px;border:1px solid rgba(0,0,0,.08);">
+            No services in this category yet.
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            @foreach (var s in _services)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <a class="service-link" href="@($"/services/{s.Id}")">
+                        <div class="service-card">
+                            <div class="service-title">@s.Title</div>
+                            <div class="service-desc">@Trim(s.Description, 110)</div>
+
+                            <div class="service-footer">
+                                <div class="service-user">
+                                    <img class="service-avatar" src="@(s.OwnerUser.AvatarUrl ?? "/images/default-avatar.png")" />
+                                    <div class="service-user-name">@DisplayName(s.OwnerUser)</div>
+                                </div>
+                                <div class="service-price">@s.Price.ToString("0.##") zł</div>
+                            </div>
+                        </div>
+                    </a>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+</MudContainer>
+
+<style>
+    .home-muted {
+        color: rgba(0,0,0,.6)
+    }
+
+    .service-link {
+        display: block;
+        text-decoration: none;
+        color: inherit
+    }
+
+    .service-card {
+        height: 210px;
+        border-radius: 20px;
+        padding: 18px;
+        background: #fff;
+        border: 1px solid rgba(0,0,0,.08);
+        box-shadow: 0 12px 28px rgba(0,0,0,.06);
+        transition: transform .18s ease, box-shadow .18s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 10px
+    }
+
+    .service-link:hover .service-card {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 48px rgba(0,0,0,.10)
+    }
+
+    .service-title {
+        font-weight: 900;
+        color: #111827;
+        font-size: 1.05rem;
+        letter-spacing: .2px;
+        line-height: 1.15
+    }
+
+    .service-desc {
+        color: rgba(17,24,39,.65);
+        font-size: .92rem;
+        line-height: 1.25;
+        flex: 1
+    }
+
+    .service-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: auto
+    }
+
+    .service-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0
+    }
+
+    .service-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid rgba(0,0,0,.12);
+        flex: 0 0 auto
+    }
+
+    .service-user-name {
+        font-weight: 800;
+        color: #111827;
+        font-size: .9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px
+    }
+
+    .service-price {
+        font-weight: 900;
+        color: #111827;
+        white-space: nowrap
+    }
+
+    .skeleton {
+        background: #fff;
+        border-radius: 20px;
+        position: relative;
+        overflow: hidden
+    }
+
+        .skeleton::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite linear
+        }
+
+    @@keyframes shimmer {
+        0% {
+            background-position: 0% 0
+        }
+
+        100% {
+            background-position: 200% 0
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public int CategoryId { get; set; }
+
+    private bool _loading = true;
+    private List<ServiceOffer> _services = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+
+        _services = await Db.ServiceOffers
+            .Include(x => x.OwnerUser)
+            .Where(x => x.CategoryId == CategoryId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync();
+
+        _loading = false;
+    }
+
+    private static string Trim(string s, int max) => s.Length <= max ? s : s.Substring(0, max) + "...";
+
+    private static string DisplayName(ApplicationUser u)
+        => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : (u.UserName ?? "User");
+}

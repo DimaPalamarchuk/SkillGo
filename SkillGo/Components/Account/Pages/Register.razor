@@ -1,5 +1,4 @@
-﻿@inject SkillGo.Data.ApplicationDbContext Db
-@page "/Account/Register"
+﻿@page "/Account/Register"
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -41,10 +40,20 @@
                 <ValidationSummary class="sg-valsum" />
 
                 <div class="sg-field">
+                    <label class="sg-label">Username</label>
+                    <InputText @bind-Value="Input.UserName"
+                               class="sg-input"
+                               autocomplete="username"
+                               aria-required="true"
+                               placeholder="username" />
+                    <ValidationMessage For="() => Input.UserName" class="sg-val" />
+                </div>
+
+                <div class="sg-field">
                     <label class="sg-label">Email</label>
                     <InputText @bind-Value="Input.Email"
                                class="sg-input"
-                               autocomplete="username"
+                               autocomplete="email"
                                aria-required="true"
                                placeholder="name@example.com" />
                     <ValidationMessage For="() => Input.Email" class="sg-val" />
@@ -282,26 +291,38 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
-    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(e => e.Description))}";
 
     public async Task RegisterUser(EditContext editContext)
     {
-        var user = CreateUser();
+        identityErrors = null;
 
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-        var emailStore = GetEmailStore();
+        var existingByEmail = await UserManager.FindByEmailAsync(Input.Email);
+        if (existingByEmail is not null)
+        {
+            identityErrors = new[] { new IdentityError { Description = "Email is already in use." } };
+            return;
+        }
+
+        var existingByName = await UserManager.FindByNameAsync(Input.UserName);
+        if (existingByName is not null)
+        {
+            identityErrors = new[] { new IdentityError { Description = "Username is already in use." } };
+            return;
+        }
+
+        var user = Activator.CreateInstance<ApplicationUser>();
+
+        await UserStore.SetUserNameAsync(user, Input.UserName, CancellationToken.None);
+        var emailStore = (IUserEmailStore<ApplicationUser>)UserStore;
         await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
         var result = await UserManager.CreateAsync(user, Input.Password);
 
         if (!result.Succeeded)
         {
-            Db.UserProfiles.Add(new SkillGo.Data.UserProfile
-                {
-                    UserId = user.Id,
-                    DisplayName = user.UserName ?? "User",
-                    About = null
-                });
-            await Db.SaveChangesAsync();
+            identityErrors = result.Errors;
+            return;
         }
 
         Logger.LogInformation("User created a new account with password.");
@@ -309,6 +330,7 @@
         var userId = await UserManager.GetUserIdAsync(user);
         var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
         code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
         var callbackUrl = NavigationManager.GetUriWithQueryParameters(
             NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
             new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
@@ -319,51 +341,31 @@
         {
             RedirectManager.RedirectTo(
                 "Account/RegisterConfirmation",
-                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
+                new() { ["userId"] = userId, ["returnUrl"] = ReturnUrl });
+            return;
         }
 
-        await SignInManager.SignInAsync(user, isPersistent: false);
+        await SignInManager.SignInAsync(user, false);
         RedirectManager.RedirectTo(ReturnUrl);
-    }
-
-    private ApplicationUser CreateUser()
-    {
-        try
-        {
-            return Activator.CreateInstance<ApplicationUser>();
-        }
-        catch
-        {
-            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
-                $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor.");
-        }
-    }
-
-    private IUserEmailStore<ApplicationUser> GetEmailStore()
-    {
-        if (!UserManager.SupportsUserEmail)
-        {
-            throw new NotSupportedException("The default UI requires a user store with email support.");
-        }
-        return (IUserEmailStore<ApplicationUser>)UserStore;
     }
 
     private sealed class InputModel
     {
         [Required]
+        [StringLength(32, MinimumLength = 3)]
+        public string UserName { get; set; } = "";
+
+        [Required]
         [EmailAddress]
-        [Display(Name = "Email")]
         public string Email { get; set; } = "";
 
         [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [StringLength(100, MinimumLength = 6)]
         [DataType(DataType.Password)]
-        [Display(Name = "Password")]
         public string Password { get; set; } = "";
 
         [DataType(DataType.Password)]
-        [Display(Name = "Confirm password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        [Compare("Password")]
         public string ConfirmPassword { get; set; } = "";
     }
 }

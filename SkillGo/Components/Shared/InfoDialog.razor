@@ -1,0 +1,24 @@
+﻿@namespace SkillGo.Components.Shared
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="fw-bold">@TitleText</MudText>
+        <MudText Typo="Typo.body2" Style="color:rgba(0,0,0,.65);" Class="mt-2">@BodyText</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close">OK</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance DialogInstance { get; set; } = default!;
+
+    [Parameter] public string TitleText { get; set; } = "Info";
+    [Parameter] public string BodyText { get; set; } = "";
+
+    private void Close()
+    {
+        DialogInstance.Close(DialogResult.Ok(true));
+    }
+}

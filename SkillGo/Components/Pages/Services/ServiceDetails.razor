@@ -1,0 +1,573 @@
+﻿@page "/services/{ServiceId:int}"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@using SkillGo.Components.Shared
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>Service</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    @if (_loading)
+    {
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="8">
+                <div class="card-shell skeleton"></div>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <div class="side-shell skeleton"></div>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (service is null)
+    {
+        <MudPaper Class="pa-5" Elevation="0" Style="border-radius:20px;border:1px solid rgba(0,0,0,.08);">
+            Service not found.
+        </MudPaper>
+    }
+    else
+    {
+        <div class="hero">
+            <div class="hero-inner">
+                <div class="hero-title">@service.Title</div>
+                <div class="hero-sub">@Trim(service.Description, 180)</div>
+
+                <div class="hero-meta">
+                    <div class="meta-chip">
+                        <span class="stars">@Stars(avgRating)</span>
+                        <span class="meta-muted">@avgRating.ToString("0.0")</span>
+                        <span class="meta-muted">(@reviewsCount)</span>
+                    </div>
+
+                    <div class="meta-chip">
+                        <span class="meta-muted">Price</span>
+                        <span class="price">@service.Price.ToString("0.##") zł</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <MudGrid Spacing="4" Class="mt-4">
+            <MudItem xs="12" md="8">
+                <div class="card-shell">
+                    <div class="card-head">
+                        <div class="card-head-title">Service description</div>
+                        <div class="card-head-sub">Details and scope of work</div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="desc">@service.Description</div>
+
+                        <div class="divider"></div>
+
+                        <div class="actions">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong"
+                                       OnClick="@(() => NavToProfile(service.OwnerUser))">
+                                View freelancer profile
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Class="btn-strong"
+                                       OnClick="@OpenReportDialog">
+                                Report
+                            </MudButton>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="reviews-shell mt-4">
+                    <div class="reviews-head">
+                        <div class="reviews-title">Rating</div>
+                        <div class="reviews-sub">@avgRating.ToString("0.0") from @reviewsCount review(s)</div>
+                    </div>
+
+                    <div class="reviews-body">
+                        @if (_topReviews is null)
+                        {
+                            <div class="meta-muted">Loading...</div>
+                        }
+                        else if (_topReviews.Count == 0)
+                        {
+                            <div class="meta-muted">No reviews yet.</div>
+                        }
+                        else
+                        {
+                            <MudStack Spacing="2">
+                                @foreach (var r in _topReviews)
+                                {
+                                    <MudPaper Class="pa-3" Elevation="0" Style="border-radius:16px;border:1px solid rgba(0,0,0,.08);">
+                                        <div class="review-row">
+                                            <div class="stars">@Stars(r.Stars)</div>
+                                            <div class="meta-muted">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(r.Comment))
+                                        {
+                                            <div class="review-text">@r.Comment</div>
+                                        }
+                                    </MudPaper>
+                                }
+                            </MudStack>
+                        }
+                    </div>
+                </div>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <div class="side-shell">
+                    <div class="side-title">Freelancer</div>
+                    <div class="side-sub">Service provider</div>
+
+                    <div class="profile-card mt-4" @onclick="@(() => NavToProfile(service.OwnerUser))">
+                        <img class="avatar" src="@(service.OwnerUser.AvatarUrl ?? "/images/default-avatar.png")" />
+                        <div class="profile-name">@DisplayName(service.OwnerUser)</div>
+                        <div class="profile-muted">@("@" + (service.OwnerUser.UserName ?? ""))</div>
+                    </div>
+
+                    <div class="side-info mt-4">
+                        <div class="info-row">
+                            <div class="meta-muted">Rating</div>
+                            <div class="info-strong">@avgRating.ToString("0.0")</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="meta-muted">Reviews</div>
+                            <div class="info-strong">@reviewsCount</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="meta-muted">Price</div>
+                            <div class="info-strong">@service.Price.ToString("0.##") zł</div>
+                        </div>
+                    </div>
+
+                    <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong mt-4"
+                               OnClick="@(() => NavToProfile(service.OwnerUser))">
+                        View freelancer profile
+                    </MudButton>
+
+                    <MudButton FullWidth="true" Variant="Variant.Outlined" Color="Color.Error" Class="btn-strong mt-2"
+                               OnClick="@OpenReportDialog">
+                        Report
+                    </MudButton>
+                </div>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+<style>
+    .meta-muted {
+        color: rgba(17,24,39,.65)
+    }
+
+    .stars {
+        font-weight: 900;
+        letter-spacing: .6px;
+        color: #111827
+    }
+
+    .price {
+        font-weight: 950;
+        color: #111827
+    }
+
+    .hero {
+        border-radius: 22px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            inset: -40% -60%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 55%);
+            transform: rotate(12deg);
+            opacity: .9;
+            pointer-events: none;
+        }
+
+    .hero-inner {
+        position: relative;
+        z-index: 1;
+        padding: 26px 26px 22px 26px
+    }
+
+    .hero-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.65rem;
+        letter-spacing: .2px;
+        line-height: 1.12;
+        margin-bottom: 8px
+    }
+
+    .hero-sub {
+        color: rgba(17,24,39,.65);
+        font-size: 1rem;
+        line-height: 1.35;
+        max-width: 900px
+    }
+
+    .hero-meta {
+        margin-top: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px
+    }
+
+    .meta-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: rgba(255,255,255,.7);
+        backdrop-filter: blur(6px);
+    }
+
+    .card-shell {
+        border-radius: 20px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        overflow: hidden;
+    }
+
+    .card-head {
+        padding: 20px 22px 16px 22px;
+        border-bottom: 1px solid rgba(0,0,0,.06)
+    }
+
+    .card-head-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.05rem;
+        letter-spacing: .2px
+    }
+
+    .card-head-sub {
+        color: rgba(17,24,39,.6);
+        font-size: .95rem;
+        margin-top: 4px
+    }
+
+    .card-body {
+        padding: 22px
+    }
+
+    .desc {
+        color: rgba(17,24,39,.8);
+        font-size: 1rem;
+        line-height: 1.45;
+        white-space: pre-wrap
+    }
+
+    .divider {
+        height: 1px;
+        background: rgba(0,0,0,.06);
+        margin: 18px 0
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 14px
+    }
+
+    .side-shell {
+        border-radius: 20px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        padding: 22px;
+    }
+
+    .side-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.05rem;
+        letter-spacing: .2px;
+        margin-bottom: 4px
+    }
+
+    .side-sub {
+        color: rgba(17,24,39,.6);
+        font-size: .95rem
+    }
+
+    .profile-card {
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,.08);
+        padding: 16px;
+        box-shadow: 0 12px 28px rgba(0,0,0,.06);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: transform .18s ease, box-shadow .18s ease;
+        background: #fff;
+    }
+
+        .profile-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 48px rgba(0,0,0,.10)
+        }
+
+    .avatar {
+        width: 86px;
+        height: 86px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid rgba(0,0,0,.12);
+        background: #fff
+    }
+
+    .profile-name {
+        font-weight: 950;
+        color: #111827;
+        letter-spacing: .2px;
+        text-align: center;
+        max-width: 240px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis
+    }
+
+    .profile-muted {
+        color: rgba(17,24,39,.6);
+        font-weight: 800;
+        font-size: .92rem
+    }
+
+    .side-info {
+        border-radius: 18px;
+        border: 1px dashed rgba(0,0,0,.14);
+        padding: 14px;
+        background: rgba(99,102,241,.04)
+    }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 0
+    }
+
+    .info-strong {
+        font-weight: 950;
+        color: #111827
+    }
+
+    .reviews-shell {
+        border-radius: 20px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        overflow: hidden;
+    }
+
+    .reviews-head {
+        padding: 18px 22px 14px 22px;
+        border-bottom: 1px solid rgba(0,0,0,.06);
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .reviews-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.02rem;
+        letter-spacing: .2px
+    }
+
+    .reviews-sub {
+        color: rgba(17,24,39,.6);
+        font-size: .95rem
+    }
+
+    .reviews-body {
+        padding: 18px 22px 22px 22px
+    }
+
+    .review-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px
+    }
+
+    .review-text {
+        margin-top: 8px;
+        color: rgba(17,24,39,.78);
+        line-height: 1.35;
+        white-space: pre-wrap
+    }
+
+    .skeleton {
+        background: #fff;
+        border-radius: 20px;
+        position: relative;
+        overflow: hidden;
+        height: 320px;
+        border: 1px solid rgba(0,0,0,.08)
+    }
+
+        .skeleton::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite linear
+        }
+
+    @@keyframes shimmer {
+        0% {
+            background-position: 0% 0
+        }
+
+        100% {
+            background-position: 200% 0
+        }
+    }
+
+    @@media (max-width: 960px) {
+        .hero-inner {
+            padding: 22px
+        }
+
+        .card-body {
+            padding: 18px
+        }
+
+        .side-shell {
+            padding: 18px
+        }
+
+        .reviews-body {
+            padding: 16px 18px 18px 18px
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public int ServiceId { get; set; }
+
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private bool _loading = true;
+
+    private ServiceOffer? service;
+
+    private double avgRating;
+    private int reviewsCount;
+
+    private List<Review>? _topReviews;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+
+        service = await Db.ServiceOffers
+            .Include(x => x.OwnerUser)
+            .FirstOrDefaultAsync(x => x.Id == ServiceId);
+
+        if (service is null)
+        {
+            _topReviews = new List<Review>();
+            _loading = false;
+            return;
+        }
+
+        var q = Db.Reviews.Where(r => r.TargetUserId == service.OwnerUserId);
+        reviewsCount = await q.CountAsync();
+        avgRating = reviewsCount == 0 ? 0 : await q.AverageAsync(r => (double)r.Stars);
+
+        _topReviews = await Db.Reviews
+            .Where(r => r.TargetUserId == service.OwnerUserId)
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(3)
+            .ToListAsync();
+
+        _loading = false;
+    }
+
+    private void NavToProfile(ApplicationUser u)
+    {
+        var name = (u.UserName ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(name))
+            Nav.NavigateTo($"/profile/{name}");
+    }
+
+    private async Task OpenReportDialog()
+    {
+        if (service is null) return;
+
+        var authState = await AuthenticationStateTask;
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            var p = new DialogParameters
+                {
+                    ["TitleText"] = "Login required",
+                    ["BodyText"] = "You must be logged in to submit a report."
+                };
+
+            var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+            DialogService.Show<InfoDialog>("Info", p, o);
+            return;
+        }
+
+        var me = await UserManager.GetUserAsync(principal);
+        if (me is null) return;
+
+        var parameters = new DialogParameters
+            {
+                ["ReporterUserId"] = me.Id,
+                ["TargetUserId"] = service.OwnerUserId,
+                ["ServiceOfferId"] = service.Id
+            };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = DialogService.Show<ReportDialog>("Report", parameters, options);
+
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await OnParametersSetAsync();
+            StateHasChanged();
+        }
+    }
+
+    private static string DisplayName(ApplicationUser u)
+        => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : (u.UserName ?? "User");
+
+    private static string Trim(string s, int max) => s.Length <= max ? s : s.Substring(0, max) + "...";
+
+    private static string Stars(double rating)
+    {
+        var full = (int)Math.Round(rating);
+        full = Math.Clamp(full, 0, 5);
+        return new string('★', full) + new string('☆', 5 - full);
+    }
+}

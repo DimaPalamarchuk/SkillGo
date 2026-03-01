@@ -454,7 +454,7 @@
 
         _offers = await Db.ServiceOffers
             .Where(x => x.OwnerUserId == _user.Id)
-            .OrderByDescending(x => x.CreatedAt)
+            .OrderByDescending(x => x .CreatedAt)
             .ToListAsync();
 
         var q = Db.Reviews.Where(r => r.TargetUserId == _user.Id);

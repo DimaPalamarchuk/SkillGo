@@ -16,22 +16,22 @@
         Find services
     </MudNavLink>
 
-    <MudNavGroup Title="Become a Freelancer" Icon="@Icons.Material.Filled.Work" Expanded="false">
-        <MudNavLink Href="/services/create" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AddCircle">
-            Create service
-        </MudNavLink>
+    <AuthorizeView>
+        <Authorized>
+            <MudNavGroup Title="Become a Freelancer" Icon="@Icons.Material.Filled.Work" @bind-Expanded="_becomeExpanded">
+                <MudNavLink Href="/services/create" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AddCircle">
+                    Create service
+                </MudNavLink>
 
-        <AuthorizeView>
-            <Authorized>
                 @if (!string.IsNullOrWhiteSpace(_myUserName))
                 {
                     <MudNavLink Href="@($"/profile/{_myUserName}")" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">
                         My profile
                     </MudNavLink>
                 }
-            </Authorized>
-        </AuthorizeView>
-    </MudNavGroup>
+            </MudNavGroup>
+        </Authorized>
+    </AuthorizeView>
 
     <AuthorizeView Roles="Admin">
         <MudNavLink Href="/category" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category">
@@ -47,7 +47,7 @@
                 Account
             </MudNavLink>
 
-            <MudNavLink Href="/Account/Logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">
+            <MudNavLink Href="/logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">
                 Logout
             </MudNavLink>
         </Authorized>
@@ -67,16 +67,15 @@
 
 @code {
     private string? _myUserName;
+    private bool _becomeExpanded;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var principal = authState.User;
 
-        if (principal?.Identity?.IsAuthenticated == true)
-        {
-            var me = await UserManager.GetUserAsync(principal);
-            _myUserName = me?.UserName;
-        }
+        _myUserName = principal?.Identity?.IsAuthenticated == true
+            ? principal.Identity?.Name
+            : null;
     }
 }

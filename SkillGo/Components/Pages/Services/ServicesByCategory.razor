@@ -1,7 +1,10 @@
-﻿@page "/categories/{CategoryId:int}/services"
+﻿@page "/services/category/{CategoryId:int}"
+
 @using Microsoft.EntityFrameworkCore
+@using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models
+
 @inject ApplicationDbContext Db
 
 <PageTitle>Services</PageTitle>
@@ -26,7 +29,8 @@
     }
     else if (_services.Count == 0)
     {
-        <MudPaper Class="pa-4" Elevation="0" Style="border-radius:16px;border:1px solid rgba(0,0,0,.08);">
+        <MudPaper Class="pa-4" Elevation="0"
+                  Style="border-radius:16px;border:1px solid rgba(0,0,0,.08);">
             No services in this category yet.
         </MudPaper>
     }
@@ -36,20 +40,22 @@
             @foreach (var s in _services)
             {
                 <MudItem xs="12" sm="6" md="4" lg="3">
-                    <a class="service-link" href="@($"/services/{s.Id}")">
+                    <MudLink Href="@($"/services/{s.Id}")" Class="service-link">
                         <div class="service-card">
                             <div class="service-title">@s.Title</div>
                             <div class="service-desc">@Trim(s.Description, 110)</div>
 
                             <div class="service-footer">
                                 <div class="service-user">
-                                    <img class="service-avatar" src="@(s.OwnerUser.AvatarUrl ?? "/images/default-avatar.png")" />
+                                    <img class="service-avatar"
+                                         src="@(s.OwnerUser?.AvatarUrl ?? "/images/default-avatar.png")" />
                                     <div class="service-user-name">@DisplayName(s.OwnerUser)</div>
                                 </div>
+
                                 <div class="service-price">@s.Price.ToString("0.##") zł</div>
                             </div>
                         </div>
-                    </a>
+                    </MudLink>
                 </MudItem>
             }
         </MudGrid>
@@ -59,13 +65,13 @@
 
 <style>
     .home-muted {
-        color: rgba(0,0,0,.6)
+        color: rgba(0,0,0,.6);
     }
 
     .service-link {
         display: block;
         text-decoration: none;
-        color: inherit
+        color: inherit;
     }
 
     .service-card {
@@ -78,12 +84,12 @@
         transition: transform .18s ease, box-shadow .18s ease;
         display: flex;
         flex-direction: column;
-        gap: 10px
+        gap: 10px;
     }
 
     .service-link:hover .service-card {
         transform: translateY(-6px);
-        box-shadow: 0 20px 48px rgba(0,0,0,.10)
+        box-shadow: 0 20px 48px rgba(0,0,0,.10);
     }
 
     .service-title {
@@ -91,14 +97,15 @@
         color: #111827;
         font-size: 1.05rem;
         letter-spacing: .2px;
-        line-height: 1.15
+        line-height: 1.15;
     }
 
     .service-desc {
         color: rgba(17,24,39,.65);
         font-size: .92rem;
         line-height: 1.25;
-        flex: 1
+        flex: 1;
+        white-space: pre-wrap;
     }
 
     .service-footer {
@@ -106,14 +113,14 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-top: auto
+        margin-top: auto;
     }
 
     .service-user {
         display: flex;
         align-items: center;
         gap: 10px;
-        min-width: 0
+        min-width: 0;
     }
 
     .service-avatar {
@@ -122,7 +129,8 @@
         border-radius: 50%;
         object-fit: cover;
         border: 1px solid rgba(0,0,0,.12);
-        flex: 0 0 auto
+        flex: 0 0 auto;
+        background: #fff;
     }
 
     .service-user-name {
@@ -132,20 +140,22 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 150px
+        max-width: 150px;
     }
 
     .service-price {
         font-weight: 900;
         color: #111827;
-        white-space: nowrap
+        white-space: nowrap;
     }
 
     .skeleton {
         background: #fff;
         border-radius: 20px;
         position: relative;
-        overflow: hidden
+        overflow: hidden;
+        height: 210px;
+        border: 1px solid rgba(0,0,0,.08);
     }
 
         .skeleton::before {
@@ -154,7 +164,7 @@
             inset: 0;
             background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
             background-size: 200% 100%;
-            animation: shimmer 1.2s infinite linear
+            animation: shimmer 1.2s infinite linear;
         }
 
     @@keyframes shimmer {
@@ -187,8 +197,10 @@
         _loading = false;
     }
 
-    private static string Trim(string s, int max) => s.Length <= max ? s : s.Substring(0, max) + "...";
+    private static string Trim(string? s, int max)
+        => string.IsNullOrWhiteSpace(s) ? "" : (s.Length <= max ? s : s.Substring(0, max) + "...");
 
-    private static string DisplayName(ApplicationUser u)
-        => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : (u.UserName ?? "User");
+    private static string DisplayName(ApplicationUser? u)
+        => u is null ? "User"
+           : (!string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : (u.UserName ?? "User"));
 }

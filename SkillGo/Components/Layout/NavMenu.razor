@@ -12,8 +12,8 @@
         Home
     </MudNavLink>
 
-    <MudNavLink Href="/#categories" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Search">
-        Find services
+    <MudNavLink Href="/services/category" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Search">
+        Browse services
     </MudNavLink>
 
     <AuthorizeView>
@@ -47,7 +47,7 @@
                 Account
             </MudNavLink>
 
-            <MudNavLink Href="/logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">
+            <MudNavLink Href="Account/Logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">
                 Logout
             </MudNavLink>
         </Authorized>

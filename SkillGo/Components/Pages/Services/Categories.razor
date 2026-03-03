@@ -1,33 +1,17 @@
-﻿@page "/"
-@using SkillGo.Data
-@using SkillGo.Repository.IRepository
+﻿
+@using Microsoft.EntityFrameworkCore
 @using MudBlazor
-@inject ICategoryRepository CategoryRepo
-@inject NavigationManager Nav
+@using SkillGo.Data
 
-<PageTitle>SkillGo</PageTitle>
+@inject ApplicationDbContext Db
+
+<PageTitle>Categories</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
 
-    <MudText Typo="Typo.h3" Align="Align.Center" Class="fw-bold">
-        Find the right freelancer for your project
-    </MudText>
-
-    <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="home-muted mt-1">
-        Browse services by category and get started today.
-    </MudText>
-
-    <MudStack AlignItems="AlignItems.Center" Class="mt-4 mb-8">
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   Class="sg-btn"
-                   Href="/services/category">
-            Browse services
-        </MudButton>
-    </MudStack>
-
-    <MudText Typo="Typo.h5" Class="fw-bold mb-4">
-        Categories
+    <MudText Typo="Typo.h4" Class="fw-bold mb-2">Categories</MudText>
+    <MudText Typo="Typo.subtitle2" Class="home-muted mb-6">
+        Choose a category to browse services.
     </MudText>
 
     @if (_loading)
@@ -41,20 +25,24 @@
             }
         </MudGrid>
     }
+    else if (_categories.Count == 0)
+    {
+        <MudPaper Class="pa-4" Elevation="0" Style="border-radius:16px;border:1px solid rgba(0,0,0,.08);">
+            No categories yet.
+        </MudPaper>
+    }
     else
     {
         <MudGrid Spacing="4">
-            @foreach (var c in _categories!)
+            @foreach (var c in _categories)
             {
                 <MudItem xs="12" sm="6" md="4" lg="3">
-                    <a class="cat-link" href="@($"/services/category/{c.Id}")">
+                    <MudLink Href="@($"/services/category/{c.Id}")" Class="cat-link">
                         <div class="cat-card">
                             <div class="cat-title">@c.Name</div>
-                            <div class="cat-sub">
-                                Browse services in this category
-                            </div>
+                            <div class="cat-sub">Browse services in this category</div>
                         </div>
-                    </a>
+                    </MudLink>
                 </MudItem>
             }
         </MudGrid>
@@ -148,12 +136,16 @@
 </style>
 
 @code {
-    private List<Category>? _categories;
     private bool _loading = true;
+    private List<Category> _categories = new();
 
     protected override async Task OnInitializedAsync()
     {
-        _categories = (await CategoryRepo.GetAllAsync()).ToList();
+        _categories = await Db.Categories
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .ToListAsync();
+
         _loading = false;
     }
 }

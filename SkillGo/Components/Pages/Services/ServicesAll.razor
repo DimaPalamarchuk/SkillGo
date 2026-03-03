@@ -1,4 +1,4 @@
-﻿@page "/services/category/{CategoryId:int}"
+﻿@page "/services/category"
 
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
@@ -13,8 +13,8 @@
 
     <div class="hero">
         <div class="hero-inner">
-            <div class="hero-title">@_categoryName</div>
-            <div class="hero-sub">Search and filter services in this category.</div>
+            <div class="hero-title">All services</div>
+            <div class="hero-sub">Search and filter by category, price and rating.</div>
 
             <div class="hero-controls">
                 <MudTextField T="string"
@@ -42,13 +42,11 @@
                 </MudSelect>
             </div>
 
-            <div class="hero-actions">
-                <MudButton Variant="Variant.Outlined" Class="btn-soft" Href="/services/category">
-                    All services
-                </MudButton>
-            </div>
-
             <div class="hero-chips">
+                @if (_categoryId.HasValue)
+                {
+                    <span class="chip">Category: @_categories.FirstOrDefault(x => x.Id == _categoryId)?.Name</span>
+                }
                 @if (_minPrice.HasValue)
                 {
                     <span class="chip">Min: @_minPrice.Value.ToString("0.##") zł</span>
@@ -77,6 +75,15 @@
             </div>
 
             <div class="filters-body">
+                <MudSelect T="int?" Variant="Variant.Outlined" Label="Category"
+                           Value="@_categoryId" ValueChanged="OnCategoryChanged" FullWidth="true">
+                    <MudSelectItem T="int?" Value="@(null)">All categories</MudSelectItem>
+                    @foreach (var c in _categories)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
                 <div class="two">
                     <MudNumericField T="decimal?" Variant="Variant.Outlined" Label="Min price (zł)"
                                      Min="0" Value="@_minPrice" ValueChanged="OnMinPriceChanged" />
@@ -132,7 +139,7 @@
                                 <div class="card">
                                     <div class="top">
                                         <div class="title">@s.Title</div>
-                                        <div class="pill">@_categoryName</div>
+                                        <div class="pill">@((s.Category?.Name) ?? "Category")</div>
                                     </div>
 
                                     <div class="desc">@Trim(s.Description, 115)</div>
@@ -217,22 +224,6 @@
 
     .control {
         min-width: 0;
-    }
-
-    .hero-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        min-width: 0;
-    }
-
-    .btn-soft {
-        border-radius: 14px;
-        font-weight: 950;
-        letter-spacing: .2px;
-        padding: 10px 14px;
-        background: rgba(255,255,255,.55);
-        border: 1px solid rgba(0,0,0,.08);
     }
 
     .hero-chips {
@@ -525,24 +516,22 @@
 </style>
 
 @code {
-    [Parameter] public int CategoryId { get; set; }
-
     private bool _loading = true;
 
-    private string _categoryName = "Category";
+    private List<Category> _categories = new();
     private List<ServiceCardVm> _services = new();
 
     private string _search = "";
+    private int? _categoryId = null;
     private decimal? _minPrice = null;
     private decimal? _maxPrice = null;
     private int _minRating = 0;
     private bool _onlyWithReviews = false;
     private string _sort = "new";
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        var cat = await Db.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == CategoryId);
-        _categoryName = cat?.Name ?? "Category";
+        _categories = await Db.Categories.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
         await LoadAsync();
     }
 
@@ -553,8 +542,10 @@
         IQueryable<ServiceOffer> qBase = Db.ServiceOffers
             .AsNoTracking()
             .Include(x => x.OwnerUser)
-            .Include(x => x.Category)
-            .Where(x => x.CategoryId == CategoryId);
+            .Include(x => x.Category);
+
+        if (_categoryId.HasValue)
+            qBase = qBase.Where(x => x.CategoryId == _categoryId.Value);
 
         var s = (_search ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(s))
@@ -574,6 +565,7 @@
                 Price = x.Price,
                 CreatedAt = x.CreatedAt,
                 OwnerUser = x.OwnerUser,
+                Category = x.Category,
                 ReviewsCount = Db.Reviews.Count(r => r.TargetUserId == x.OwnerUserId),
                 RatingAvg = (Db.Reviews.Where(r => r.TargetUserId == x.OwnerUserId).Select(r => (double?)r.Stars).Average() ?? 0)
             });
@@ -602,6 +594,7 @@
     private async Task ResetAsync()
     {
         _search = "";
+        _categoryId = null;
         _minPrice = null;
         _maxPrice = null;
         _minRating = 0;
@@ -612,6 +605,7 @@
 
     private async Task OnSearchChanged(string v) { _search = v ?? ""; await LoadAsync(); }
     private async Task OnSortChanged(string v) { _sort = string.IsNullOrWhiteSpace(v) ? "new" : v; await LoadAsync(); }
+    private Task OnCategoryChanged(int? v) { _categoryId = v; return Task.CompletedTask; }
     private Task OnMinPriceChanged(decimal? v) { _minPrice = v; return Task.CompletedTask; }
     private Task OnMaxPriceChanged(decimal? v) { _maxPrice = v; return Task.CompletedTask; }
     private Task OnMinRatingChanged(int v) { _minRating = v; return Task.CompletedTask; }
@@ -639,6 +633,7 @@
         public decimal Price { get; set; }
         public DateTime CreatedAt { get; set; }
         public ApplicationUser? OwnerUser { get; set; }
+        public Category? Category { get; set; }
         public int ReviewsCount { get; set; }
         public double RatingAvg { get; set; }
     }

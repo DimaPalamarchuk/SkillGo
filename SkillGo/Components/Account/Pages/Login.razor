@@ -57,7 +57,7 @@
                         Remember me
                     </label>
 
-                    <a class="sg-link" href="Account/ForgotPassword">
+                    <a class="sg-link" href="/Account/ForgotPassword">
                         Forgot password?
                     </a>
                 </div>
@@ -75,8 +75,8 @@
                 <div class="sg-foot">
                     <a class="sg-link"
                        href="@(NavigationManager.GetUriWithQueryParameters(
-                            "Account/Register",
-                            new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+                            "/Account/Register",
+                            new Dictionary<string, object?> { ["ReturnUrl"] = "/" }))">
                         Create account
                     </a>
                 </div>
@@ -307,7 +307,7 @@
 
         if (result.Succeeded)
         {
-            RedirectManager.RedirectTo(ReturnUrl);
+            NavigationManager.NavigateTo("/", true);
         }
         else
         {

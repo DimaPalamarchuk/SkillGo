@@ -41,34 +41,29 @@
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Inherit"
                            Class="sg-btn-outline ms-2"
-                           Href="Account/Manage">
+                           Href="/Account/Manage">
                     ACCOUNT
                 </MudButton>
 
-                <form class="d-inline ms-2" action="Account/Logout" method="post">
-                    <AntiforgeryToken />
-                    <input type="hidden" name="ReturnUrl" value="@CurrentUrl" />
-
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Inherit"
-                               Class="sg-btn-outline"
-                               ButtonType="ButtonType.Submit">
-                        LOGOUT
-                    </MudButton>
-                </form>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Inherit"
+                           Class="sg-btn-outline ms-2"
+                           Href="/Account/Logout">
+                    LOGOUT
+                </MudButton>
             </Authorized>
 
             <NotAuthorized>
                 <MudButton Variant="Variant.Text"
                            Color="Color.Inherit"
-                           Href="Account/Login">
+                           Href="/Account/Login">
                     Login
                 </MudButton>
 
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            Class="sg-btn ms-2"
-                           Href="Account/Register">
+                           Href="/Account/Register">
                     Sign up
                 </MudButton>
             </NotAuthorized>
@@ -101,7 +96,6 @@
 
 @code {
     private bool _drawerOpen = true;
-    private string? CurrentUrl;
 
     private readonly MudTheme _theme = new MudTheme()
         {
@@ -121,14 +115,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        CurrentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
         WalletState.Changed += OnWalletChanged;
         await WalletState.RefreshAsync();
-    }
-
-    protected override void OnParametersSet()
-    {
-        CurrentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
     }
 
     private void OnWalletChanged()

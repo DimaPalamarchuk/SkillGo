@@ -6,6 +6,8 @@
 @using System.Security.Claims
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IWalletRepository WalletRepo
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>Wallet</PageTitle>
 
@@ -23,7 +25,7 @@
                         Refresh
                     </MudButton>
 
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="true">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenTopUpAsync" Disabled="_loading">
                         Top up balance
                     </MudButton>
                 </MudStack>
@@ -50,8 +52,8 @@
                         Withdraw (soon)
                     </MudButton>
 
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="true">
-                        View details (soon)
+                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
+                        Open full history (soon)
                     </MudButton>
                 </MudStack>
             </MudPaper>
@@ -64,10 +66,6 @@
                         <MudText Typo="Typo.h6" Class="fw-bold">Transactions</MudText>
                         <MudText Typo="Typo.body2" Class="text-muted">Only your transactions are shown</MudText>
                     </MudStack>
-
-                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
-                        Open full history
-                    </MudButton>
                 </MudStack>
 
                 <MudDivider Class="my-4" />
@@ -125,6 +123,13 @@
         await RefreshAsync();
     }
 
+    private async Task<string?> GetUserIdAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        return user.FindFirstValue(ClaimTypes.NameIdentifier);
+    }
+
     private async Task RefreshAsync()
     {
         if (_loading) return;
@@ -132,10 +137,7 @@
 
         try
         {
-            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = auth.User;
-
-            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = await GetUserIdAsync();
             if (string.IsNullOrWhiteSpace(userId))
             {
                 _balance = 0m;
@@ -147,6 +149,40 @@
             _balance = await WalletRepo.GetBalanceAsync(userId);
             _tx = await WalletRepo.GetTransactionsAsync(userId, 30);
             _loadedOnce = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenTopUpAsync()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+
+        var dialog = DialogService.Show<TopUpDialog>("", parameters, options);
+        var result = await dialog.Result;
+
+        if (result.Canceled) return;
+
+        if (result.Data is not TopUpDialog.TopUpResult data) return;
+        if (data.Amount <= 0) return;
+
+        var userId = await GetUserIdAsync();
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        _loading = true;
+
+        try
+        {
+            await WalletRepo.TopUpAsync(userId, data.Amount, data.Note);
+            Snackbar.Add($"Top up: {data.Amount:0.##} zł", Severity.Success);
+            await RefreshAsync();
+        }
+        catch
+        {
+            Snackbar.Add("Top up failed", Severity.Error);
         }
         finally
         {

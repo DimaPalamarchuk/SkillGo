@@ -1,0 +1,54 @@
+﻿@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6" Class="fw-bold">Top up balance</MudText>
+
+            <MudNumericField T="decimal"
+                             Label="Amount (zł)"
+                             Variant="Variant.Outlined"
+                             Min="1"
+                             Immediate="true"
+                             @bind-Value="_amount" />
+
+            <MudTextField Label="Note"
+                          Variant="Variant.Outlined"
+                          @bind-Value="_note" />
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">
+            Cancel
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Ok"
+                   Disabled="@(_amount <= 0)">
+            Top up
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private decimal _amount = 10m;
+    private string? _note;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Ok()
+    {
+        MudDialog.Close(DialogResult.Ok(new TopUpResult(_amount, _note)));
+    }
+
+    public record TopUpResult(decimal Amount, string? Note);
+}

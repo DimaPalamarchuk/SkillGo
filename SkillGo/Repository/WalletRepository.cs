@@ -36,5 +36,30 @@ namespace SkillGo.Repository
                 .Take(take)
                 .ToListAsync();
         }
+
+        public async Task TopUpAsync(string userId, decimal amount, string? note)
+        {
+            if (amount <= 0) return;
+
+            await using var db = await _dbFactory.CreateDbContextAsync();
+            await using var tx = await db.Database.BeginTransactionAsync();
+
+            var user = await db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null) return;
+
+            user.Balance += amount;
+
+            db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = userId,
+                Amount = amount,
+                Type = WalletTransactionType.TopUp,
+                Note = string.IsNullOrWhiteSpace(note) ? null : note,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
     }
 }

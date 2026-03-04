@@ -53,7 +53,7 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IFreelancerRepository, FreelancerRepository>();
 
-
+builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())

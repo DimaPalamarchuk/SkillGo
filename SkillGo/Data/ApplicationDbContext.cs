@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Report> Reports => Set<Report>();
 
+    public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -33,6 +34,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ApplicationUser>()
             .Property(x => x.Balance)
             .HasPrecision(18, 2);
+
+        builder.Entity<WalletTransaction>()
+            .Property(x => x.Amount)
+            .HasPrecision(18, 2);
+
+        builder.Entity<WalletTransaction>()
+            .HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.Entity<ServiceOffer>()
             .HasOne(x => x.Category)

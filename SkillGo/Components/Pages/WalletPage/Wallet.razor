@@ -1,5 +1,11 @@
 ﻿@page "/wallet"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using MudBlazor
+@using SkillGo.Data.Models
+@using SkillGo.Repository.IRepository
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IWalletRepository WalletRepo
 
 <PageTitle>Wallet</PageTitle>
 
@@ -9,19 +15,33 @@
             <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
                 <MudStack Spacing="0">
                     <MudText Typo="Typo.h4" Class="fw-bold">Wallet</MudText>
-                    <MudText Color="Color.Secondary">Manage your balance and transactions</MudText>
+                    <MudText Color="Color.Secondary">Your balance and transactions</MudText>
                 </MudStack>
 
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="true">
-                    Top up balance
-                </MudButton>
+                <MudStack Direction="Row" Spacing="2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" OnClick="RefreshAsync" Disabled="_loading">
+                        Refresh
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="true">
+                        Top up balance
+                    </MudButton>
+                </MudStack>
             </MudStack>
         </MudItem>
 
         <MudItem xs="12" md="5" lg="4">
             <MudPaper Elevation="0" Class="p-5 sg-card">
                 <MudText Typo="Typo.subtitle2" Class="text-muted">Current balance</MudText>
-                <MudText Typo="Typo.h3" Class="fw-bold mt-2">— zł</MudText>
+
+                @if (_loading && !_loadedOnce)
+                {
+                    <MudText Typo="Typo.h3" Class="fw-bold mt-2">—</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h3" Class="fw-bold mt-2">@($"{_balance:0.##} zł")</MudText>
+                }
 
                 <MudDivider Class="my-4" />
 
@@ -29,6 +49,7 @@
                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
                         Withdraw (soon)
                     </MudButton>
+
                     <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="true">
                         View details (soon)
                     </MudButton>
@@ -41,7 +62,7 @@
                 <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
                     <MudStack Spacing="0">
                         <MudText Typo="Typo.h6" Class="fw-bold">Transactions</MudText>
-                        <MudText Typo="Typo.body2" Class="text-muted">Latest activity in your wallet</MudText>
+                        <MudText Typo="Typo.body2" Class="text-muted">Only your transactions are shown</MudText>
                     </MudStack>
 
                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
@@ -51,7 +72,7 @@
 
                 <MudDivider Class="my-4" />
 
-                <MudTable Dense="true" Elevation="0" Class="sg-table" Items="_rows" Hover="true">
+                <MudTable Dense="true" Elevation="0" Class="sg-table" Items="_tx" Hover="true">
                     <HeaderContent>
                         <MudTh>Date</MudTh>
                         <MudTh>Type</MudTh>
@@ -59,13 +80,15 @@
                         <MudTh>Note</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd DataLabel="Date">@context.Date</MudTd>
+                        <MudTd DataLabel="Date">@context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudTd>
                         <MudTd DataLabel="Type">
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@context.Color">
-                                @context.Type
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetTypeColor(context.Type)">
+                                @context.Type.ToString()
                             </MudChip>
                         </MudTd>
-                        <MudTd DataLabel="Amount" Align="Align.Right" Class="fw-bold">@context.Amount</MudTd>
+                        <MudTd DataLabel="Amount" Align="Align.Right" Class="fw-bold">
+                            @($"{context.Amount:0.##} zł")
+                        </MudTd>
                         <MudTd DataLabel="Note">@context.Note</MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
@@ -92,12 +115,53 @@
 </style>
 
 @code {
-    private readonly List<Row> _rows = new()
-    {
-        new Row("2026-03-04", "Top up", "150.00 zł", "Initial top up", Color.Success),
-        new Row("2026-03-02", "Debit", "35.00 zł", "Service order #1021", Color.Error),
-        new Row("2026-02-28", "Refund", "35.00 zł", "Refund for order #1021", Color.Warning)
-    };
+    private bool _loading;
+    private bool _loadedOnce;
+    private decimal _balance;
+    private List<WalletTransaction> _tx = new();
 
-    private record Row(string Date, string Type, string Amount, string? Note, Color Color);
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_loading) return;
+        _loading = true;
+
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = auth.User;
+
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _balance = 0m;
+                _tx = new();
+                _loadedOnce = true;
+                return;
+            }
+
+            _balance = await WalletRepo.GetBalanceAsync(userId);
+            _tx = await WalletRepo.GetTransactionsAsync(userId, 30);
+            _loadedOnce = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static Color GetTypeColor(WalletTransactionType type)
+    {
+        return type switch
+        {
+            WalletTransactionType.TopUp => Color.Success,
+            WalletTransactionType.Debit => Color.Error,
+            WalletTransactionType.Refund => Color.Warning,
+            _ => Color.Default
+        };
+    }
 }

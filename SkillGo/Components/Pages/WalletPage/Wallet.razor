@@ -1,0 +1,103 @@
+﻿@page "/wallet"
+@using MudBlazor
+
+<PageTitle>Wallet</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudGrid Spacing="3">
+        <MudItem xs="12">
+            <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h4" Class="fw-bold">Wallet</MudText>
+                    <MudText Color="Color.Secondary">Manage your balance and transactions</MudText>
+                </MudStack>
+
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="true">
+                    Top up balance
+                </MudButton>
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="12" md="5" lg="4">
+            <MudPaper Elevation="0" Class="p-5 sg-card">
+                <MudText Typo="Typo.subtitle2" Class="text-muted">Current balance</MudText>
+                <MudText Typo="Typo.h3" Class="fw-bold mt-2">— zł</MudText>
+
+                <MudDivider Class="my-4" />
+
+                <MudStack Spacing="2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
+                        Withdraw (soon)
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="true">
+                        View details (soon)
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7" lg="8">
+            <MudPaper Elevation="0" Class="p-5 sg-card">
+                <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h6" Class="fw-bold">Transactions</MudText>
+                        <MudText Typo="Typo.body2" Class="text-muted">Latest activity in your wallet</MudText>
+                    </MudStack>
+
+                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
+                        Open full history
+                    </MudButton>
+                </MudStack>
+
+                <MudDivider Class="my-4" />
+
+                <MudTable Dense="true" Elevation="0" Class="sg-table" Items="_rows" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Date</MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh Align="Align.Right">Amount</MudTh>
+                        <MudTh>Note</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Date">@context.Date</MudTd>
+                        <MudTd DataLabel="Type">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@context.Color">
+                                @context.Type
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Amount" Align="Align.Right" Class="fw-bold">@context.Amount</MudTd>
+                        <MudTd DataLabel="Note">@context.Note</MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Class="text-muted">No transactions yet</MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<style>
+    .sg-card {
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 18px;
+        background: white;
+    }
+
+    .sg-table .mud-table-container {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,.06);
+    }
+</style>
+
+@code {
+    private readonly List<Row> _rows = new()
+    {
+        new Row("2026-03-04", "Top up", "150.00 zł", "Initial top up", Color.Success),
+        new Row("2026-03-02", "Debit", "35.00 zł", "Service order #1021", Color.Error),
+        new Row("2026-02-28", "Refund", "35.00 zł", "Refund for order #1021", Color.Warning)
+    };
+
+    private record Row(string Date, string Type, string Amount, string? Note, Color Color);
+}

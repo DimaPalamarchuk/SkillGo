@@ -1,0 +1,81 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using MudBlazor
+@using SkillGo.Data
+@inject NavigationManager Nav
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<MudNavMenu>
+
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
+        Home
+    </MudNavLink>
+
+    <MudNavLink Href="/services/category" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Search">
+        Browse services
+    </MudNavLink>
+
+    <AuthorizeView>
+        <Authorized>
+            <MudNavGroup Title="Become a Freelancer" Icon="@Icons.Material.Filled.Work" @bind-Expanded="_becomeExpanded">
+                <MudNavLink Href="/services/create" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AddCircle">
+                    Create service
+                </MudNavLink>
+
+                @if (!string.IsNullOrWhiteSpace(_myUserName))
+                {
+                    <MudNavLink Href="@($"/profile/{_myUserName}")" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">
+                        My profile
+                    </MudNavLink>
+                }
+            </MudNavGroup>
+        </Authorized>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Admin">
+        <MudNavLink Href="/category" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category">
+            Category
+        </MudNavLink>
+    </AuthorizeView>
+
+    <MudDivider Class="my-2" />
+
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="/Account/Manage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ManageAccounts">
+                Account
+            </MudNavLink>
+
+            <MudNavLink Href="Account/Logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">
+                Logout
+            </MudNavLink>
+        </Authorized>
+
+        <NotAuthorized>
+            <MudNavLink Href="/Account/Login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">
+                Login
+            </MudNavLink>
+
+            <MudNavLink Href="/Account/Register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PersonAdd">
+                Register
+            </MudNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+
+</MudNavMenu>
+
+@code {
+    private string? _myUserName;
+    private bool _becomeExpanded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        _myUserName = principal?.Identity?.IsAuthenticated == true
+            ? principal.Identity?.Name
+            : null;
+    }
+}

@@ -1,6 +1,12 @@
 ﻿@inherits LayoutComponentBase
-@inject NavigationManager Navigation
+@implements IDisposable
 @using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDbContextFactory<SkillGo.Data.ApplicationDbContext> DbFactory
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -27,6 +33,13 @@
                          Class="sg-user-chip">
                     @context.User.Identity?.Name
                 </MudChip>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Inherit"
+                           Class="sg-btn-outline ms-2"
+                           Href="/wallet">
+                    @_balanceText
+                </MudButton>
 
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Inherit"
@@ -83,23 +96,87 @@
     private bool _drawerOpen = true;
     private string? CurrentUrl;
 
-    private readonly MudTheme _theme = new MudTheme()
-    {
-        PaletteLight = new PaletteLight()
-        {
-            Primary = "#5b4de6",
-            Secondary = "#22c55e",
-        },
-        LayoutProperties = new LayoutProperties()
-        {
-            DrawerWidthLeft = "260px"
-        }
-    };
+    private string _balanceText = "BALANCE: —";
+    private bool _loadingBalance;
 
-    protected override void OnInitialized()
+    private readonly MudTheme _theme = new MudTheme()
+        {
+            PaletteLight = new PaletteLight()
+            {
+                Primary = "#5b4de6",
+                Secondary = "#22c55e",
+            },
+            LayoutProperties = new LayoutProperties()
+            {
+                DrawerWidthLeft = "260px"
+            }
+        };
+
+    protected override async Task OnInitializedAsync()
+    {
+        CurrentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+        AuthStateProvider.AuthenticationStateChanged += OnAuthChanged;
+        await LoadBalanceSafeAsync();
+    }
+
+    protected override void OnParametersSet()
     {
         CurrentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
     }
 
+    private async void OnAuthChanged(Task<AuthenticationState> _)
+    {
+        await LoadBalanceSafeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadBalanceSafeAsync()
+    {
+        if (_loadingBalance) return;
+        _loadingBalance = true;
+
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = auth.User;
+
+            if (user?.Identity?.IsAuthenticated != true)
+            {
+                _balanceText = "BALANCE: —";
+                return;
+            }
+
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _balanceText = "BALANCE: —";
+                return;
+            }
+
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var bal = await db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => u.Balance)
+                .FirstOrDefaultAsync();
+
+            _balanceText = $"BALANCE: {bal:0.##} zł";
+        }
+        catch
+        {
+            _balanceText = "BALANCE: —";
+        }
+        finally
+        {
+            _loadingBalance = false;
+        }
+    }
+
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthChanged;
+    }
 }

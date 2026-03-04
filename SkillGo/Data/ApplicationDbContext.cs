@@ -19,6 +19,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Report> Reports => Set<Report>();
 
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -28,6 +29,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             new Category { Id = 2, Name = "Design" },
             new Category { Id = 3, Name = "Computer Graphic" }
         );
+
+        builder.Entity<ApplicationUser>()
+            .Property(x => x.Balance)
+            .HasPrecision(18, 2);
 
         builder.Entity<ServiceOffer>()
             .HasOne(x => x.Category)

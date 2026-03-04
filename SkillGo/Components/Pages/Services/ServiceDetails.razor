@@ -6,10 +6,13 @@
 @using SkillGo.Data
 @using SkillGo.Data.Models
 @using SkillGo.Components.Shared
+@using SkillGo.Components.Pages.WalletPage
+@using SkillGo.Services
 @inject ApplicationDbContext Db
 @inject UserManager<ApplicationUser> UserManager
 @inject IDialogService DialogService
 @inject NavigationManager Nav
+@inject OrderService OrderService
 
 <PageTitle>Service</PageTitle>
 
@@ -144,6 +147,16 @@
                     </div>
 
                     <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong mt-4"
+                               Disabled="_ordering" OnClick="PlaceOrderAsync">
+                        @(_ordering ? "Creating..." : "Place order")
+                    </MudButton>
+
+                    @if (!string.IsNullOrWhiteSpace(_orderError))
+                    {
+                        <MudText Color="Color.Error" Class="mt-2">@_orderError</MudText>
+                    }
+
+                    <MudButton FullWidth="true" Variant="Variant.Outlined" Color="Color.Primary" Class="btn-strong mt-2"
                                OnClick="@(() => NavToProfile(service.OwnerUser))">
                         View freelancer profile
                     </MudButton>
@@ -475,6 +488,8 @@
     [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     private bool _loading = true;
+    private bool _ordering;
+    private string? _orderError;
 
     private ServiceOffer? service;
 
@@ -486,6 +501,7 @@
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
+        _orderError = null;
 
         service = await Db.ServiceOffers
             .Include(x => x.OwnerUser)
@@ -509,6 +525,56 @@
             .ToListAsync();
 
         _loading = false;
+    }
+
+    private async Task PlaceOrderAsync()
+    {
+        if (_ordering) return;
+        if (service is null) return;
+
+        _ordering = true;
+        _orderError = null;
+
+        try
+        {
+            var authState = await AuthenticationStateTask;
+            var principal = authState.User;
+
+            if (principal?.Identity?.IsAuthenticated != true)
+            {
+                Nav.NavigateTo("/Account/Login");
+                return;
+            }
+
+            var me = await UserManager.GetUserAsync(principal);
+            if (me is null)
+            {
+                Nav.NavigateTo("/Account/Login");
+                return;
+            }
+
+            var result = await OrderService.CreateOrderAsync(ServiceId, me.Id);
+
+            if (result.NeedTopUp)
+            {
+                _orderError = $"Not enough balance. Missing {result.MissingAmount.ToString("0.##")} zł.";
+                var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+                DialogService.Show<TopUpDialog>("Top up balance", new DialogParameters(), options);
+                return;
+            }
+
+            if (!result.Success || result.ConversationId == null)
+            {
+                _orderError = result.Error ?? "Failed to create order";
+                return;
+            }
+
+            Nav.NavigateTo($"/chat/{result.ConversationId}");
+        }
+        finally
+        {
+            _ordering = false;
+        }
     }
 
     private void NavToProfile(ApplicationUser u)

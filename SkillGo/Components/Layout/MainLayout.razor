@@ -1,12 +1,9 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
+@inject NavigationManager Navigation
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.EntityFrameworkCore
-@using System.Security.Claims
-@inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
-@inject IDbContextFactory<SkillGo.Data.ApplicationDbContext> DbFactory
+@inject SkillGo.Repository.WalletState WalletState
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -38,7 +35,7 @@
                            Color="Color.Inherit"
                            Class="sg-btn-outline ms-2"
                            Href="/wallet">
-                    @_balanceText
+                    @BalanceText
                 </MudButton>
 
                 <MudButton Variant="Variant.Outlined"
@@ -92,12 +89,19 @@
 
 </MudLayout>
 
+<style>
+    .sg-balance-chip {
+        border-radius: 999px;
+        font-weight: 950;
+        letter-spacing: .15px;
+        padding: 6px 10px;
+        white-space: nowrap;
+    }
+</style>
+
 @code {
     private bool _drawerOpen = true;
     private string? CurrentUrl;
-
-    private string _balanceText = "BALANCE: —";
-    private bool _loadingBalance;
 
     private readonly MudTheme _theme = new MudTheme()
         {
@@ -112,11 +116,14 @@
             }
         };
 
+    private string BalanceText =>
+        WalletState.IsLoaded ? $"BALANCE: {WalletState.Balance:0.##} zł" : "BALANCE: —";
+
     protected override async Task OnInitializedAsync()
     {
         CurrentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
-        AuthStateProvider.AuthenticationStateChanged += OnAuthChanged;
-        await LoadBalanceSafeAsync();
+        WalletState.Changed += OnWalletChanged;
+        await WalletState.RefreshAsync();
     }
 
     protected override void OnParametersSet()
@@ -124,59 +131,15 @@
         CurrentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
     }
 
-    private async void OnAuthChanged(Task<AuthenticationState> _)
+    private void OnWalletChanged()
     {
-        await LoadBalanceSafeAsync();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadBalanceSafeAsync()
-    {
-        if (_loadingBalance) return;
-        _loadingBalance = true;
-
-        try
-        {
-            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = auth.User;
-
-            if (user?.Identity?.IsAuthenticated != true)
-            {
-                _balanceText = "BALANCE: —";
-                return;
-            }
-
-            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                _balanceText = "BALANCE: —";
-                return;
-            }
-
-            await using var db = await DbFactory.CreateDbContextAsync();
-
-            var bal = await db.Users
-                .AsNoTracking()
-                .Where(u => u.Id == userId)
-                .Select(u => u.Balance)
-                .FirstOrDefaultAsync();
-
-            _balanceText = $"BALANCE: {bal:0.##} zł";
-        }
-        catch
-        {
-            _balanceText = "BALANCE: —";
-        }
-        finally
-        {
-            _loadingBalance = false;
-        }
+        InvokeAsync(StateHasChanged);
     }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
     public void Dispose()
     {
-        AuthStateProvider.AuthenticationStateChanged -= OnAuthChanged;
+        WalletState.Changed -= OnWalletChanged;
     }
 }

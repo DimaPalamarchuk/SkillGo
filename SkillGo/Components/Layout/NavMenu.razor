@@ -43,6 +43,11 @@
 
     <AuthorizeView>
         <Authorized>
+
+            <MudNavLink Href="/chats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Chat">
+                Chats
+            </MudNavLink>
+
             <MudNavLink Href="/Account/Manage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ManageAccounts">
                 Account
             </MudNavLink>
@@ -50,9 +55,11 @@
             <MudNavLink Href="Account/Logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">
                 Logout
             </MudNavLink>
+
         </Authorized>
 
         <NotAuthorized>
+
             <MudNavLink Href="/Account/Login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">
                 Login
             </MudNavLink>
@@ -60,6 +67,7 @@
             <MudNavLink Href="/Account/Register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PersonAdd">
                 Register
             </MudNavLink>
+
         </NotAuthorized>
     </AuthorizeView>
 

@@ -1,0 +1,235 @@
+﻿@page "/chat/{ConversationId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models.Chat
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+@attribute [Authorize]
+
+<PageTitle>Chat</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_forbidden)
+    {
+        <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:14px;">
+            Access denied.
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:14px;">
+            <MudStack Spacing="2">
+                <MudStack Direction="Row" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.h6">@_title</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">#@ConversationId</MudText>
+                </MudStack>
+
+                <MudDivider />
+
+                <div style="max-height:520px; overflow:auto; padding-right:6px;">
+                    <MudStack Spacing="2">
+                        @foreach (var m in _messages)
+                        {
+                            var mine = m.SenderId == _meId;
+
+                            <MudPaper Class="pa-3"
+                                      Elevation="0"
+                                      Style="@($"border:1px solid rgba(0,0,0,.08); border-radius:14px; max-width: 90%; {(mine ? "margin-left:auto; background: rgba(99,102,241,.06);" : "margin-right:auto; background:#fff;")}")">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@m.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudText>
+                                @if (!string.IsNullOrWhiteSpace(m.Body))
+                                {
+                                    <MudText Typo="Typo.body1">@m.Body</MudText>
+                                }
+                            </MudPaper>
+                        }
+                    </MudStack>
+                </div>
+
+                <MudDivider />
+
+                <MudStack Direction="Row" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudTextField @bind-Value="_text"
+                                  Placeholder="Write a message..."
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Immediate="true"
+                                  FullWidth="true"
+                                  Disabled="_sending" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_sending || string.IsNullOrWhiteSpace(_text)"
+                               OnClick="SendAsync">
+                        Send
+                    </MudButton>
+                </MudStack>
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <MudText Color="Color.Error">@_error</MudText>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int ConversationId { get; set; }
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private bool _loading = true;
+    private bool _forbidden;
+    private bool _sending;
+
+    private string _title = "Chat";
+    private string? _meId;
+    private string? _otherId;
+
+    private string? _text;
+    private string? _error;
+
+    private List<Message> _messages = new();
+
+    private CancellationTokenSource? _cts;
+    private int _loadVersion;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+
+        var ct = _cts.Token;
+        var myVersion = ++_loadVersion;
+
+        _loading = true;
+        _forbidden = false;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var authState = await AuthenticationStateTask;
+            var principal = authState.User;
+
+            if (principal?.Identity?.IsAuthenticated != true)
+            {
+                _forbidden = true;
+                return;
+            }
+
+            _meId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrWhiteSpace(_meId))
+            {
+                _forbidden = true;
+                return;
+            }
+
+            await using var db = await DbFactory.CreateDbContextAsync(ct);
+
+            var conv = await db.Conversations.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == ConversationId, ct);
+
+            if (conv == null)
+            {
+                _forbidden = true;
+                return;
+            }
+
+            var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
+            if (!isMember)
+            {
+                _forbidden = true;
+                return;
+            }
+
+            _otherId = conv.UserAId == _meId ? conv.UserBId : conv.UserAId;
+
+            var otherUserName = await db.Users.AsNoTracking()
+                .Where(x => x.Id == _otherId)
+                .Select(x => x.UserName)
+                .FirstOrDefaultAsync(ct);
+
+            _title = !string.IsNullOrWhiteSpace(otherUserName) ? $"Chat with @{otherUserName}" : "Chat";
+
+            _messages = await db.Messages.AsNoTracking()
+                .Where(x => x.ConversationId == ConversationId)
+                .OrderBy(x => x.CreatedAtUtc)
+                .Take(300)
+                .ToListAsync(ct);
+
+            if (ct.IsCancellationRequested || myVersion != _loadVersion)
+                return;
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested && myVersion == _loadVersion)
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        if (_sending) return;
+        if (string.IsNullOrWhiteSpace(_meId)) return;
+        if (string.IsNullOrWhiteSpace(_text)) return;
+
+        _sending = true;
+        _error = null;
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var conv = await db.Conversations.FirstOrDefaultAsync(x => x.Id == ConversationId);
+            if (conv == null) { _error = "Chat not found."; return; }
+
+            var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
+            if (!isMember) { _error = "Access denied."; return; }
+
+            db.Messages.Add(new Message
+                {
+                    ConversationId = ConversationId,
+                    SenderId = _meId!,
+                    Body = _text.Trim(),
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+
+            conv.LastMessageAtUtc = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+
+            _text = null;
+
+            _messages = await db.Messages.AsNoTracking()
+                .Where(x => x.ConversationId == ConversationId)
+                .OrderBy(x => x.CreatedAtUtc)
+                .Take(300)
+                .ToListAsync();
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

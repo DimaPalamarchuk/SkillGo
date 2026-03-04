@@ -3,7 +3,7 @@
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="2">
-            <MudText Typo="Typo.h6" Class="fw-bold">Top up balance</MudText>
+            <MudText Typo="Typo.h6" Class="fw-bold">Top up</MudText>
 
             <MudNumericField T="decimal"
                              Label="Amount (zł)"
@@ -12,43 +12,108 @@
                              Immediate="true"
                              @bind-Value="_amount" />
 
-            <MudTextField Label="Note"
+            <MudDivider />
+
+            <MudText Typo="Typo.subtitle2" Class="text-muted">Card details</MudText>
+
+            <MudTextField Label="Card number"
                           Variant="Variant.Outlined"
-                          @bind-Value="_note" />
+                          Placeholder="1234 5678 9012 3456"
+                          @bind-Value="_cardNumber" />
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="Expiry (MM/YY)"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="12/29"
+                                  @bind-Value="_expiry" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="CVC"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="123"
+                                  @bind-Value="_cvc" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField Label="Name on card"
+                          Variant="Variant.Outlined"
+                          @bind-Value="_name" />
+
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled">@_error</MudAlert>
+            }
         </MudStack>
     </DialogContent>
 
     <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="Cancel">
+        <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="Cancel" Disabled="_processing">
             Cancel
         </MudButton>
 
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   OnClick="Ok"
-                   Disabled="@(_amount <= 0)">
-            Top up
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PayAsync" Disabled="_processing">
+            @(_processing ? "Processing..." : "Pay")
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-
-    [CascadingParameter]
-    public IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
 
     private decimal _amount = 10m;
-    private string? _note;
+    private string? _cardNumber;
+    private string? _expiry;
+    private string? _cvc;
+    private string? _name;
 
-    private void Cancel()
+    private bool _processing;
+    private string? _error;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task PayAsync()
     {
-        MudDialog.Cancel();
+        _error = null;
+
+        if (_amount < 1)
+        {
+            _error = "Amount must be at least 1 zł.";
+            return;
+        }
+
+        var digits = new string((_cardNumber ?? "").Where(char.IsDigit).ToArray());
+        if (digits.Length < 12)
+        {
+            _error = "Invalid card number.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_expiry) || _expiry.Length < 4)
+        {
+            _error = "Invalid expiry date.";
+            return;
+        }
+
+        var cvcDigits = new string((_cvc ?? "").Where(char.IsDigit).ToArray());
+        if (cvcDigits.Length is < 3 or > 4)
+        {
+            _error = "Invalid CVC.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "Name on card is required.";
+            return;
+        }
+
+        _processing = true;
+        await Task.Delay(900);
+
+        var last4 = digits.Length >= 4 ? digits[^4..] : "****";
+        MudDialog.Close(DialogResult.Ok(new TopUpResult(_amount, last4)));
     }
 
-    private void Ok()
-    {
-        MudDialog.Close(DialogResult.Ok(new TopUpResult(_amount, _note)));
-    }
-
-    public record TopUpResult(decimal Amount, string? Note);
+    public record TopUpResult(decimal Amount, string Last4);
 }

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SkillGo.Data.Models;
+using SkillGo.Data.Models.Chat;
+using SkillGo.Data.Models.Orders;
 
 namespace SkillGo.Data;
 
@@ -20,6 +22,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Report> Reports => Set<Report>();
 
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
+
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
+
+    public DbSet<Order> Orders => Set<Order>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -86,5 +94,58 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany()
             .HasForeignKey(x => x.ServiceOfferId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Conversation>()
+            .HasIndex(x => new { x.UserAId, x.UserBId })
+            .IsUnique();
+
+        builder.Entity<Conversation>()
+            .HasMany(x => x.Messages)
+            .WithOne(x => x.Conversation)
+            .HasForeignKey(x => x.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Message>()
+            .HasMany(x => x.Attachments)
+            .WithOne(x => x.Message)
+            .HasForeignKey(x => x.MessageId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Order>()
+            .Property(x => x.Amount)
+            .HasPrecision(18, 2);
+
+        builder.Entity<Order>()
+            .Property(x => x.EscrowAmount)
+            .HasPrecision(18, 2);
+
+        builder.Entity<Order>()
+            .HasOne(x => x.ServiceOffer)
+            .WithMany()
+            .HasForeignKey(x => x.ServiceOfferId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Order>()
+            .HasOne(x => x.Conversation)
+            .WithMany(x => x.Orders)
+            .HasForeignKey(x => x.ConversationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Order>()
+            .HasOne(x => x.Review)
+            .WithMany()
+            .HasForeignKey(x => x.ReviewId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Order>()
+            .HasIndex(x => x.ReviewId)
+            .IsUnique()
+            .HasFilter("[ReviewId] IS NOT NULL");
+
+        builder.Entity<Order>()
+            .HasIndex(x => x.BuyerId);
+
+        builder.Entity<Order>()
+            .HasIndex(x => x.SellerId);
     }
 }

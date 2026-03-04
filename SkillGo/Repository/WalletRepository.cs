@@ -39,13 +39,13 @@ namespace SkillGo.Repository
 
         public async Task TopUpAsync(string userId, decimal amount, string? note)
         {
-            if (amount <= 0) return;
+            if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
 
             await using var db = await _dbFactory.CreateDbContextAsync();
             await using var tx = await db.Database.BeginTransactionAsync();
 
             var user = await db.Users.FirstOrDefaultAsync(x => x.Id == userId);
-            if (user == null) return;
+            if (user == null) throw new InvalidOperationException("User not found.");
 
             user.Balance += amount;
 

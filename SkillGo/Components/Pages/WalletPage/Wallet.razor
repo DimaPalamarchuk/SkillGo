@@ -6,6 +6,7 @@
 @using System.Security.Claims
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IWalletRepository WalletRepo
+@inject SkillGo.Repository.WalletState WalletState
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -26,7 +27,7 @@
                     </MudButton>
 
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenTopUpAsync" Disabled="_loading">
-                        Top up balance
+                        Top up
                     </MudButton>
                 </MudStack>
             </MudStack>
@@ -36,7 +37,7 @@
             <MudPaper Elevation="0" Class="p-5 sg-card">
                 <MudText Typo="Typo.subtitle2" Class="text-muted">Current balance</MudText>
 
-                @if (_loading && !_loadedOnce)
+                @if (!_loadedOnce)
                 {
                     <MudText Typo="Typo.h3" Class="fw-bold mt-2">—</MudText>
                 }
@@ -53,7 +54,7 @@
                     </MudButton>
 
                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
-                        Open full history (soon)
+                        Full history (soon)
                     </MudButton>
                 </MudStack>
             </MudPaper>
@@ -126,8 +127,7 @@
     private async Task<string?> GetUserIdAsync()
     {
         var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = auth.User;
-        return user.FindFirstValue(ClaimTypes.NameIdentifier);
+        return auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
     }
 
     private async Task RefreshAsync()
@@ -158,16 +158,12 @@
 
     private async Task OpenTopUpAsync()
     {
-        var parameters = new DialogParameters();
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-
-        var dialog = DialogService.Show<TopUpDialog>("", parameters, options);
+        var dialog = DialogService.Show<TopUpDialog>("", new DialogParameters(), options);
         var result = await dialog.Result;
 
         if (result.Canceled) return;
-
         if (result.Data is not TopUpDialog.TopUpResult data) return;
-        if (data.Amount <= 0) return;
 
         var userId = await GetUserIdAsync();
         if (string.IsNullOrWhiteSpace(userId)) return;
@@ -176,9 +172,14 @@
 
         try
         {
-            await WalletRepo.TopUpAsync(userId, data.Amount, data.Note);
-            Snackbar.Add($"Top up: {data.Amount:0.##} zł", Severity.Success);
+            var note = $"Top up via card **** {data.Last4}";
+            await WalletRepo.TopUpAsync(userId, data.Amount, note);
+
+            await WalletState.RefreshAsync();
+
             await RefreshAsync();
+
+            Snackbar.Add($"Top up successful: {data.Amount:0.##} zł", Severity.Success);
         }
         catch
         {

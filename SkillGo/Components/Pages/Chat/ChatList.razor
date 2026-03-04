@@ -1,0 +1,136 @@
+﻿@page "/chats"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models.Chat
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Nav
+@attribute [Authorize]
+
+<PageTitle>Chats</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:14px;">
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6">Chats</MudText>
+
+            @if (_loading)
+            {
+                <MudProgressCircular Indeterminate="true" />
+            }
+            else if (_items.Count == 0)
+            {
+                <MudText Color="Color.Secondary">No chats yet.</MudText>
+            }
+            else
+            {
+                <MudList T="Row" Dense="true">
+                    @foreach (var c in _items)
+                    {
+                        <MudListItem T="Row"
+                                     Style="border:1px solid rgba(0,0,0,.08); border-radius:12px; margin-bottom:10px;"
+                                     OnClick="@(() => Nav.NavigateTo($"/chat/{c.ConversationId}"))">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.subtitle1" Style="font-weight:900;">
+                                    @c.Title
+                                </MudText>
+
+                                @if (!string.IsNullOrWhiteSpace(c.LastMessage))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Style="max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                        @c.LastMessage
+                                    </MudText>
+                                }
+
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @c.LastAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </MudText>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private bool _loading = true;
+    private List<Row> _items = new();
+
+    private sealed class Row
+    {
+        public int ConversationId { get; set; }
+        public string Title { get; set; } = "Chat";
+        public string? LastMessage { get; set; }
+        public DateTime LastAt { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+
+        var auth = await AuthenticationStateTask;
+        var me = await UserManager.GetUserAsync(auth.User);
+
+        if (me == null)
+        {
+            _items = new();
+            _loading = false;
+            return;
+        }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var conversations = await db.Conversations.AsNoTracking()
+            .Where(x => x.UserAId == me.Id || x.UserBId == me.Id)
+            .OrderByDescending(x => x.LastMessageAtUtc ?? x.CreatedAtUtc)
+            .Take(100)
+            .ToListAsync();
+
+        var ids = conversations.Select(x => x.Id).ToList();
+
+        var lastMessages = await db.Messages.AsNoTracking()
+            .Where(m => ids.Contains(m.ConversationId))
+            .GroupBy(m => m.ConversationId)
+            .Select(g => g.OrderByDescending(x => x.CreatedAtUtc).FirstOrDefault())
+            .ToListAsync();
+
+        var otherIds = conversations
+            .Select(x => x.UserAId == me.Id ? x.UserBId : x.UserAId)
+            .Distinct()
+            .ToList();
+
+        var users = await db.Users.AsNoTracking()
+            .Where(u => otherIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.UserName })
+            .ToListAsync();
+
+        var userMap = users.ToDictionary(x => x.Id, x => x.UserName);
+        var lastMap = lastMessages.Where(x => x != null).ToDictionary(x => x!.ConversationId, x => x!);
+
+        _items = conversations.Select(c =>
+        {
+            var otherId = c.UserAId == me.Id ? c.UserBId : c.UserAId;
+
+            userMap.TryGetValue(otherId, out var userName);
+            lastMap.TryGetValue(c.Id, out var lm);
+
+            return new Row
+                {
+                    ConversationId = c.Id,
+                    Title = !string.IsNullOrWhiteSpace(userName) ? $"@{userName}" : "Chat",
+                    LastMessage = lm?.Body,
+                    LastAt = c.LastMessageAtUtc ?? c.CreatedAtUtc
+                };
+        }).ToList();
+
+        _loading = false;
+    }
+}

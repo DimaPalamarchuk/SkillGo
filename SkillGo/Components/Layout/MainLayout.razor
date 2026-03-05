@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
+@using SkillGo.Components.Shared
 @inject SkillGo.Repository.WalletState WalletState
 
 <MudThemeProvider Theme="_theme" />
@@ -11,6 +12,8 @@
 <MudSnackbarProvider />
 
 <MudLayout>
+
+    <UserPresencePinger />
 
     <MudAppBar Elevation="0" Class="sg-appbar">
         <MudIconButton Icon="@Icons.Material.Filled.Menu"

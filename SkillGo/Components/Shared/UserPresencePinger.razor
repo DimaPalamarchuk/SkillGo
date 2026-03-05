@@ -1,0 +1,60 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using SkillGo.Services
+@inject UserPresenceService Presence
+@implements IDisposable
+
+@code {
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
+    private string? _meId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        var principal = authState.User;
+
+        _meId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(_meId))
+            return;
+
+        Presence.Ping(_meId);
+
+        _cts = new CancellationTokenSource();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+
+        var ct = _cts.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (await _timer.WaitForNextTickAsync(ct))
+                {
+                    if (!string.IsNullOrWhiteSpace(_meId))
+                        Presence.Ping(_meId);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch { }
+        }, ct);
+    }
+
+    public void Dispose()
+    {
+        if (!string.IsNullOrWhiteSpace(_meId))
+            Presence.Leave(_meId);
+
+        if (_cts != null)
+        {
+            try { _cts.Cancel(); } catch { }
+            _cts.Dispose();
+            _cts = null;
+        }
+
+        _timer?.Dispose();
+        _timer = null;
+    }
+}

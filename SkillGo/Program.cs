@@ -57,6 +57,9 @@ builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<WalletState>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ChatBroadcast>();
+builder.Services.AddSingleton<ChatPresence>();
+builder.Services.AddSingleton<UserPresenceBroadcast>();
+builder.Services.AddSingleton<UserPresenceService>();
 builder.Services.AddScoped<OrderService>();
 
 var app = builder.Build();

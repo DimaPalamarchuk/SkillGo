@@ -5,28 +5,44 @@ namespace SkillGo.Services;
 
 public sealed class ChatBroadcast
 {
-    private readonly ConcurrentDictionary<int, ConcurrentDictionary<Guid, Action<MessageDto>>> _subs = new();
+    private readonly ConcurrentDictionary<int, ConcurrentDictionary<Guid, Action<MessageDto>>> _msgSubs = new();
+    private readonly ConcurrentDictionary<int, ConcurrentDictionary<Guid, Action<PresenceDto>>> _presenceSubs = new();
 
-    public IDisposable Subscribe(int conversationId, Action<MessageDto> handler)
+    public IDisposable SubscribeMessages(int conversationId, Action<MessageDto> handler)
     {
         var id = Guid.NewGuid();
-        var dict = _subs.GetOrAdd(conversationId, _ => new ConcurrentDictionary<Guid, Action<MessageDto>>());
+        var dict = _msgSubs.GetOrAdd(conversationId, _ => new ConcurrentDictionary<Guid, Action<MessageDto>>());
         dict[id] = handler;
 
         return new Unsubscriber(() =>
         {
-            if (_subs.TryGetValue(conversationId, out var handlers))
+            if (_msgSubs.TryGetValue(conversationId, out var handlers))
             {
                 handlers.TryRemove(id, out _);
-                if (handlers.IsEmpty)
-                    _subs.TryRemove(conversationId, out _);
+                if (handlers.IsEmpty) _msgSubs.TryRemove(conversationId, out _);
             }
         });
     }
 
-    public void Publish(MessageDto message)
+    public IDisposable SubscribePresence(int conversationId, Action<PresenceDto> handler)
     {
-        if (_subs.TryGetValue(message.ConversationId, out var handlers))
+        var id = Guid.NewGuid();
+        var dict = _presenceSubs.GetOrAdd(conversationId, _ => new ConcurrentDictionary<Guid, Action<PresenceDto>>());
+        dict[id] = handler;
+
+        return new Unsubscriber(() =>
+        {
+            if (_presenceSubs.TryGetValue(conversationId, out var handlers))
+            {
+                handlers.TryRemove(id, out _);
+                if (handlers.IsEmpty) _presenceSubs.TryRemove(conversationId, out _);
+            }
+        });
+    }
+
+    public void PublishMessage(MessageDto message)
+    {
+        if (_msgSubs.TryGetValue(message.ConversationId, out var handlers))
         {
             foreach (var h in handlers.Values)
             {
@@ -35,13 +51,21 @@ public sealed class ChatBroadcast
         }
     }
 
+    public void PublishPresence(PresenceDto presence)
+    {
+        if (_presenceSubs.TryGetValue(presence.ConversationId, out var handlers))
+        {
+            foreach (var h in handlers.Values)
+            {
+                try { h(presence); } catch { }
+            }
+        }
+    }
+
     private sealed class Unsubscriber : IDisposable
     {
         private Action? _dispose;
         public Unsubscriber(Action dispose) => _dispose = dispose;
-        public void Dispose()
-        {
-            Interlocked.Exchange(ref _dispose, null)?.Invoke();
-        }
+        public void Dispose() => Interlocked.Exchange(ref _dispose, null)?.Invoke();
     }
 }

@@ -8,10 +8,13 @@
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models.Chat
+@using SkillGo.Data.Models.Presence
 @using SkillGo.Services
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
 @inject ChatBroadcast Broadcast
+@inject UserPresenceService Presence
+@inject UserPresenceBroadcast PresenceBroadcast
 @attribute [Authorize]
 @implements IDisposable
 
@@ -66,8 +69,10 @@
 
                             <div style="display:flex; align-items:center; gap:8px; margin-top:3px;">
                                 <span style="display:inline-flex; align-items:center; gap:6px;">
-                                    <span style="width:8px; height:8px; border-radius:999px; background:#22c55e; display:inline-block;"></span>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">Live</MudText>
+                                    <span style="width:8px; height:8px; border-radius:999px; background:@(_otherOnline ? "#22c55e" : "#94a3b8"); display:inline-block;"></span>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                        @(_otherOnline ? "Online" : _otherLastSeenText)
+                                    </MudText>
                                 </span>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
                                     • #@ConversationId
@@ -208,12 +213,15 @@
 
     private readonly List<MessageDto> _messages = new();
 
-    private IDisposable? _sub;
+    private IDisposable? _msgSub;
+    private IDisposable? _presenceSub;
+
+    private bool _otherOnline;
+    private string _otherLastSeenText = "Offline";
 
     protected override async Task OnParametersSetAsync()
     {
-        _sub?.Dispose();
-        _sub = null;
+        CleanupSubs();
 
         _loading = true;
         _forbidden = false;
@@ -239,28 +247,62 @@
             }
 
             await LoadConversationAndMessagesAsync();
+            if (_forbidden) return;
 
-            if (!_forbidden)
+            _msgSub = Broadcast.SubscribeMessages(ConversationId, dto =>
             {
-                _sub = Broadcast.Subscribe(ConversationId, dto =>
+                if (dto.ConversationId != ConversationId) return;
+
+                lock (_messages)
                 {
-                    if (dto.ConversationId != ConversationId) return;
+                    if (_messages.Count == 0 || _messages[^1].Id != dto.Id)
+                        _messages.Add(dto);
+                }
 
-                    lock (_messages)
-                    {
-                        if (_messages.Count == 0 || _messages[^1].Id != dto.Id)
-                            _messages.Add(dto);
-                    }
+                _ = InvokeAsync(StateHasChanged);
+            });
 
-                    _ = InvokeAsync(StateHasChanged);
-                });
-            }
+            _presenceSub = PresenceBroadcast.Subscribe(dto =>
+            {
+                if (string.IsNullOrWhiteSpace(_otherId)) return;
+                if (dto.UserId != _otherId) return;
+
+                _otherOnline = dto.IsOnline;
+                _otherLastSeenText = dto.IsOnline ? "Online" : BuildLastSeenText(dto.SeenAtUtc);
+
+                _ = InvokeAsync(StateHasChanged);
+            });
+
+            RefreshOtherPresence();
         }
         finally
         {
             _loading = false;
             StateHasChanged();
         }
+    }
+
+    private void RefreshOtherPresence()
+    {
+        if (string.IsNullOrWhiteSpace(_otherId))
+        {
+            _otherOnline = false;
+            _otherLastSeenText = "Offline";
+            return;
+        }
+
+        _otherOnline = Presence.IsOnline(_otherId);
+
+        var lastSeen = Presence.LastSeenUtc(_otherId);
+        _otherLastSeenText = _otherOnline
+            ? "Online"
+            : (lastSeen.HasValue ? BuildLastSeenText(lastSeen.Value) : "Offline");
+    }
+
+    private static string BuildLastSeenText(DateTime seenAtUtc)
+    {
+        var local = seenAtUtc.ToLocalTime();
+        return $"Last seen {local:HH:mm}";
     }
 
     private async Task LoadConversationAndMessagesAsync()
@@ -321,6 +363,7 @@
         try
         {
             await LoadConversationAndMessagesAsync();
+            RefreshOtherPresence();
             StateHasChanged();
         }
         catch (Exception ex)
@@ -383,7 +426,7 @@
                     _messages.Add(dto);
             }
 
-            Broadcast.Publish(dto);
+            Broadcast.PublishMessage(dto);
         }
         finally
         {
@@ -420,7 +463,7 @@
 
     private void GoBack()
     {
-        Nav.NavigateTo("/messages");
+        Nav.NavigateTo("/chats");
     }
 
     private RenderFragment SendButtonContent() => builder =>
@@ -446,8 +489,17 @@
         }
     };
 
+    private void CleanupSubs()
+    {
+        _msgSub?.Dispose();
+        _msgSub = null;
+
+        _presenceSub?.Dispose();
+        _presenceSub = null;
+    }
+
     public void Dispose()
     {
-        _sub?.Dispose();
+        CleanupSubs();
     }
 }

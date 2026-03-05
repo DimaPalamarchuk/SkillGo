@@ -28,6 +28,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
 
     public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderDispute> OrderDisputes => Set<OrderDispute>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -111,6 +112,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(x => x.MessageId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Entity<Message>()
+            .HasOne(x => x.Order)
+            .WithMany()
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Entity<Order>()
             .Property(x => x.Amount)
             .HasPrecision(18, 2);
@@ -147,5 +154,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<Order>()
             .HasIndex(x => x.SellerId);
+
+        builder.Entity<OrderDispute>()
+            .HasOne(x => x.Order)
+            .WithMany()
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<OrderDispute>()
+            .HasIndex(x => x.OrderId);
+
+        builder.Entity<OrderDispute>()
+            .HasIndex(x => x.ReporterId);
     }
 }

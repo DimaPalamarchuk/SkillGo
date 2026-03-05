@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SkillGo.Data;
 
@@ -11,9 +12,11 @@ using SkillGo.Data;
 namespace SkillGo.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260305180036_ChatMessageEditDelete")]
+    partial class ChatMessageEditDelete
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -370,9 +373,6 @@ namespace SkillGo.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("OrderId")
-                        .HasColumnType("int");
-
                     b.Property<string>("SenderId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -380,8 +380,6 @@ namespace SkillGo.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConversationId");
-
-                    b.HasIndex("OrderId");
 
                     b.ToTable("Messages");
                 });
@@ -481,49 +479,6 @@ namespace SkillGo.Migrations
                     b.HasIndex("ServiceOfferId");
 
                     b.ToTable("Orders");
-                });
-
-            modelBuilder.Entity("SkillGo.Data.Models.Orders.OrderDispute", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ReporterId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("ResolvedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("ReporterId");
-
-                    b.ToTable("OrderDisputes");
                 });
 
             modelBuilder.Entity("SkillGo.Data.Models.Report", b =>
@@ -781,14 +736,7 @@ namespace SkillGo.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SkillGo.Data.Models.Orders.Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Conversation");
-
-                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("SkillGo.Data.Models.Chat.MessageAttachment", b =>
@@ -826,17 +774,6 @@ namespace SkillGo.Migrations
                     b.Navigation("Review");
 
                     b.Navigation("ServiceOffer");
-                });
-
-            modelBuilder.Entity("SkillGo.Data.Models.Orders.OrderDispute", b =>
-                {
-                    b.HasOne("SkillGo.Data.Models.Orders.Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("SkillGo.Data.Models.Report", b =>

@@ -1,0 +1,201 @@
+﻿@page "/orders"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@using SkillGo.Data.Models.Orders
+@using SkillGo.Repository.IRepository
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Nav
+@inject IOrderRepository OrderRepo
+
+<PageTitle>Orders</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Spacing="2">
+        <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h4" Class="fw-bold">Orders</MudText>
+                <MudText Color="Color.Secondary">Your order history</MudText>
+            </MudStack>
+
+            <MudSelect T="string" Dense="true" Variant="Variant.Outlined" Value="@_mode" ValueChanged="OnModeChanged" Style="min-width:220px">
+                <MudSelectItem T="string" Value="@("All")">All</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Buying")">Buying</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Selling")">Selling</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+
+        @if (_loading)
+        {
+            <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
+                Loading...
+            </MudPaper>
+        }
+        else if (_orders.Count == 0)
+        {
+            <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
+                No orders yet.
+            </MudPaper>
+        }
+        else
+        {
+            <MudTable Items="_orders" Hover="true" Dense="true" Elevation="0" Class="mt-2" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;overflow:hidden;">
+                <HeaderContent>
+                    <MudTh>Order</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Service</MudTh>
+                    <MudTh>Amount</MudTh>
+                    <MudTh>Freelancer</MudTh>
+                    <MudTh>Actions</MudTh>
+                    <MudTh>Date</MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd DataLabel="Order">#@context.Id</MudTd>
+
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)" Variant="Variant.Filled">
+                            @context.Status.ToString()
+                        </MudChip>
+                    </MudTd>
+
+                    <MudTd DataLabel="Service">
+                        @if (context.ServiceOffer != null)
+                        {
+                            <MudLink Href="@($"/services/{context.ServiceOffer.Id}")">@context.ServiceOffer.Title</MudLink>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </MudTd>
+
+                    <MudTd DataLabel="Amount">
+                        <b>@context.Amount.ToString("0.00") zł</b>
+                    </MudTd>
+
+                    <MudTd DataLabel="Freelancer">
+                        @{
+                            var u = GetUser(context.SellerId);
+                        }
+                        @if (u != null && !string.IsNullOrWhiteSpace(u.UserName))
+                        {
+                            <MudLink Href="@($"/profile/{u.UserName}")">@DisplayName(u)</MudLink>
+                        }
+                        else
+                        {
+                            <span>@context.SellerId</span>
+                        }
+                    </MudTd>
+
+                    <MudTd DataLabel="Actions">
+                        <MudStack Direction="Row" Spacing="1">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => Nav.NavigateTo($"/orders/{context.Id}"))">
+                                Details
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                       Disabled="@(context.ServiceOfferId <= 0)"
+                                       OnClick="@(() => Nav.NavigateTo($"/services/{context.ServiceOfferId}"))">
+                                Service
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => Nav.NavigateTo($"/chat/{context.ConversationId}"))">
+                                Chat
+                            </MudButton>
+                        </MudStack>
+                    </MudTd>
+
+                    <MudTd DataLabel="Date">
+                        @context.CreatedAtUtc.ToString("yyyy-MM-dd")
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    bool _loading = true;
+    string _mode = "All";
+
+    List<Order> _orders = new();
+    Dictionary<string, ApplicationUser> _users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    async Task OnModeChanged(string v)
+    {
+        _mode = v ?? "All";
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        _loading = true;
+        _orders.Clear();
+        _users.Clear();
+        StateHasChanged();
+
+        var authState = await AuthenticationStateTask;
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            Nav.NavigateTo("/Account/Login");
+            return;
+        }
+
+        var me = await UserManager.GetUserAsync(principal);
+        if (me == null)
+        {
+            Nav.NavigateTo("/Account/Login");
+            return;
+        }
+
+        var orders = await OrderRepo.GetForUserAsync(me.Id);
+
+        if (_mode == "Buying")
+            orders = orders.Where(x => x.BuyerId == me.Id).ToList();
+
+        if (_mode == "Selling")
+            orders = orders.Where(x => x.SellerId == me.Id).ToList();
+
+        _orders = orders;
+
+        var ids = _orders.SelectMany(o => new[] { o.BuyerId, o.SellerId }).Distinct().ToList();
+        var users = await Db.Users.Where(u => ids.Contains(u.Id)).ToListAsync();
+
+        _users = users.ToDictionary(x => x.Id, x => x);
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    ApplicationUser? GetUser(string id)
+        => _users.TryGetValue(id, out var u) ? u : null;
+
+    static string DisplayName(ApplicationUser u)
+        => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : (u.UserName ?? "User");
+
+    static Color StatusColor(OrderStatus status)
+        => status switch
+        {
+            OrderStatus.InProgress => Color.Warning,
+            OrderStatus.Completed => Color.Success,
+            OrderStatus.Cancelled => Color.Error,
+            _ => Color.Default
+        };
+}

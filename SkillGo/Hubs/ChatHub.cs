@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SkillGo.Data;
 using SkillGo.Data.Models.Chat;
+using SkillGo.Services;
 using System.Security.Claims;
 
 namespace SkillGo.Hubs;
@@ -80,7 +81,12 @@ public class ChatHub : Hub
             ConversationId = msg.ConversationId,
             SenderId = msg.SenderId,
             Body = msg.Body,
-            CreatedAtUtc = msg.CreatedAtUtc
+            OrderId = msg.OrderId,
+            Order = null,
+            CreatedAtUtc = msg.CreatedAtUtc,
+            EditedAtUtc = msg.EditedAtUtc,
+            IsDeleted = msg.IsDeleted,
+            DeletedAtUtc = msg.DeletedAtUtc
         };
 
         await Clients.Group(GroupName(conversationId)).SendAsync("MessageAdded", dto);

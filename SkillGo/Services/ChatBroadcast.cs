@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using SkillGo.Data.Models.Chat;
+using SkillGo.Data.Models.Presence;
 
 namespace SkillGo.Services;
 

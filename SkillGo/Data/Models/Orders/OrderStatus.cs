@@ -1,8 +1,9 @@
-﻿namespace SkillGo.Data.Models.Orders;
-
-public enum OrderStatus
+﻿namespace SkillGo.Data.Models.Orders
 {
-    InProgress = 1,
-    Cancelled = 2,
-    Paid = 3
+    public enum OrderStatus
+    {
+        InProgress = 1,
+        Completed = 2,
+        Cancelled = 3
+    }
 }

@@ -1,0 +1,251 @@
+﻿@page "/orders/{OrderId:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@using SkillGo.Data.Models.Orders
+@using SkillGo.Repository.IRepository
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IOrderRepository OrderRepo
+
+<PageTitle>Order</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    @if (_loading)
+    {
+        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
+            Loading...
+        </MudPaper>
+    }
+    else if (_forbidden)
+    {
+        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
+            Access denied
+        </MudPaper>
+    }
+    else if (_order == null)
+    {
+        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
+            Order not found
+        </MudPaper>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h4" Class="fw-bold">Order #@_order.Id</MudText>
+                    <MudText Color="Color.Secondary">@(_order.ServiceOffer?.Title ?? "-")</MudText>
+                </MudStack>
+
+                <MudChip T="string" Size="Size.Small" Color="@StatusColor(_order.Status)" Variant="Variant.Filled">
+                    @_order.Status.ToString()
+                </MudChip>
+            </MudStack>
+
+            <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudText>Amount: <b>@_order.Amount.ToString("0.00") zł</b></MudText>
+                        <MudText>Escrow: <b>@_order.EscrowAmount.ToString("0.00") zł</b></MudText>
+                        <MudText Color="Color.Secondary" Typo="Typo.caption">Created: @_order.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</MudText>
+                        @if (_order.CompletedAtUtc != null)
+                        {
+                            <MudText Color="Color.Secondary" Typo="Typo.caption">Completed: @_order.CompletedAtUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC</MudText>
+                        }
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="GoService" Disabled="@(_order.ServiceOfferId <= 0)">
+                                View service
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="GoChat">
+                                Open chat
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="OpenDispute">
+                                Report to admin
+                            </MudButton>
+                        </MudStack>
+
+                        @if (_order.Status == OrderStatus.Completed && _order.ReviewId == null && _meId == _order.BuyerId)
+                        {
+                            <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End" Class="mt-2">
+                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="OpenReview">
+                                    Leave review
+                                </MudButton>
+                            </MudStack>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudText Typo="Typo.h6" Class="fw-bold mt-2">Disputes</MudText>
+
+            @if (_disputes.Count == 0)
+            {
+                <MudPaper Class="pa-4" Elevation="0" Style="border:1px dashed rgba(0,0,0,.12);border-radius:16px;">
+                    No disputes
+                </MudPaper>
+            }
+            else
+            {
+                <MudTable Items="_disputes" Dense="true" Hover="true" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;overflow:hidden;">
+                    <HeaderContent>
+                        <MudTh>ID</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Subject</MudTh>
+                        <MudTh>Date</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="ID">#@context.Id</MudTd>
+                        <MudTd DataLabel="Status">@context.Status</MudTd>
+                        <MudTd DataLabel="Subject">@context.Subject</MudTd>
+                        <MudTd DataLabel="Date">@context.CreatedAtUtc.ToString("yyyy-MM-dd")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudStack>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int OrderId { get; set; }
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    bool _loading = true;
+    bool _forbidden;
+
+    string? _meId;
+    Order? _order;
+    List<OrderDispute> _disputes = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _forbidden = false;
+        _order = null;
+        _disputes = new();
+        StateHasChanged();
+
+        var authState = await AuthenticationStateTask;
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            _forbidden = true;
+            _loading = false;
+            return;
+        }
+
+        _meId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(_meId))
+        {
+            _forbidden = true;
+            _loading = false;
+            return;
+        }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _order = await db.Orders
+            .Include(x => x.ServiceOffer)
+            .FirstOrDefaultAsync(x => x.Id == OrderId);
+
+        if (_order == null)
+        {
+            _loading = false;
+            return;
+        }
+
+        if (_order.BuyerId != _meId && _order.SellerId != _meId)
+        {
+            _forbidden = true;
+            _loading = false;
+            return;
+        }
+
+        _disputes = await db.OrderDisputes.AsNoTracking()
+            .Where(x => x.OrderId == OrderId)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync();
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    void GoService()
+    {
+        if (_order == null) return;
+        Nav.NavigateTo($"/services/{_order.ServiceOfferId}");
+    }
+
+    void GoChat()
+    {
+        if (_order == null) return;
+        Nav.NavigateTo($"/chat/{_order.ConversationId}");
+    }
+
+    async Task OpenDispute()
+    {
+        if (_order == null) return;
+        if (string.IsNullOrWhiteSpace(_meId)) return;
+
+        var p = new DialogParameters
+            {
+                ["OrderId"] = _order.Id,
+                ["ReporterId"] = _meId
+            };
+
+        var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var d = DialogService.Show<OrderDisputeDialog>("Report to admin", p, o);
+        var r = await d.Result;
+
+        if (!r.Canceled)
+        {
+            await OnParametersSetAsync();
+            Snackbar.Add("Dispute submitted", Severity.Success);
+        }
+    }
+
+    async Task OpenReview()
+    {
+        if (_order == null) return;
+        if (string.IsNullOrWhiteSpace(_meId)) return;
+
+        var p = new DialogParameters
+            {
+                ["OrderId"] = _order.Id,
+                ["TargetUserId"] = _order.SellerId,
+                ["AuthorUserId"] = _meId
+            };
+
+        var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var d = DialogService.Show<OrderReviewDialog>("Leave review", p, o);
+        var r = await d.Result;
+
+        if (!r.Canceled)
+        {
+            await OnParametersSetAsync();
+            Snackbar.Add("Review submitted", Severity.Success);
+        }
+    }
+
+    static Color StatusColor(OrderStatus status)
+        => status switch
+        {
+            OrderStatus.InProgress => Color.Warning,
+            OrderStatus.Completed => Color.Success,
+            OrderStatus.Cancelled => Color.Error,
+            _ => Color.Default
+        };
+}

@@ -1,0 +1,101 @@
+﻿@using MudBlazor
+@using SkillGo.Data.Models.Orders
+@inject SkillGo.Repository.IRepository.IOrderRepository OrderRepo
+@inject SkillGo.Repository.WalletState WalletState
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(255,255,255,0.12);">
+    <MudStack Spacing="1">
+        <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <MudText Typo="Typo.h6" Class="fw-bold">Order #@Order.Id</MudText>
+
+            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(Order.Status)" Variant="Variant.Filled">
+                @Order.Status.ToString()
+            </MudChip>
+        </MudStack>
+
+        <MudText Color="Color.Secondary">
+            @Order.ServiceOffer?.Title
+        </MudText>
+
+        <MudStack Direction="Row" Spacing="2" AlignItems="AlignItems.Center">
+            <MudText>Amount: <b>@Order.Amount.ToString("0.00") zł</b></MudText>
+            <MudText>Escrow: <b>@Order.EscrowAmount.ToString("0.00") zł</b></MudText>
+        </MudStack>
+
+        <MudText Color="Color.Secondary" Typo="Typo.caption">
+            Created: @Order.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC
+            @if (Order.CompletedAtUtc != null)
+            {
+                <span> • Completed: @Order.CompletedAtUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC</span>
+            }
+        </MudText>
+
+        @if (Order.Status == OrderStatus.InProgress)
+        {
+            <MudDivider Class="my-2" />
+
+            <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           Disabled="@(!IsBuyer || _busy)"
+                           OnClick="Complete">
+                    @(_busy ? "Completing..." : "Complete order")
+                </MudButton>
+            </MudStack>
+
+            @if (!IsBuyer)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                    Only buyer can complete the order
+                </MudText>
+            }
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public Order Order { get; set; } = default!;
+    [Parameter] public string CurrentUserId { get; set; } = "";
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    bool _busy;
+
+    bool IsBuyer => Order.BuyerId == CurrentUserId;
+
+    Color GetStatusColor(OrderStatus status)
+        => status switch
+        {
+            OrderStatus.InProgress => Color.Warning,
+            OrderStatus.Completed => Color.Success,
+            OrderStatus.Cancelled => Color.Error,
+            _ => Color.Default
+        };
+
+    async Task Complete()
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        try
+        {
+            var ok = await OrderRepo.CompleteAsync(Order.Id, CurrentUserId);
+            if (!ok)
+            {
+                Snackbar.Add("Can't complete this order", Severity.Error);
+                return;
+            }
+
+            await WalletState.RefreshAsync();
+            Snackbar.Add("Order completed. Money sent to freelancer.", Severity.Success);
+
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

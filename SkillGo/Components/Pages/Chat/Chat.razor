@@ -10,188 +10,316 @@
 @using SkillGo.Data.Models.Chat
 @using SkillGo.Data.Models.Presence
 @using SkillGo.Services
+@using SkillGo.Components.Shared
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
 @inject ChatBroadcast Broadcast
 @inject UserPresenceService Presence
 @inject UserPresenceBroadcast PresenceBroadcast
+@inject IDialogService DialogService
 @attribute [Authorize]
 @implements IDisposable
 
 <PageTitle>Chat</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-    @if (_loading)
-    {
-        <MudPaper Elevation="0" Class="pa-4" Style="border:1px solid rgba(0,0,0,.08); border-radius:18px;">
-            <MudStack Spacing="2">
-                <MudSkeleton Height="42px" Width="60%" />
-                <MudSkeleton Height="12px" Width="35%" />
-                <MudDivider />
-                <MudStack Spacing="2" Style="height:520px; overflow:hidden;">
-                    <MudSkeleton Height="64px" Width="75%" />
-                    <MudSkeleton Height="52px" Width="62%" Style="margin-left:auto;" />
-                    <MudSkeleton Height="64px" Width="80%" />
-                    <MudSkeleton Height="52px" Width="58%" Style="margin-left:auto;" />
+<div class="sg-chat-shell">
+    <MudContainer MaxWidth="MaxWidth.False" Class="pa-0 sg-chat-container">
+        @if (_loading)
+        {
+            <MudPaper Elevation="0" Class="pa-4 sg-chat-paper">
+                <MudStack Spacing="2">
+                    <MudSkeleton Height="42px" Width="40%" />
+                    <MudStack Spacing="2" Style="flex:1; height: calc(100% - 120px); overflow:hidden;">
+                        <MudSkeleton Height="64px" Width="72%" />
+                        <MudSkeleton Height="52px" Width="58%" Style="margin-left:auto;" />
+                        <MudSkeleton Height="64px" Width="78%" />
+                        <MudSkeleton Height="52px" Width="54%" Style="margin-left:auto;" />
+                    </MudStack>
+                    <MudSkeleton Height="44px" />
                 </MudStack>
-                <MudDivider />
-                <MudSkeleton Height="44px" />
-            </MudStack>
-        </MudPaper>
-    }
-    else if (_forbidden)
-    {
-        <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:18px;">
-            <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
-            <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
-        </MudPaper>
-    }
-    else
-    {
-        <MudPaper Elevation="0" Style="border:1px solid rgba(0,0,0,.08); border-radius:18px; overflow:hidden;">
-            <div style="padding:12px 12px 10px 12px; background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,0));">
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                    <div style="display:flex; align-items:center; gap:10px; min-width:0;">
-                        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                                       Color="Color.Default"
-                                       OnClick="GoBack"
-                                       Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
+            </MudPaper>
+        }
+        else if (_forbidden)
+        {
+            <MudPaper Class="pa-4 sg-chat-paper" Elevation="0">
+                <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
+                <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Elevation="0" Class="sg-chat-paper" Style="display:flex; flex-direction:column;">
+                <div class="sg-chat-header">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                           Color="Color.Default"
+                                           OnClick="GoBack"
+                                           Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
 
-                        <MudAvatar Size="Size.Medium"
-                                   Style="background: rgba(99,102,241,.16); color: rgba(17,24,39,1); border:1px solid rgba(0,0,0,.06);">
-                            @_otherInitials
-                        </MudAvatar>
+                            <MudAvatar Size="Size.Medium"
+                                       Style="background: rgba(99,102,241,.16); color: rgba(17,24,39,1); border:1px solid rgba(0,0,0,.06);">
+                                @_otherInitials
+                            </MudAvatar>
 
-                        <div style="min-width:0;">
-                            <MudText Typo="Typo.subtitle1" Class="fw-bold" Style="line-height:1.1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                @_title
-                            </MudText>
-
-                            <div style="display:flex; align-items:center; gap:8px; margin-top:3px;">
-                                <span style="display:inline-flex; align-items:center; gap:6px;">
-                                    <span style="width:8px; height:8px; border-radius:999px; background:@(_otherOnline ? "#22c55e" : "#94a3b8"); display:inline-block;"></span>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
-                                        @(_otherOnline ? "Online" : _otherLastSeenText)
-                                    </MudText>
-                                </span>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
-                                    • #@ConversationId
+                            <div style="min-width:0;">
+                                <MudText Typo="Typo.h6" Class="fw-bold" Style="line-height:1.1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    @_title
                                 </MudText>
+
+                                <div style="display:flex; align-items:center; gap:10px; margin-top:3px;">
+                                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                                        <span style="width:8px; height:8px; border-radius:999px; background:@(_otherOnline ? "#22c55e" : "#94a3b8"); display:inline-block;"></span>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                            @(_otherOnline ? "Online" : _otherLastSeenText)
+                                        </MudText>
+                                    </span>
+
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                        • #@ConversationId
+                                    </MudText>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                                       Color="Color.Default"
-                                       Disabled="_sending"
-                                       OnClick="ReloadAsync"
-                                       Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
-                    </div>
                 </div>
-            </div>
 
-            <MudDivider />
-
-            <div style="background: linear-gradient(180deg, rgba(2,6,23,.02), rgba(2,6,23,0));">
-                <div style="height:560px; overflow:auto; padding:14px 14px 10px 14px;">
-                    @if (_messages.Count == 0)
-                    {
-                        <MudPaper Elevation="0" Class="pa-4"
-                                  Style="border:1px dashed rgba(0,0,0,.12); border-radius:16px; background: rgba(255,255,255,.65);">
-                            <MudText Typo="Typo.h6" Class="fw-bold">No messages yet</MudText>
-                            <MudText Color="Color.Secondary">Say hi 👋</MudText>
-                        </MudPaper>
-                    }
-                    else
-                    {
-                        <MudStack Spacing="2">
-                            @{
-                                DateOnly? currentDay = null;
-                            }
-
-                            @foreach (var m in _messages)
-                            {
-                                var mine = m.SenderId == _meId;
-                                var local = m.CreatedAtUtc.ToLocalTime();
-                                var day = DateOnly.FromDateTime(local);
-
-                                if (currentDay != day)
-                                {
-                                    currentDay = day;
-
-                                    <div style="display:flex; justify-content:center; padding:8px 0 2px 0;">
-                                        <MudChip T="string"
-                                                 Size="Size.Small"
-                                                 Variant="Variant.Outlined"
-                                                 Style="background: rgba(255,255,255,.78); border-color: rgba(0,0,0,.10); border-radius:999px;">
-                                            @FormatDayChip(day)
-                                        </MudChip>
-                                    </div>
+                <div class="sg-chat-messages">
+                    <div style="min-height:100%; padding:14px 16px 12px 16px;">
+                        @if (_messages.Count == 0)
+                        {
+                            <MudPaper Elevation="0" Class="pa-4"
+                                      Style="border:1px dashed rgba(0,0,0,.12); border-radius:12px; background: rgba(255,255,255,.70); max-width:520px;">
+                                <MudText Typo="Typo.h6" Class="fw-bold">No messages yet</MudText>
+                                <MudText Color="Color.Secondary">Say hi 👋</MudText>
+                            </MudPaper>
+                        }
+                        else
+                        {
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                @{
+                                    DateOnly? currentDay = null;
                                 }
 
-                                <div style="display:flex; @(mine ? "justify-content:flex-end;" : "justify-content:flex-start;")">
-                                    <div style="max-width: 82%;">
-                                        <div style="@BubbleStyle(mine)">
-                                            @if (!string.IsNullOrWhiteSpace(m.Body))
+                                @foreach (var m in _messages)
+                                {
+                                    var mine = m.SenderId == _meId;
+                                    var local = m.CreatedAtUtc.ToLocalTime();
+                                    var day = DateOnly.FromDateTime(local);
+
+                                    if (currentDay != day)
+                                    {
+                                        currentDay = day;
+
+                                        <div style="display:flex; justify-content:center; padding:8px 0 2px 0;">
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Variant="Variant.Outlined"
+                                                     Style="background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); border-radius:999px;">
+                                                @FormatDayChip(day)
+                                            </MudChip>
+                                        </div>
+                                    }
+
+                                    <div style="width:100%; display:flex; @(mine ? "justify-content:flex-end;" : "justify-content:flex-start;")">
+                                        <div style="display:flex; gap:10px; align-items:flex-end; max-width:100%; @(mine ? "flex-direction:row-reverse;" : "flex-direction:row;")">
+                                            @if (!mine)
                                             {
-                                                <div style="white-space:pre-wrap; word-break:break-word; font-size:0.98rem; line-height:1.25;">
-                                                    @m.Body
-                                                </div>
+                                                <MudAvatar Size="Size.Small"
+                                                           Style="background: rgba(15,23,42,.06); border:1px solid rgba(0,0,0,.06); color:#111827;">
+                                                    @_otherInitials
+                                                </MudAvatar>
+                                            }
+                                            else
+                                            {
+                                                <div style="width:32px;"></div>
                                             }
 
-                                            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px; opacity:.65; font-size:.75rem;">
-                                                <span>@local.ToString("HH:mm")</span>
+                                            <div style="max-width: min(760px, 78vw); width:fit-content;">
+                                                @if (m.OrderId != null && m.Order != null)
+                                                {
+                                                    <OrderMessageCard Order="m.Order"
+                                                                      CurrentUserId="@(_meId ?? "")"
+                                                                      OnChanged="ReloadAsync" />
+                                                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
+                                                        <span>@local.ToString("HH:mm")</span>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div style="@BubbleShellStyle(mine)">
+                                                        <div style="display:flex; align-items:flex-start; gap:10px;">
+                                                            <div style="flex:1; min-width:0;">
+                                                                @if (_editingId == m.Id)
+                                                                {
+                                                                    <MudTextField @bind-Value="_editingText"
+                                                                                  Variant="Variant.Outlined"
+                                                                                  Margin="Margin.Dense"
+                                                                                  Lines="3"
+                                                                                  Immediate="true"
+                                                                                  FullWidth="true"
+                                                                                  Disabled="_savingEdit"
+                                                                                  Style="border-radius:12px; background: rgba(255,255,255,.75);" />
+
+                                                                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+                                                                        <MudButton Variant="Variant.Text"
+                                                                                   Color="Color.Default"
+                                                                                   Disabled="_savingEdit"
+                                                                                   OnClick="@CancelEdit">
+                                                                            Cancel
+                                                                        </MudButton>
+
+                                                                        <MudButton Variant="Variant.Filled"
+                                                                                   Color="Color.Primary"
+                                                                                   Disabled="_savingEdit || string.IsNullOrWhiteSpace(_editingText)"
+                                                                                   OnClick="@(() => SaveEditAsync(m.Id))"
+                                                                                   Style="border-radius:12px;">
+                                                                            Save
+                                                                        </MudButton>
+                                                                    </div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @if (m.IsDeleted)
+                                                                    {
+                                                                        <div style="font-style:italic; opacity:.70; font-size:0.98rem;">
+                                                                            message deleted
+                                                                        </div>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <div style="white-space:pre-wrap; word-break:break-word; font-size:1.02rem; line-height:1.28;">
+                                                                            @m.Body
+                                                                        </div>
+                                                                    }
+
+                                                                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
+                                                                        <span>@local.ToString("HH:mm")</span>
+                                                                        @if (m.EditedAtUtc.HasValue && !m.IsDeleted)
+                                                                        {
+                                                                            <span>• edited</span>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+
+                                                            @if (mine && _editingId != m.Id)
+                                                            {
+                                                                <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                                                    <ActivatorContent>
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
+                                                                                       Size="Size.Small"
+                                                                                       Color="Color.Default"
+                                                                                       Style="opacity:.78;" />
+                                                                    </ActivatorContent>
+
+                                                                    <ChildContent>
+                                                                        <MudMenuItem Disabled="@m.IsDeleted" OnClick="@(() => BeginEdit(m))">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="me-2" /> Edit
+                                                                        </MudMenuItem>
+
+                                                                        <MudMenuItem Disabled="@m.IsDeleted" OnClick="@(() => DeleteAsync(m.Id))">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="me-2" /> Delete
+                                                                        </MudMenuItem>
+                                                                    </ChildContent>
+                                                                </MudMenu>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            }
-                        </MudStack>
-                    }
-                </div>
-            </div>
-
-            <MudDivider />
-
-            <div style="padding:12px; background: rgba(255,255,255,.70);">
-                <MudStack Spacing="1">
-                    @if (!string.IsNullOrWhiteSpace(_error))
-                    {
-                        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined">
-                            @_error
-                        </MudAlert>
-                    }
-
-                    <div style="display:flex; gap:10px; align-items:flex-end;">
-                        <MudTextField @bind-Value="_text"
-                                      Placeholder="Write a message..."
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Immediate="true"
-                                      FullWidth="true"
-                                      Lines="2"
-                                      Disabled="_sending"
-                                      @onkeydown="OnComposerKeyDownRaw"
-                                      Style="border-radius:14px;" />
-
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Disabled="_sending || string.IsNullOrWhiteSpace(_text)"
-                                   OnClick="SendAsync"
-                                   Style="border-radius:14px; min-width:128px; height:40px;">
-                            @SendButtonContent()
-                        </MudButton>
+                                }
+                            </div>
+                        }
                     </div>
+                </div>
 
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:2px;">
-                        Enter — send • Shift+Enter — new line
-                    </MudText>
-                </MudStack>
-            </div>
-        </MudPaper>
+                <div class="sg-chat-composer">
+                    <MudStack Spacing="1">
+                        @if (!string.IsNullOrWhiteSpace(_error))
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined">
+                                @_error
+                            </MudAlert>
+                        }
+
+                        <div style="display:flex; gap:10px; align-items:flex-end;">
+                            <MudTextField @bind-Value="_text"
+                                          Placeholder="Write a message..."
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Immediate="true"
+                                          FullWidth="true"
+                                          Lines="2"
+                                          Disabled="_sending || _editingId.HasValue"
+                                          @onkeydown="OnComposerKeyDownRaw"
+                                          Style="border-radius:14px; background: rgba(255,255,255,.90);" />
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Disabled="_sending || _editingId.HasValue || string.IsNullOrWhiteSpace(_text)"
+                                       OnClick="SendAsync"
+                                       Style="border-radius:14px; min-width:132px; height:40px;">
+                                @SendButtonContent()
+                            </MudButton>
+                        </div>
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:2px;">
+                            Enter — send • Shift+Enter — new line
+                        </MudText>
+                    </MudStack>
+                </div>
+            </MudPaper>
+        }
+    </MudContainer>
+</div>
+
+<style>
+    .sg-chat-shell {
+        height: calc(100vh - 72px);
+        min-height: 520px;
     }
-</MudContainer>
+
+    .sg-chat-container {
+        height: 100%;
+    }
+
+    .sg-chat-paper {
+        height: 100%;
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 0;
+    }
+
+    .sg-chat-header {
+        padding: 12px 14px 10px 14px;
+        background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,0));
+        border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+    .sg-chat-messages {
+        flex: 1;
+        overflow: auto;
+        background: radial-gradient(1200px 400px at 20% 0%, rgba(99,102,241,.08), transparent), linear-gradient(180deg, rgba(2,6,23,.02), rgba(2,6,23,0));
+    }
+
+    .sg-chat-composer {
+        padding: 12px 14px;
+        background: rgba(255,255,255,.78);
+        border-top: 1px solid rgba(0,0,0,.06);
+    }
+
+    @@media (min-width: 960px) {
+        body.mud-drawer-open .sg-chat-shell {
+            width: calc(100vw - 260px);
+        }
+
+        body.mud-drawer-open .sg-chat-container {
+            padding-left: 260px;
+        }
+    }
+</style>
 
 @code {
     [Parameter] public int ConversationId { get; set; }
@@ -219,6 +347,10 @@
     private bool _otherOnline;
     private string _otherLastSeenText = "Offline";
 
+    private int? _editingId;
+    private string? _editingText;
+    private bool _savingEdit;
+
     protected override async Task OnParametersSetAsync()
     {
         CleanupSubs();
@@ -226,6 +358,9 @@
         _loading = true;
         _forbidden = false;
         _error = null;
+        _editingId = null;
+        _editingText = null;
+        _savingEdit = false;
         StateHasChanged();
 
         try
@@ -255,8 +390,9 @@
 
                 lock (_messages)
                 {
-                    if (_messages.Count == 0 || _messages[^1].Id != dto.Id)
-                        _messages.Add(dto);
+                    var idx = _messages.FindIndex(x => x.Id == dto.Id);
+                    if (idx >= 0) _messages[idx] = dto;
+                    else _messages.Add(dto);
                 }
 
                 _ = InvokeAsync(StateHasChanged);
@@ -337,16 +473,23 @@
         _title = $"@{_otherDisplay}";
 
         var list = await db.Messages.AsNoTracking()
+            .Include(x => x.Order)
+            .ThenInclude(x => x.ServiceOffer)
             .Where(x => x.ConversationId == ConversationId)
             .OrderBy(x => x.CreatedAtUtc)
-            .Take(300)
+            .Take(500)
             .Select(x => new MessageDto
                 {
                     Id = x.Id,
                     ConversationId = x.ConversationId,
                     SenderId = x.SenderId,
                     Body = x.Body,
-                    CreatedAtUtc = x.CreatedAtUtc
+                    OrderId = x.OrderId,
+                    Order = x.Order,
+                    CreatedAtUtc = x.CreatedAtUtc,
+                    EditedAtUtc = x.EditedAtUtc,
+                    IsDeleted = x.IsDeleted,
+                    DeletedAtUtc = x.DeletedAtUtc
                 })
             .ToListAsync();
 
@@ -376,6 +519,7 @@
     private async Task SendAsync()
     {
         if (_sending) return;
+        if (_editingId.HasValue) return;
         if (string.IsNullOrWhiteSpace(_meId)) return;
         if (string.IsNullOrWhiteSpace(_text)) return;
 
@@ -417,13 +561,17 @@
                     ConversationId = msg.ConversationId,
                     SenderId = msg.SenderId,
                     Body = msg.Body,
-                    CreatedAtUtc = msg.CreatedAtUtc
+                    OrderId = msg.OrderId,
+                    Order = null,
+                    CreatedAtUtc = msg.CreatedAtUtc,
+                    EditedAtUtc = msg.EditedAtUtc,
+                    IsDeleted = msg.IsDeleted,
+                    DeletedAtUtc = msg.DeletedAtUtc
                 };
 
             lock (_messages)
             {
-                if (_messages.Count == 0 || _messages[^1].Id != dto.Id)
-                    _messages.Add(dto);
+                _messages.Add(dto);
             }
 
             Broadcast.PublishMessage(dto);
@@ -431,6 +579,156 @@
         finally
         {
             _sending = false;
+            StateHasChanged();
+        }
+    }
+
+    private void BeginEdit(MessageDto m)
+    {
+        if (m.SenderId != _meId) return;
+        if (m.IsDeleted) return;
+        if (m.OrderId != null) return;
+
+        _editingId = m.Id;
+        _editingText = m.Body ?? "";
+        _error = null;
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        _editingId = null;
+        _editingText = null;
+        _savingEdit = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveEditAsync(int messageId)
+    {
+        if (_savingEdit) return;
+        if (string.IsNullOrWhiteSpace(_meId)) return;
+        if (_editingId != messageId) return;
+
+        var text = (_editingText ?? "").Trim();
+        if (text.Length == 0) return;
+
+        _savingEdit = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var msg = await db.Messages.FirstOrDefaultAsync(x => x.Id == messageId && x.ConversationId == ConversationId);
+            if (msg == null) { _error = "Message not found."; return; }
+            if (msg.SenderId != _meId) { _error = "Access denied."; return; }
+            if (msg.IsDeleted) { _error = "Message deleted."; return; }
+            if (msg.OrderId != null) { _error = "Can't edit order message."; return; }
+
+            msg.Body = text;
+            msg.EditedAtUtc = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+
+            var dto = new MessageDto
+                {
+                    Id = msg.Id,
+                    ConversationId = msg.ConversationId,
+                    SenderId = msg.SenderId,
+                    Body = msg.Body,
+                    OrderId = msg.OrderId,
+                    Order = null,
+                    CreatedAtUtc = msg.CreatedAtUtc,
+                    EditedAtUtc = msg.EditedAtUtc,
+                    IsDeleted = msg.IsDeleted,
+                    DeletedAtUtc = msg.DeletedAtUtc
+                };
+
+            lock (_messages)
+            {
+                var idx = _messages.FindIndex(x => x.Id == dto.Id);
+                if (idx >= 0) _messages[idx] = dto;
+            }
+
+            Broadcast.PublishMessage(dto);
+
+            _editingId = null;
+            _editingText = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _savingEdit = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteAsync(int messageId)
+    {
+        if (string.IsNullOrWhiteSpace(_meId)) return;
+
+        var ok = await DialogService.ShowMessageBox(
+            "Delete message",
+            "Delete this message?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (ok != true) return;
+
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var msg = await db.Messages.FirstOrDefaultAsync(x => x.Id == messageId && x.ConversationId == ConversationId);
+            if (msg == null) { _error = "Message not found."; return; }
+            if (msg.SenderId != _meId) { _error = "Access denied."; return; }
+            if (msg.IsDeleted) return;
+            if (msg.OrderId != null) { _error = "Can't delete order message."; return; }
+
+            msg.IsDeleted = true;
+            msg.DeletedAtUtc = DateTime.UtcNow;
+            msg.Body = null;
+
+            await db.SaveChangesAsync();
+
+            var dto = new MessageDto
+                {
+                    Id = msg.Id,
+                    ConversationId = msg.ConversationId,
+                    SenderId = msg.SenderId,
+                    Body = msg.Body,
+                    OrderId = msg.OrderId,
+                    Order = null,
+                    CreatedAtUtc = msg.CreatedAtUtc,
+                    EditedAtUtc = msg.EditedAtUtc,
+                    IsDeleted = msg.IsDeleted,
+                    DeletedAtUtc = msg.DeletedAtUtc
+                };
+
+            lock (_messages)
+            {
+                var idx = _messages.FindIndex(x => x.Id == dto.Id);
+                if (idx >= 0) _messages[idx] = dto;
+            }
+
+            Broadcast.PublishMessage(dto);
+
+            if (_editingId == messageId)
+                CancelEdit();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
             StateHasChanged();
         }
     }
@@ -443,12 +741,12 @@
         }
     }
 
-    private string BubbleStyle(bool mine)
+    private string BubbleShellStyle(bool mine)
     {
         if (mine)
-            return "background: linear-gradient(180deg,#6366f1,#4f46e5); color:white; padding:10px 12px; border-radius:16px; box-shadow: 0 10px 24px rgba(79,70,229,.18);";
+            return "background: linear-gradient(180deg,#6366f1,#4f46e5); color:white; padding:10px 12px; border-radius:18px; box-shadow: 0 14px 30px rgba(79,70,229,.18); border:1px solid rgba(255,255,255,.12);";
 
-        return "background:white; border:1px solid rgba(0,0,0,.08); padding:10px 12px; border-radius:16px; box-shadow: 0 10px 24px rgba(2,6,23,.06);";
+        return "background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.08); padding:10px 12px; border-radius:18px; box-shadow: 0 14px 30px rgba(2,6,23,.06); color:#0f172a;";
     }
 
     private string FormatDayChip(DateOnly day)

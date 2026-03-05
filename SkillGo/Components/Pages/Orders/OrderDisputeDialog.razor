@@ -1,0 +1,87 @@
+﻿@using MudBlazor
+@using Microsoft.EntityFrameworkCore
+@using SkillGo.Data
+@using SkillGo.Data.Models.Orders
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6" Class="fw-bold">Report to admin</MudText>
+
+            <MudTextField @bind-Value="_subject"
+                          Label="Subject"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          MaxLength="120" />
+
+            <MudTextField @bind-Value="_description"
+                          Label="Description"
+                          Variant="Variant.Outlined"
+                          Lines="5"
+                          Immediate="true"
+                          MaxLength="2000" />
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" Disabled="_saving" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="_saving || string.IsNullOrWhiteSpace(_subject) || string.IsNullOrWhiteSpace(_description)" OnClick="Submit">
+            @(_saving ? "Submitting..." : "Submit")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int OrderId { get; set; }
+    [Parameter] public string ReporterId { get; set; } = "";
+
+    bool _saving;
+    string _subject = "";
+    string _description = "";
+
+    void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    async Task Submit()
+    {
+        if (_saving) return;
+        if (OrderId <= 0) return;
+        if (string.IsNullOrWhiteSpace(ReporterId)) return;
+
+        _saving = true;
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var orderExists = await db.Orders.AnyAsync(x => x.Id == OrderId);
+            if (!orderExists)
+            {
+                Snackbar.Add("Order not found", Severity.Error);
+                return;
+            }
+
+            db.OrderDisputes.Add(new OrderDispute
+                {
+                    OrderId = OrderId,
+                    ReporterId = ReporterId,
+                    Subject = (_subject ?? "").Trim(),
+                    Description = (_description ?? "").Trim(),
+                    Status = OrderDisputeStatus.Open,
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+
+            await db.SaveChangesAsync();
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

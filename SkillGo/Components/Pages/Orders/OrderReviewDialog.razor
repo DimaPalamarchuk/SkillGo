@@ -1,0 +1,120 @@
+﻿@using MudBlazor
+@using Microsoft.EntityFrameworkCore
+@using SkillGo.Data
+@using SkillGo.Data.Models.Orders
+@using SkillGo.Data.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6" Class="fw-bold">Leave a review</MudText>
+
+            <MudSelect T="int" Variant="Variant.Outlined" Label="Stars" Value="@_stars" ValueChanged="OnStarsChanged">
+                <MudSelectItem T="int" Value="1">1</MudSelectItem>
+                <MudSelectItem T="int" Value="2">2</MudSelectItem>
+                <MudSelectItem T="int" Value="3">3</MudSelectItem>
+                <MudSelectItem T="int" Value="4">4</MudSelectItem>
+                <MudSelectItem T="int" Value="5">5</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField @bind-Value="_comment"
+                          Label="Comment"
+                          Variant="Variant.Outlined"
+                          Lines="4"
+                          Immediate="true"
+                          MaxLength="1000" />
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" Disabled="_saving" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="_saving || _stars < 1 || _stars > 5" OnClick="Submit">
+            @(_saving ? "Submitting..." : "Submit")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int OrderId { get; set; }
+    [Parameter] public string TargetUserId { get; set; } = "";
+    [Parameter] public string AuthorUserId { get; set; } = "";
+
+    bool _saving;
+    int _stars = 5;
+    string? _comment;
+
+    void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    Task OnStarsChanged(int v)
+    {
+        _stars = v;
+        return Task.CompletedTask;
+    }
+
+    async Task Submit()
+    {
+        if (_saving) return;
+        if (OrderId <= 0) return;
+        if (string.IsNullOrWhiteSpace(TargetUserId)) return;
+        if (string.IsNullOrWhiteSpace(AuthorUserId)) return;
+
+        _saving = true;
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var order = await db.Orders.FirstOrDefaultAsync(x => x.Id == OrderId);
+            if (order == null)
+            {
+                Snackbar.Add("Order not found", Severity.Error);
+                return;
+            }
+
+            if (order.Status != OrderStatus.Completed)
+            {
+                Snackbar.Add("Order is not completed", Severity.Error);
+                return;
+            }
+
+            if (order.BuyerId != AuthorUserId)
+            {
+                Snackbar.Add("Only buyer can leave a review", Severity.Error);
+                return;
+            }
+
+            if (order.ReviewId != null)
+            {
+                Snackbar.Add("Review already exists", Severity.Error);
+                return;
+            }
+
+            var review = new Review
+                {
+                    TargetUserId = TargetUserId,
+                    AuthorUserId = AuthorUserId,
+                    Stars = _stars,
+                    Comment = string.IsNullOrWhiteSpace(_comment) ? null : _comment.Trim(),
+                    CreatedAt = DateTime.UtcNow
+                };
+
+            db.Reviews.Add(review);
+            await db.SaveChangesAsync();
+
+            order.ReviewId = review.Id;
+            await db.SaveChangesAsync();
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

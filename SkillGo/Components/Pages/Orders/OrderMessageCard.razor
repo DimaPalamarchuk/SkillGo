@@ -1,0 +1,187 @@
+﻿@using MudBlazor
+@using SkillGo.Data.Models.Orders
+@inject SkillGo.Repository.IRepository.IOrderRepository OrderRepo
+@inject SkillGo.Repository.WalletState WalletState
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;background:rgba(255,255,255,.92);">
+    <MudStack Spacing="1">
+        <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <MudText Typo="Typo.h6" Class="fw-bold">Order #@Order.Id</MudText>
+
+            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(Order.Status)" Variant="Variant.Filled">
+                @Order.Status.ToString()
+            </MudChip>
+        </MudStack>
+
+        <MudText Color="Color.Secondary">@Order.ServiceOffer?.Title</MudText>
+
+        <MudStack Direction="Row" Spacing="2" AlignItems="AlignItems.Center">
+            <MudText>Amount: <b>@Order.Amount.ToString("0.00") zł</b></MudText>
+            <MudText>Escrow: <b>@Order.EscrowAmount.ToString("0.00") zł</b></MudText>
+        </MudStack>
+
+        <MudText Color="Color.Secondary" Typo="Typo.caption">
+            Created: @Order.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC
+            @if (Order.CompletedAtUtc != null)
+            {
+                <span> • Completed: @Order.CompletedAtUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC</span>
+            }
+        </MudText>
+
+        <MudDivider Class="my-2" />
+
+        @if (Order.Status == OrderStatus.Completed && Order.ReviewId == null && IsBuyer)
+        {
+            <MudPaper Elevation="0" Class="pa-3 mb-2" Style="border:1px dashed rgba(0,0,0,.14);border-radius:14px;background:rgba(99,102,241,.06);">
+                <MudStack Spacing="1">
+                    <MudText Class="fw-bold">Order completed</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Leave a review to help this freelancer</MudText>
+
+                    <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Disabled="_busy" OnClick="OpenReview">
+                            Leave review
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+
+        <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End" Style="flex-wrap:wrap;">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="GoService">
+                View service
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="GoOrder">
+                Open order
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" Disabled="_busy" OnClick="OpenDispute">
+                Report
+            </MudButton>
+
+            @if (Order.Status == OrderStatus.InProgress)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           Size="Size.Small"
+                           Disabled="@(!IsBuyer || _busy)"
+                           OnClick="Complete">
+                    @(_busy ? "Completing..." : "Complete")
+                </MudButton>
+            }
+        </MudStack>
+
+        @if (Order.Status == OrderStatus.InProgress && !IsBuyer)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                Only buyer can complete the order
+            </MudText>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public Order Order { get; set; } = default!;
+    [Parameter] public string CurrentUserId { get; set; } = "";
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    bool _busy;
+
+    bool IsBuyer => Order.BuyerId == CurrentUserId;
+
+    void GoService()
+    {
+        if (Order.ServiceOfferId <= 0) return;
+        Nav.NavigateTo($"/services/{Order.ServiceOfferId}");
+    }
+
+    void GoOrder()
+    {
+        Nav.NavigateTo($"/orders/{Order.Id}");
+    }
+
+    async Task OpenDispute()
+    {
+        if (_busy) return;
+        if (string.IsNullOrWhiteSpace(CurrentUserId)) return;
+
+        var p = new DialogParameters
+            {
+                ["OrderId"] = Order.Id,
+                ["ReporterId"] = CurrentUserId
+            };
+
+        var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var d = DialogService.Show<OrderDisputeDialog>("Report to admin", p, o);
+        var r = await d.Result;
+
+        if (!r.Canceled)
+        {
+            Snackbar.Add("Dispute submitted", Severity.Success);
+        }
+    }
+
+    async Task OpenReview()
+    {
+        if (_busy) return;
+        if (string.IsNullOrWhiteSpace(CurrentUserId)) return;
+
+        var p = new DialogParameters
+            {
+                ["OrderId"] = Order.Id,
+                ["TargetUserId"] = Order.SellerId,
+                ["AuthorUserId"] = CurrentUserId
+            };
+
+        var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var d = DialogService.Show<OrderReviewDialog>("Leave review", p, o);
+        var r = await d.Result;
+
+        if (!r.Canceled)
+        {
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync();
+        }
+    }
+
+    Color GetStatusColor(OrderStatus status)
+        => status switch
+        {
+            OrderStatus.InProgress => Color.Warning,
+            OrderStatus.Completed => Color.Success,
+            OrderStatus.Cancelled => Color.Error,
+            _ => Color.Default
+        };
+
+    async Task Complete()
+    {
+        if (_busy) return;
+
+        _busy = true;
+        try
+        {
+            var ok = await OrderRepo.CompleteAsync(Order.Id, CurrentUserId);
+            if (!ok)
+            {
+                Snackbar.Add("Can't complete this order", Severity.Error);
+                return;
+            }
+
+            await WalletState.RefreshAsync();
+            Snackbar.Add("Order completed. Money sent to freelancer.", Severity.Success);
+
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync();
+
+            if (IsBuyer)
+                await OpenReview();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

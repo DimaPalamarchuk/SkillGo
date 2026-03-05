@@ -55,6 +55,7 @@ builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IFreelancerRepository, FreelancerRepository>();
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<WalletState>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ChatBroadcast>();
 builder.Services.AddSingleton<ChatPresence>();

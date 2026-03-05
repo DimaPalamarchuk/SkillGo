@@ -7,9 +7,12 @@
 @using SkillGo.Data.Models
 @using SkillGo.Components.Shared
 @using SkillGo.Components.Pages.WalletPage
+@using SkillGo.Repository.IRepository
 @using SkillGo.Services
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
+@inject WalletState WalletState
+@inject IWalletRepository WalletRepo
 @inject IDialogService DialogService
 @inject NavigationManager Nav
 @inject OrderService OrderService
@@ -498,33 +501,64 @@
 
     private List<Review>? _topReviews;
 
+    private CancellationTokenSource? _cts;
+    private int _loadVersion;
+
     protected override async Task OnParametersSetAsync()
     {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+
+        var ct = _cts.Token;
+        var myVersion = ++_loadVersion;
+
         _loading = true;
         _orderError = null;
+        StateHasChanged();
 
-        service = await Db.ServiceOffers
-            .Include(x => x.OwnerUser)
-            .FirstOrDefaultAsync(x => x.Id == ServiceId);
-
-        if (service is null)
+        try
         {
-            _topReviews = new List<Review>();
-            _loading = false;
+            await using var db = await DbFactory.CreateDbContextAsync(ct);
+
+            service = await db.ServiceOffers
+                .Include(x => x.OwnerUser)
+                .FirstOrDefaultAsync(x => x.Id == ServiceId, ct);
+
+            if (service is null)
+            {
+                _topReviews = new List<Review>();
+                avgRating = 0;
+                reviewsCount = 0;
+                return;
+            }
+
+            var q = db.Reviews.AsNoTracking().Where(r => r.TargetUserId == service.OwnerUserId);
+
+            reviewsCount = await q.CountAsync(ct);
+            avgRating = reviewsCount == 0 ? 0 : await q.AverageAsync(r => (double)r.Stars, ct);
+
+            _topReviews = await db.Reviews.AsNoTracking()
+                .Where(r => r.TargetUserId == service.OwnerUserId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(3)
+                .ToListAsync(ct);
+
+            if (ct.IsCancellationRequested || myVersion != _loadVersion)
+                return;
+        }
+        catch (OperationCanceledException)
+        {
             return;
         }
-
-        var q = Db.Reviews.Where(r => r.TargetUserId == service.OwnerUserId);
-        reviewsCount = await q.CountAsync();
-        avgRating = reviewsCount == 0 ? 0 : await q.AverageAsync(r => (double)r.Stars);
-
-        _topReviews = await Db.Reviews
-            .Where(r => r.TargetUserId == service.OwnerUserId)
-            .OrderByDescending(r => r.CreatedAt)
-            .Take(3)
-            .ToListAsync();
-
-        _loading = false;
+        finally
+        {
+            if (!ct.IsCancellationRequested && myVersion == _loadVersion)
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
     }
 
     private async Task PlaceOrderAsync()
@@ -557,9 +591,37 @@
 
             if (result.NeedTopUp)
             {
-                _orderError = $"Not enough balance. Missing {result.MissingAmount.ToString("0.##")} zł.";
+                _orderError = $"Not enough balance. Missing {result.MissingAmount:0.##} zł.";
+
                 var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-                DialogService.Show<TopUpDialog>("Top up balance", new DialogParameters(), options);
+                var parameters = new DialogParameters { ["SuggestedAmount"] = result.MissingAmount };
+
+                var dialog = DialogService.Show<TopUpDialog>("Top up balance", parameters, options);
+                var dlgRes = await dialog.Result;
+
+                if (dlgRes.Canceled) return;
+                if (dlgRes.Data is not TopUpDialogResult data) return;
+
+                var note = $"Top up via card **** {data.Last4}";
+                await WalletRepo.TopUpAsync(me.Id, data.Amount, note);
+
+                await WalletState.RefreshAsync();
+
+                result = await OrderService.CreateOrderAsync(ServiceId, me.Id);
+
+                if (result.NeedTopUp)
+                {
+                    _orderError = $"Still not enough balance. Missing {result.MissingAmount:0.##} zł.";
+                    return;
+                }
+
+                if (!result.Success || result.ConversationId == null)
+                {
+                    _orderError = result.Error ?? "Failed to create order";
+                    return;
+                }
+
+                Nav.NavigateTo($"/chat/{result.ConversationId}");
                 return;
             }
 

@@ -4,6 +4,7 @@
 @using SkillGo.Data.Models
 @using SkillGo.Repository.IRepository
 @using System.Security.Claims
+@using SkillGo.Components.Pages.WalletPage
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IWalletRepository WalletRepo
 @inject SkillGo.Repository.WalletState WalletState
@@ -159,11 +160,11 @@
     private async Task OpenTopUpAsync()
     {
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = DialogService.Show<TopUpDialog>("", new DialogParameters(), options);
+        var dialog = DialogService.Show<TopUpDialog>("Top up balance", new DialogParameters(), options);
         var result = await dialog.Result;
 
         if (result.Canceled) return;
-        if (result.Data is not TopUpDialog.TopUpResult data) return;
+        if (result.Data is not TopUpDialogResult data) return;
 
         var userId = await GetUserIdAsync();
         if (string.IsNullOrWhiteSpace(userId)) return;
@@ -176,7 +177,6 @@
             await WalletRepo.TopUpAsync(userId, data.Amount, note);
 
             await WalletState.RefreshAsync();
-
             await RefreshAsync();
 
             Snackbar.Add($"Top up successful: {data.Amount:0.##} zł", Severity.Success);

@@ -1,9 +1,12 @@
-﻿@using MudBlazor
+﻿@using System.Text.RegularExpressions
+@using MudBlazor
+@using SkillGo.Components.Pages.WalletPage
 
 <MudDialog>
     <DialogContent>
         <MudStack Spacing="2">
-            <MudText Typo="Typo.h6" Class="fw-bold">Top up</MudText>
+            <MudText Typo="Typo.h6" Style="font-weight:900;">Top up balance</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Pay by card</MudText>
 
             <MudNumericField T="decimal"
                              Label="Amount (zł)"
@@ -12,68 +15,82 @@
                              Immediate="true"
                              @bind-Value="_amount" />
 
-            <MudDivider />
-
-            <MudText Typo="Typo.subtitle2" Class="text-muted">Card details</MudText>
-
             <MudTextField Label="Card number"
                           Variant="Variant.Outlined"
-                          Placeholder="1234 5678 9012 3456"
-                          @bind-Value="_cardNumber" />
+                          Immediate="true"
+                          @bind-Value="_cardNumber"
+                          Placeholder="1234 5678 9012 3456" />
 
             <MudGrid Spacing="2">
-                <MudItem xs="12" sm="6">
+                <MudItem xs="6">
                     <MudTextField Label="Expiry (MM/YY)"
                                   Variant="Variant.Outlined"
-                                  Placeholder="12/29"
-                                  @bind-Value="_expiry" />
+                                  Immediate="true"
+                                  @bind-Value="_expiry"
+                                  Placeholder="05/29" />
                 </MudItem>
-                <MudItem xs="12" sm="6">
+                <MudItem xs="6">
                     <MudTextField Label="CVC"
                                   Variant="Variant.Outlined"
-                                  Placeholder="123"
-                                  @bind-Value="_cvc" />
+                                  Immediate="true"
+                                  @bind-Value="_cvc"
+                                  Placeholder="123" />
                 </MudItem>
             </MudGrid>
 
             <MudTextField Label="Name on card"
                           Variant="Variant.Outlined"
-                          @bind-Value="_name" />
+                          Immediate="true"
+                          @bind-Value="_nameOnCard"
+                          Placeholder="JOHN DOE" />
 
             @if (!string.IsNullOrWhiteSpace(_error))
             {
-                <MudAlert Severity="Severity.Error" Variant="Variant.Filled">@_error</MudAlert>
+                <MudText Color="Color.Error">@_error</MudText>
+            }
+
+            @if (_busy)
+            {
+                <MudProgressLinear Indeterminate="true" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Processing payment...</MudText>
             }
         </MudStack>
     </DialogContent>
 
     <DialogActions>
-        <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="Cancel" Disabled="_processing">
-            Cancel
-        </MudButton>
-
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PayAsync" Disabled="_processing">
-            @(_processing ? "Processing..." : "Pay")
+        <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="PayAsync">
+            @(_busy ? "Processing..." : "Pay")
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] public IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private decimal _amount = 10m;
-    private string? _cardNumber;
-    private string? _expiry;
-    private string? _cvc;
-    private string? _name;
+    [Parameter] public decimal? SuggestedAmount { get; set; }
 
-    private bool _processing;
+    private decimal _amount = 1;
+    private string _cardNumber = "";
+    private string _expiry = "";
+    private string _cvc = "";
+    private string _nameOnCard = "";
+
+    private bool _busy;
     private string? _error;
+
+    protected override void OnInitialized()
+    {
+        if (SuggestedAmount.HasValue && SuggestedAmount.Value >= 1)
+            _amount = SuggestedAmount.Value;
+    }
 
     private void Cancel() => MudDialog.Cancel();
 
     private async Task PayAsync()
     {
+        if (_busy) return;
+
         _error = null;
 
         if (_amount < 1)
@@ -82,38 +99,49 @@
             return;
         }
 
-        var digits = new string((_cardNumber ?? "").Where(char.IsDigit).ToArray());
-        if (digits.Length < 12)
+        var digits = Regex.Replace(_cardNumber ?? "", "[^0-9]", "");
+        if (digits.Length < 12 || digits.Length > 19)
         {
             _error = "Invalid card number.";
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_expiry) || _expiry.Length < 4)
+        if (!Regex.IsMatch((_expiry ?? "").Trim(), "^(0[1-9]|1[0-2])\\/(\\d{2})$"))
         {
-            _error = "Invalid expiry date.";
+            _error = "Invalid expiry (use MM/YY).";
             return;
         }
 
-        var cvcDigits = new string((_cvc ?? "").Where(char.IsDigit).ToArray());
-        if (cvcDigits.Length is < 3 or > 4)
+        var cvcDigits = Regex.Replace(_cvc ?? "", "[^0-9]", "");
+        if (cvcDigits.Length < 3 || cvcDigits.Length > 4)
         {
             _error = "Invalid CVC.";
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_name))
+        if (string.IsNullOrWhiteSpace(_nameOnCard) || _nameOnCard.Trim().Length < 3)
         {
-            _error = "Name on card is required.";
+            _error = "Enter name on card.";
             return;
         }
 
-        _processing = true;
-        await Task.Delay(900);
+        _busy = true;
 
-        var last4 = digits.Length >= 4 ? digits[^4..] : "****";
-        MudDialog.Close(DialogResult.Ok(new TopUpResult(_amount, last4)));
+        try
+        {
+            await Task.Delay(900);
+
+            var last4 = digits.Length >= 4 ? digits[^4..] : "0000";
+
+            MudDialog.Close(DialogResult.Ok(new TopUpDialogResult
+                {
+                    Amount = _amount,
+                    Last4 = last4
+                }));
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
-
-    public record TopUpResult(decimal Amount, string Last4);
 }

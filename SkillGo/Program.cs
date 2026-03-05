@@ -55,6 +55,8 @@ builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IFreelancerRepository, FreelancerRepository>();
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<WalletState>();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<ChatBroadcast>();
 builder.Services.AddScoped<OrderService>();
 
 var app = builder.Build();
@@ -79,10 +81,10 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
-
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapAdditionalIdentityEndpoints();
+app.MapHub<SkillGo.Hubs.ChatHub>("/hubs/chat");
 
 app.Run();

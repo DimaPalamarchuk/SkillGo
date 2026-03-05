@@ -1,81 +1,189 @@
 ﻿@page "/chat/{ConversationId:int}"
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Rendering
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models.Chat
+@using SkillGo.Services
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
+@inject ChatBroadcast Broadcast
 @attribute [Authorize]
+@implements IDisposable
 
 <PageTitle>Chat</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
     @if (_loading)
     {
-        <MudProgressCircular Indeterminate="true" />
+        <MudPaper Elevation="0" Class="pa-4" Style="border:1px solid rgba(0,0,0,.08); border-radius:18px;">
+            <MudStack Spacing="2">
+                <MudSkeleton Height="42px" Width="60%" />
+                <MudSkeleton Height="12px" Width="35%" />
+                <MudDivider />
+                <MudStack Spacing="2" Style="height:520px; overflow:hidden;">
+                    <MudSkeleton Height="64px" Width="75%" />
+                    <MudSkeleton Height="52px" Width="62%" Style="margin-left:auto;" />
+                    <MudSkeleton Height="64px" Width="80%" />
+                    <MudSkeleton Height="52px" Width="58%" Style="margin-left:auto;" />
+                </MudStack>
+                <MudDivider />
+                <MudSkeleton Height="44px" />
+            </MudStack>
+        </MudPaper>
     }
     else if (_forbidden)
     {
-        <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:14px;">
-            Access denied.
+        <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:18px;">
+            <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
+            <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
         </MudPaper>
     }
     else
     {
-        <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:14px;">
-            <MudStack Spacing="2">
-                <MudStack Direction="Row" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                    <MudText Typo="Typo.h6">@_title</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">#@ConversationId</MudText>
-                </MudStack>
+        <MudPaper Elevation="0" Style="border:1px solid rgba(0,0,0,.08); border-radius:18px; overflow:hidden;">
+            <div style="padding:12px 12px 10px 12px; background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,0));">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                       Color="Color.Default"
+                                       OnClick="GoBack"
+                                       Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
 
-                <MudDivider />
+                        <MudAvatar Size="Size.Medium"
+                                   Style="background: rgba(99,102,241,.16); color: rgba(17,24,39,1); border:1px solid rgba(0,0,0,.06);">
+                            @_otherInitials
+                        </MudAvatar>
 
-                <div style="max-height:520px; overflow:auto; padding-right:6px;">
-                    <MudStack Spacing="2">
-                        @foreach (var m in _messages)
-                        {
-                            var mine = m.SenderId == _meId;
+                        <div style="min-width:0;">
+                            <MudText Typo="Typo.subtitle1" Class="fw-bold" Style="line-height:1.1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                @_title
+                            </MudText>
 
-                            <MudPaper Class="pa-3"
-                                      Elevation="0"
-                                      Style="@($"border:1px solid rgba(0,0,0,.08); border-radius:14px; max-width: 90%; {(mine ? "margin-left:auto; background: rgba(99,102,241,.06);" : "margin-right:auto; background:#fff;")}")">
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">@m.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudText>
-                                @if (!string.IsNullOrWhiteSpace(m.Body))
-                                {
-                                    <MudText Typo="Typo.body1">@m.Body</MudText>
-                                }
-                            </MudPaper>
-                        }
-                    </MudStack>
+                            <div style="display:flex; align-items:center; gap:8px; margin-top:3px;">
+                                <span style="display:inline-flex; align-items:center; gap:6px;">
+                                    <span style="width:8px; height:8px; border-radius:999px; background:#22c55e; display:inline-block;"></span>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">Live</MudText>
+                                </span>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                    • #@ConversationId
+                                </MudText>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                       Color="Color.Default"
+                                       Disabled="_sending"
+                                       OnClick="ReloadAsync"
+                                       Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
+                    </div>
                 </div>
+            </div>
 
-                <MudDivider />
+            <MudDivider />
 
-                <MudStack Direction="Row" Spacing="1" AlignItems="AlignItems.Center">
-                    <MudTextField @bind-Value="_text"
-                                  Placeholder="Write a message..."
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Immediate="true"
-                                  FullWidth="true"
-                                  Disabled="_sending" />
+            <div style="background: linear-gradient(180deg, rgba(2,6,23,.02), rgba(2,6,23,0));">
+                <div style="height:560px; overflow:auto; padding:14px 14px 10px 14px;">
+                    @if (_messages.Count == 0)
+                    {
+                        <MudPaper Elevation="0" Class="pa-4"
+                                  Style="border:1px dashed rgba(0,0,0,.12); border-radius:16px; background: rgba(255,255,255,.65);">
+                            <MudText Typo="Typo.h6" Class="fw-bold">No messages yet</MudText>
+                            <MudText Color="Color.Secondary">Say hi 👋</MudText>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudStack Spacing="2">
+                            @{
+                                DateOnly? currentDay = null;
+                            }
 
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Disabled="_sending || string.IsNullOrWhiteSpace(_text)"
-                               OnClick="SendAsync">
-                        Send
-                    </MudButton>
+                            @foreach (var m in _messages)
+                            {
+                                var mine = m.SenderId == _meId;
+                                var local = m.CreatedAtUtc.ToLocalTime();
+                                var day = DateOnly.FromDateTime(local);
+
+                                if (currentDay != day)
+                                {
+                                    currentDay = day;
+
+                                    <div style="display:flex; justify-content:center; padding:8px 0 2px 0;">
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Variant="Variant.Outlined"
+                                                 Style="background: rgba(255,255,255,.78); border-color: rgba(0,0,0,.10); border-radius:999px;">
+                                            @FormatDayChip(day)
+                                        </MudChip>
+                                    </div>
+                                }
+
+                                <div style="display:flex; @(mine ? "justify-content:flex-end;" : "justify-content:flex-start;")">
+                                    <div style="max-width: 82%;">
+                                        <div style="@BubbleStyle(mine)">
+                                            @if (!string.IsNullOrWhiteSpace(m.Body))
+                                            {
+                                                <div style="white-space:pre-wrap; word-break:break-word; font-size:0.98rem; line-height:1.25;">
+                                                    @m.Body
+                                                </div>
+                                            }
+
+                                            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px; opacity:.65; font-size:.75rem;">
+                                                <span>@local.ToString("HH:mm")</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </MudStack>
+                    }
+                </div>
+            </div>
+
+            <MudDivider />
+
+            <div style="padding:12px; background: rgba(255,255,255,.70);">
+                <MudStack Spacing="1">
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined">
+                            @_error
+                        </MudAlert>
+                    }
+
+                    <div style="display:flex; gap:10px; align-items:flex-end;">
+                        <MudTextField @bind-Value="_text"
+                                      Placeholder="Write a message..."
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Immediate="true"
+                                      FullWidth="true"
+                                      Lines="2"
+                                      Disabled="_sending"
+                                      @onkeydown="OnComposerKeyDownRaw"
+                                      Style="border-radius:14px;" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="_sending || string.IsNullOrWhiteSpace(_text)"
+                                   OnClick="SendAsync"
+                                   Style="border-radius:14px; min-width:128px; height:40px;">
+                            @SendButtonContent()
+                        </MudButton>
+                    </div>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:2px;">
+                        Enter — send • Shift+Enter — new line
+                    </MudText>
                 </MudStack>
-
-                @if (!string.IsNullOrWhiteSpace(_error))
-                {
-                    <MudText Color="Color.Error">@_error</MudText>
-                }
-            </MudStack>
+            </div>
         </MudPaper>
     }
 </MudContainer>
@@ -89,25 +197,23 @@
     private bool _sending;
 
     private string _title = "Chat";
+    private string _otherDisplay = "User";
+    private string _otherInitials = "?";
+
     private string? _meId;
     private string? _otherId;
 
     private string? _text;
     private string? _error;
 
-    private List<Message> _messages = new();
+    private readonly List<MessageDto> _messages = new();
 
-    private CancellationTokenSource? _cts;
-    private int _loadVersion;
+    private IDisposable? _sub;
 
     protected override async Task OnParametersSetAsync()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
-
-        var ct = _cts.Token;
-        var myVersion = ++_loadVersion;
+        _sub?.Dispose();
+        _sub = null;
 
         _loading = true;
         _forbidden = false;
@@ -132,53 +238,95 @@
                 return;
             }
 
-            await using var db = await DbFactory.CreateDbContextAsync(ct);
+            await LoadConversationAndMessagesAsync();
 
-            var conv = await db.Conversations.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == ConversationId, ct);
-
-            if (conv == null)
+            if (!_forbidden)
             {
-                _forbidden = true;
-                return;
+                _sub = Broadcast.Subscribe(ConversationId, dto =>
+                {
+                    if (dto.ConversationId != ConversationId) return;
+
+                    lock (_messages)
+                    {
+                        if (_messages.Count == 0 || _messages[^1].Id != dto.Id)
+                            _messages.Add(dto);
+                    }
+
+                    _ = InvokeAsync(StateHasChanged);
+                });
             }
-
-            var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
-            if (!isMember)
-            {
-                _forbidden = true;
-                return;
-            }
-
-            _otherId = conv.UserAId == _meId ? conv.UserBId : conv.UserAId;
-
-            var otherUserName = await db.Users.AsNoTracking()
-                .Where(x => x.Id == _otherId)
-                .Select(x => x.UserName)
-                .FirstOrDefaultAsync(ct);
-
-            _title = !string.IsNullOrWhiteSpace(otherUserName) ? $"Chat with @{otherUserName}" : "Chat";
-
-            _messages = await db.Messages.AsNoTracking()
-                .Where(x => x.ConversationId == ConversationId)
-                .OrderBy(x => x.CreatedAtUtc)
-                .Take(300)
-                .ToListAsync(ct);
-
-            if (ct.IsCancellationRequested || myVersion != _loadVersion)
-                return;
-        }
-        catch (OperationCanceledException)
-        {
-            return;
         }
         finally
         {
-            if (!ct.IsCancellationRequested && myVersion == _loadVersion)
-            {
-                _loading = false;
-                StateHasChanged();
-            }
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadConversationAndMessagesAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var conv = await db.Conversations.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == ConversationId);
+
+        if (conv == null)
+        {
+            _forbidden = true;
+            return;
+        }
+
+        var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
+        if (!isMember)
+        {
+            _forbidden = true;
+            return;
+        }
+
+        _otherId = conv.UserAId == _meId ? conv.UserBId : conv.UserAId;
+
+        var otherUser = await db.Users.AsNoTracking()
+            .Where(x => x.Id == _otherId)
+            .Select(x => x.UserName)
+            .FirstOrDefaultAsync();
+
+        _otherDisplay = string.IsNullOrWhiteSpace(otherUser) ? "User" : otherUser;
+        _otherInitials = _otherDisplay.Substring(0, 1).ToUpperInvariant();
+        _title = $"@{_otherDisplay}";
+
+        var list = await db.Messages.AsNoTracking()
+            .Where(x => x.ConversationId == ConversationId)
+            .OrderBy(x => x.CreatedAtUtc)
+            .Take(300)
+            .Select(x => new MessageDto
+                {
+                    Id = x.Id,
+                    ConversationId = x.ConversationId,
+                    SenderId = x.SenderId,
+                    Body = x.Body,
+                    CreatedAtUtc = x.CreatedAtUtc
+                })
+            .ToListAsync();
+
+        _messages.Clear();
+        _messages.AddRange(list);
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_sending) return;
+
+        _error = null;
+
+        try
+        {
+            await LoadConversationAndMessagesAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            StateHasChanged();
         }
     }
 
@@ -188,8 +336,12 @@
         if (string.IsNullOrWhiteSpace(_meId)) return;
         if (string.IsNullOrWhiteSpace(_text)) return;
 
+        var body = _text.Trim();
+        if (body.Length == 0) return;
+
         _sending = true;
         _error = null;
+        StateHasChanged();
 
         try
         {
@@ -201,35 +353,101 @@
             var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
             if (!isMember) { _error = "Access denied."; return; }
 
-            db.Messages.Add(new Message
+            var msg = new Message
                 {
                     ConversationId = ConversationId,
                     SenderId = _meId!,
-                    Body = _text.Trim(),
+                    Body = body,
                     CreatedAtUtc = DateTime.UtcNow
-                });
+                };
 
-            conv.LastMessageAtUtc = DateTime.UtcNow;
+            db.Messages.Add(msg);
+            conv.LastMessageAtUtc = msg.CreatedAtUtc;
 
             await db.SaveChangesAsync();
 
             _text = null;
 
-            _messages = await db.Messages.AsNoTracking()
-                .Where(x => x.ConversationId == ConversationId)
-                .OrderBy(x => x.CreatedAtUtc)
-                .Take(300)
-                .ToListAsync();
+            var dto = new MessageDto
+                {
+                    Id = msg.Id,
+                    ConversationId = msg.ConversationId,
+                    SenderId = msg.SenderId,
+                    Body = msg.Body,
+                    CreatedAtUtc = msg.CreatedAtUtc
+                };
+
+            lock (_messages)
+            {
+                if (_messages.Count == 0 || _messages[^1].Id != dto.Id)
+                    _messages.Add(dto);
+            }
+
+            Broadcast.Publish(dto);
         }
         finally
         {
             _sending = false;
+            StateHasChanged();
         }
     }
 
+    private async Task OnComposerKeyDownRaw(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendAsync();
+        }
+    }
+
+    private string BubbleStyle(bool mine)
+    {
+        if (mine)
+            return "background: linear-gradient(180deg,#6366f1,#4f46e5); color:white; padding:10px 12px; border-radius:16px; box-shadow: 0 10px 24px rgba(79,70,229,.18);";
+
+        return "background:white; border:1px solid rgba(0,0,0,.08); padding:10px 12px; border-radius:16px; box-shadow: 0 10px 24px rgba(2,6,23,.06);";
+    }
+
+    private string FormatDayChip(DateOnly day)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+
+        if (day == today) return "Today";
+        if (day == today.AddDays(-1)) return "Yesterday";
+
+        return day.ToString("yyyy-MM-dd");
+    }
+
+    private void GoBack()
+    {
+        Nav.NavigateTo("/messages");
+    }
+
+    private RenderFragment SendButtonContent() => builder =>
+    {
+        var seq = 0;
+
+        if (_sending)
+        {
+            builder.OpenComponent<MudProgressCircular>(seq++);
+            builder.AddAttribute(seq++, "Size", Size.Small);
+            builder.AddAttribute(seq++, "Indeterminate", true);
+            builder.AddAttribute(seq++, "Class", "me-2");
+            builder.CloseComponent();
+            builder.AddContent(seq++, "Sending");
+        }
+        else
+        {
+            builder.OpenComponent<MudIcon>(seq++);
+            builder.AddAttribute(seq++, "Icon", Icons.Material.Filled.Send);
+            builder.AddAttribute(seq++, "Class", "me-2");
+            builder.CloseComponent();
+            builder.AddContent(seq++, "Send");
+        }
+    };
+
     public void Dispose()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
+        _sub?.Dispose();
     }
 }

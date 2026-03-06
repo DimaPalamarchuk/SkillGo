@@ -17,106 +17,488 @@
 
 <PageTitle>Order</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
     @if (_loading)
     {
-        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
-            Loading...
-        </MudPaper>
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="8">
+                <div class="shell skeleton"></div>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <div class="side skeleton"></div>
+            </MudItem>
+        </MudGrid>
     }
     else if (_forbidden)
     {
-        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
-            Access denied
+        <MudPaper Class="state-shell" Elevation="0">
+            <div class="state-title">Access denied</div>
+            <div class="state-sub">You do not have access to this order.</div>
         </MudPaper>
     }
     else if (_order == null)
     {
-        <MudPaper Class="pa-5" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
-            Order not found
+        <MudPaper Class="state-shell" Elevation="0">
+            <div class="state-title">Order not found</div>
+            <div class="state-sub">The order may have been removed or never existed.</div>
         </MudPaper>
     }
     else
     {
-        <MudStack Spacing="2">
-            <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.h4" Class="fw-bold">Order #@_order.Id</MudText>
-                    <MudText Color="Color.Secondary">@(_order.ServiceOffer?.Title ?? "-")</MudText>
-                </MudStack>
+        <div class="hero">
+            <div class="hero-inner">
+                <div class="hero-left">
+                    <div class="hero-title">Order #@_order.Id</div>
+                    <div class="hero-sub">@(_order.ServiceOffer?.Title ?? "Service")</div>
+                </div>
 
-                <MudChip T="string" Size="Size.Small" Color="@StatusColor(_order.Status)" Variant="Variant.Filled">
+                <MudChip T="string"
+                         Size="Size.Medium"
+                         Color="@StatusColor(_order.Status)"
+                         Variant="Variant.Filled">
                     @_order.Status.ToString()
                 </MudChip>
-            </MudStack>
+            </div>
 
-            <MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;">
-                <MudGrid Spacing="2">
-                    <MudItem xs="12" md="6">
-                        <MudText>Amount: <b>@_order.Amount.ToString("0.00") zł</b></MudText>
-                        <MudText>Escrow: <b>@_order.EscrowAmount.ToString("0.00") zł</b></MudText>
-                        <MudText Color="Color.Secondary" Typo="Typo.caption">Created: @_order.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</MudText>
-                        @if (_order.CompletedAtUtc != null)
-                        {
-                            <MudText Color="Color.Secondary" Typo="Typo.caption">Completed: @_order.CompletedAtUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC</MudText>
-                        }
-                    </MudItem>
+            <div class="hero-stats">
+                <div class="stat-chip">
+                    <div class="stat-label">Amount</div>
+                    <div class="stat-value">@_order.Amount.ToString("0.00") zł</div>
+                </div>
 
-                    <MudItem xs="12" md="6">
-                        <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="GoService" Disabled="@(_order.ServiceOfferId <= 0)">
+                <div class="stat-chip">
+                    <div class="stat-label">Escrow</div>
+                    <div class="stat-value">@_order.EscrowAmount.ToString("0.00") zł</div>
+                </div>
+
+                <div class="stat-chip">
+                    <div class="stat-label">Created</div>
+                    <div class="stat-value small">@_order.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</div>
+                </div>
+
+                @if (_order.CompletedAtUtc != null)
+                {
+                    <div class="stat-chip">
+                        <div class="stat-label">Completed</div>
+                        <div class="stat-value small">@_order.CompletedAtUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <MudGrid Spacing="4" Class="mt-4">
+            <MudItem xs="12" md="8">
+                <div class="shell">
+                    <div class="section-head">
+                        <div class="section-title">Order actions</div>
+                        <div class="section-sub">Open related pages or contact support.</div>
+                    </div>
+
+                    <div class="section-body">
+                        <div class="actions">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Class="btn-strong"
+                                       OnClick="GoService"
+                                       Disabled="@(_order.ServiceOfferId <= 0)">
                                 View service
                             </MudButton>
 
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="GoChat">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       Class="btn-strong"
+                                       OnClick="GoChat">
                                 Open chat
                             </MudButton>
 
-                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="OpenDispute">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Class="btn-strong"
+                                       OnClick="OpenDispute">
                                 Report to admin
                             </MudButton>
-                        </MudStack>
+                        </div>
 
                         @if (_order.Status == OrderStatus.Completed && _order.ReviewId == null && _meId == _order.BuyerId)
                         {
-                            <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End" Class="mt-2">
-                                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="OpenReview">
+                            <div class="review-callout">
+                                <div class="review-callout-title">Order completed</div>
+                                <div class="review-callout-sub">Leave a review to support the freelancer’s profile.</div>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Success"
+                                           Class="btn-strong mt-3"
+                                           OnClick="OpenReview">
                                     Leave review
                                 </MudButton>
-                            </MudStack>
+                            </div>
                         }
-                    </MudItem>
-                </MudGrid>
-            </MudPaper>
+                    </div>
+                </div>
 
-            <MudText Typo="Typo.h6" Class="fw-bold mt-2">Disputes</MudText>
+                <div class="shell mt-4">
+                    <div class="section-head">
+                        <div class="section-title">Disputes</div>
+                        <div class="section-sub">Reports related to this order.</div>
+                    </div>
 
-            @if (_disputes.Count == 0)
-            {
-                <MudPaper Class="pa-4" Elevation="0" Style="border:1px dashed rgba(0,0,0,.12);border-radius:16px;">
-                    No disputes
-                </MudPaper>
-            }
-            else
-            {
-                <MudTable Items="_disputes" Dense="true" Hover="true" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;overflow:hidden;">
-                    <HeaderContent>
-                        <MudTh>ID</MudTh>
-                        <MudTh>Status</MudTh>
-                        <MudTh>Subject</MudTh>
-                        <MudTh>Date</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="ID">#@context.Id</MudTd>
-                        <MudTd DataLabel="Status">@context.Status</MudTd>
-                        <MudTd DataLabel="Subject">@context.Subject</MudTd>
-                        <MudTd DataLabel="Date">@context.CreatedAtUtc.ToString("yyyy-MM-dd")</MudTd>
-                    </RowTemplate>
-                </MudTable>
-            }
-        </MudStack>
+                    <div class="section-body">
+                        @if (_disputes.Count == 0)
+                        {
+                            <div class="empty-inline">No disputes yet.</div>
+                        }
+                        else
+                        {
+                            <div class="disputes-list">
+                                @foreach (var item in _disputes)
+                                {
+                                    <div class="dispute-card">
+                                        <div class="dispute-top">
+                                            <div class="dispute-id">Dispute #@item.Id</div>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled">
+                                                @item.Status.ToString()
+                                            </MudChip>
+                                        </div>
+
+                                        <div class="dispute-subject">@item.Subject</div>
+                                        <div class="dispute-date">@item.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <div class="side">
+                    <div class="side-title">Summary</div>
+                    <div class="side-sub">Important details at a glance.</div>
+
+                    <div class="info-list mt-4">
+                        <div class="info-row">
+                            <div class="info-label">Order ID</div>
+                            <div class="info-value">#@_order.Id</div>
+                        </div>
+
+                        <div class="info-row">
+                            <div class="info-label">Status</div>
+                            <div class="info-value">@_order.Status.ToString()</div>
+                        </div>
+
+                        <div class="info-row">
+                            <div class="info-label">Buyer</div>
+                            <div class="info-value ellipsis">@_order.BuyerId</div>
+                        </div>
+
+                        <div class="info-row">
+                            <div class="info-label">Seller</div>
+                            <div class="info-value ellipsis">@_order.SellerId</div>
+                        </div>
+
+                        <div class="info-row">
+                            <div class="info-label">Conversation</div>
+                            <div class="info-value">#@_order.ConversationId</div>
+                        </div>
+                    </div>
+                </div>
+            </MudItem>
+        </MudGrid>
     }
 </MudContainer>
+
+<style>
+    .hero {
+        border-radius: 24px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            inset: -45% -70%;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 55%);
+            transform: rotate(12deg);
+            opacity: .9;
+            pointer-events: none;
+        }
+
+    .hero-inner {
+        position: relative;
+        z-index: 1;
+        padding: 26px 26px 12px 26px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .hero-left {
+        min-width: 0;
+    }
+
+    .hero-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.7rem;
+        letter-spacing: .2px;
+        line-height: 1.12;
+    }
+
+    .hero-sub {
+        color: rgba(17,24,39,.65);
+        font-size: 1rem;
+        line-height: 1.35;
+        margin-top: 6px;
+        word-break: break-word;
+    }
+
+    .hero-stats {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 0 26px 26px 26px;
+    }
+
+    .stat-chip {
+        min-width: 150px;
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: rgba(255,255,255,.72);
+        backdrop-filter: blur(6px);
+        padding: 10px 12px;
+    }
+
+    .stat-label {
+        color: rgba(17,24,39,.6);
+        font-size: .9rem;
+        font-weight: 800;
+    }
+
+    .stat-value {
+        margin-top: 4px;
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.15rem;
+        line-height: 1.1;
+    }
+
+        .stat-value.small {
+            font-size: .95rem;
+            line-height: 1.3;
+        }
+
+    .shell,
+    .side,
+    .state-shell {
+        border-radius: 22px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        overflow: hidden;
+    }
+
+    .section-head {
+        padding: 18px 22px 14px 22px;
+        border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+    .section-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.05rem;
+        letter-spacing: .2px;
+    }
+
+    .section-sub {
+        color: rgba(17,24,39,.6);
+        font-size: .95rem;
+        margin-top: 4px;
+    }
+
+    .section-body {
+        padding: 22px;
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 14px;
+    }
+
+    .review-callout {
+        margin-top: 18px;
+        border-radius: 18px;
+        border: 1px dashed rgba(0,0,0,.14);
+        background: rgba(99,102,241,.05);
+        padding: 16px;
+    }
+
+    .review-callout-title {
+        font-weight: 950;
+        color: #111827;
+    }
+
+    .review-callout-sub {
+        color: rgba(17,24,39,.65);
+        margin-top: 6px;
+        line-height: 1.35;
+    }
+
+    .disputes-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .dispute-card {
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(0,0,0,.06);
+        padding: 16px;
+    }
+
+    .dispute-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .dispute-id {
+        font-weight: 950;
+        color: #111827;
+        letter-spacing: .2px;
+    }
+
+    .dispute-subject {
+        margin-top: 10px;
+        color: #111827;
+        font-weight: 800;
+        line-height: 1.3;
+        word-break: break-word;
+    }
+
+    .dispute-date {
+        margin-top: 8px;
+        color: rgba(17,24,39,.6);
+        font-size: .9rem;
+    }
+
+    .empty-inline {
+        border-radius: 16px;
+        border: 1px dashed rgba(0,0,0,.14);
+        padding: 18px;
+        color: rgba(17,24,39,.65);
+        background: rgba(99,102,241,.03);
+    }
+
+    .side {
+        padding: 22px;
+    }
+
+    .side-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.05rem;
+        letter-spacing: .2px;
+    }
+
+    .side-sub {
+        color: rgba(17,24,39,.6);
+        font-size: .95rem;
+        margin-top: 4px;
+    }
+
+    .info-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: rgba(99,102,241,.04);
+        padding: 12px 14px;
+    }
+
+    .info-label {
+        color: rgba(17,24,39,.6);
+        font-weight: 800;
+        min-width: 0;
+    }
+
+    .info-value {
+        color: #111827;
+        font-weight: 950;
+        text-align: right;
+        min-width: 0;
+    }
+
+    .ellipsis {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .state-shell {
+        padding: 28px;
+        text-align: center;
+    }
+
+    .state-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.15rem;
+    }
+
+    .state-sub {
+        color: rgba(17,24,39,.65);
+        margin-top: 8px;
+    }
+
+    .skeleton {
+        min-height: 320px;
+        position: relative;
+    }
+
+        .skeleton::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite linear;
+        }
+
+    @@keyframes shimmer {
+        0% {
+            background-position: 0% 0;
+        }
+
+        100% {
+            background-position: 200% 0;
+        }
+    }
+</style>
 
 @code {
     [Parameter] public int OrderId { get; set; }

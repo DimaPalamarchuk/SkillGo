@@ -10,11 +10,18 @@
 <PageTitle>Services</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
-
     <div class="hero">
         <div class="hero-inner">
-            <div class="hero-title">@_categoryName</div>
-            <div class="hero-sub">Search and filter services in this category.</div>
+            <div class="hero-top">
+                <div class="hero-copy">
+                    <div class="hero-title">@_categoryName</div>
+                    <div class="hero-sub">Search and filter services in this category.</div>
+                </div>
+
+                <MudButton Variant="Variant.Outlined" Class="btn-soft" Href="/services/category">
+                    All services
+                </MudButton>
+            </div>
 
             <div class="hero-controls">
                 <MudTextField T="string"
@@ -26,14 +33,14 @@
                               DebounceInterval="350"
                               Value="@_search"
                               ValueChanged="OnSearchChanged"
-                              Class="control search" />
+                              Class="search-control" />
 
                 <MudSelect T="string"
                            Variant="Variant.Outlined"
-                           Label="Sort"
+                           Placeholder="Sort"
                            Value="@_sort"
                            ValueChanged="OnSortChanged"
-                           Class="control sort">
+                           Class="sort-control">
                     <MudSelectItem T="string" Value="@("new")">Newest</MudSelectItem>
                     <MudSelectItem T="string" Value="@("price_asc")">Price: low to high</MudSelectItem>
                     <MudSelectItem T="string" Value="@("price_desc")">Price: high to low</MudSelectItem>
@@ -42,13 +49,9 @@
                 </MudSelect>
             </div>
 
-            <div class="hero-actions">
-                <MudButton Variant="Variant.Outlined" Class="btn-soft" Href="/services/category">
-                    All services
-                </MudButton>
-            </div>
-
             <div class="hero-chips">
+                <span class="chip">Services: @_services.Count</span>
+
                 @if (_minPrice.HasValue)
                 {
                     <span class="chip">Min: @_minPrice.Value.ToString("0.##") zł</span>
@@ -70,22 +73,41 @@
     </div>
 
     <div class="layout mt-4">
-        <aside class="filters">
+        <aside class="filters-shell">
             <div class="filters-head">
-                <div class="filters-title">Filters</div>
-                <MudButton Variant="Variant.Text" Class="reset" OnClick="@ResetAsync">Reset</MudButton>
+                <div>
+                    <div class="filters-title">Filters</div>
+                    <div class="filters-sub">Adjust your search and apply changes.</div>
+                </div>
+
+                <MudButton Variant="Variant.Text" Class="reset-btn" OnClick="@ResetAsync">
+                    Reset
+                </MudButton>
             </div>
 
             <div class="filters-body">
-                <div class="two">
-                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Label="Min price (zł)"
-                                     Min="0" Value="@_minPrice" ValueChanged="OnMinPriceChanged" />
-                    <MudNumericField T="decimal?" Variant="Variant.Outlined" Label="Max price (zł)"
-                                     Min="0" Value="@_maxPrice" ValueChanged="OnMaxPriceChanged" />
+                <div class="two-cols">
+                    <MudNumericField T="decimal?"
+                                     Variant="Variant.Outlined"
+                                     Label="Min price (zł)"
+                                     Min="0"
+                                     Value="@_minPrice"
+                                     ValueChanged="OnMinPriceChanged" />
+
+                    <MudNumericField T="decimal?"
+                                     Variant="Variant.Outlined"
+                                     Label="Max price (zł)"
+                                     Min="0"
+                                     Value="@_maxPrice"
+                                     ValueChanged="OnMaxPriceChanged" />
                 </div>
 
-                <MudSelect T="int" Variant="Variant.Outlined" Label="Min rating"
-                           Value="@_minRating" ValueChanged="OnMinRatingChanged" FullWidth="true">
+                <MudSelect T="int"
+                           Variant="Variant.Outlined"
+                           Label="Min rating"
+                           Value="@_minRating"
+                           ValueChanged="OnMinRatingChanged"
+                           FullWidth="true">
                     <MudSelectItem T="int" Value="0">Any</MudSelectItem>
                     <MudSelectItem T="int" Value="1">1+</MudSelectItem>
                     <MudSelectItem T="int" Value="2">2+</MudSelectItem>
@@ -94,12 +116,20 @@
                     <MudSelectItem T="int" Value="5">5</MudSelectItem>
                 </MudSelect>
 
-                <MudSwitch T="bool" Color="Color.Primary" Label="Only with reviews"
-                           Checked="@_onlyWithReviews" CheckedChanged="OnOnlyWithReviewsChanged" />
+                <div class="switch-shell">
+                    <MudSwitch T="bool"
+                               Color="Color.Primary"
+                               Label="Only with reviews"
+                               Checked="@_onlyWithReviews"
+                               CheckedChanged="OnOnlyWithReviewsChanged" />
+                </div>
 
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="apply"
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Class="btn-strong"
                            OnClick="@LoadAsync">
-                    Apply
+                    Apply filters
                 </MudButton>
             </div>
         </aside>
@@ -111,16 +141,17 @@
                     @for (int i = 0; i < 12; i++)
                     {
                         <MudItem xs="12" sm="6" md="4" lg="3">
-                            <div class="card skeleton"></div>
+                            <div class="service-card skeleton"></div>
                         </MudItem>
                     }
                 </MudGrid>
             }
             else if (_services.Count == 0)
             {
-                <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);">
-                    No services found.
-                </MudPaper>
+                <div class="empty-shell">
+                    <div class="empty-title">No services found</div>
+                    <div class="empty-sub">Try changing your filters or search phrase.</div>
+                </div>
             }
             else
             {
@@ -128,27 +159,31 @@
                     @foreach (var s in _services)
                     {
                         <MudItem xs="12" sm="6" md="4" lg="3">
-                            <MudLink Href="@($"/services/{s.Id}")" Class="link">
-                                <div class="card">
-                                    <div class="top">
-                                        <div class="title">@s.Title</div>
-                                        <div class="pill">@_categoryName</div>
+                            <MudLink Href="@($"/services/{s.Id}")" Class="card-link">
+                                <div class="service-card">
+                                    <div class="card-top">
+                                        <div class="card-title" title="@s.Title">@s.Title</div>
+
+                                        <div class="pill-row">
+                                            <div class="pill" title="@_categoryName">@_categoryName</div>
+                                        </div>
                                     </div>
 
-                                    <div class="desc">@Trim(s.Description, 115)</div>
+                                    <div class="card-desc">@Trim(s.Description, 120)</div>
 
-                                    <div class="meta">
-                                        <div class="rating">
+                                    <div class="card-bottom">
+                                        <div class="rating-row">
                                             <span class="stars">@Stars(s.RatingAvg)</span>
-                                            <span class="muted">@s.RatingAvg.ToString("0.0")</span>
-                                            <span class="muted">(@s.ReviewsCount)</span>
+                                            <span class="rating-value">@s.RatingAvg.ToString("0.0")</span>
+                                            <span class="reviews-count">(@s.ReviewsCount)</span>
                                         </div>
+
                                         <div class="price">@s.Price.ToString("0.##") zł</div>
                                     </div>
 
-                                    <div class="user">
+                                    <div class="card-user">
                                         <img class="avatar" src="@(s.OwnerUser?.AvatarUrl ?? "/images/default-avatar.png")" />
-                                        <div class="uname">@DisplayName(s.OwnerUser)</div>
+                                        <div class="user-name" title="@DisplayName(s.OwnerUser)">@DisplayName(s.OwnerUser)</div>
                                     </div>
                                 </div>
                             </MudLink>
@@ -158,15 +193,14 @@
             }
         </main>
     </div>
-
 </MudContainer>
 
 <style>
     .hero {
-        border-radius: 24px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        border-radius: 28px;
+        border: 1px solid rgba(99,102,241,.16);
+        background: linear-gradient(135deg,#eef2ff 0%,#e9edff 55%,#e4e9ff 100%);
+        box-shadow: 0 20px 50px rgba(15,23,42,.06);
         position: relative;
         overflow: hidden;
     }
@@ -174,149 +208,213 @@
         .hero::before {
             content: "";
             position: absolute;
-            inset: -45% -70%;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 55%);
-            transform: rotate(12deg);
-            opacity: .9;
+            inset: auto auto -80px -60px;
+            width: 320px;
+            height: 180px;
+            background: radial-gradient(circle at center, rgba(255,255,255,.6), transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            right: -40px;
+            top: -40px;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle at center, rgba(255,255,255,.45), transparent 70%);
             pointer-events: none;
         }
 
     .hero-inner {
         position: relative;
         z-index: 1;
-        padding: 26px;
+        padding: 28px;
         display: grid;
-        gap: 14px;
+        gap: 18px;
+    }
+
+    .hero-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .hero-copy {
         min-width: 0;
     }
 
     .hero-title {
         font-weight: 950;
         color: #111827;
-        font-size: 1.7rem;
-        letter-spacing: .2px;
-        line-height: 1.12;
-        min-width: 0;
+        font-size: 1.9rem;
+        line-height: 1.08;
+        letter-spacing: -.02em;
+        word-break: break-word;
     }
 
     .hero-sub {
-        color: rgba(17,24,39,.65);
+        color: rgba(17,24,39,.64);
         font-size: 1rem;
-        line-height: 1.35;
-        margin-top: -10px;
-        min-width: 0;
+        line-height: 1.4;
+        margin-top: 8px;
     }
 
     .hero-controls {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 260px;
-        gap: 12px;
-        align-items: start;
+        display: flex;
+        gap: 14px;
+        align-items: center;
         min-width: 0;
     }
 
-    .control {
+    .search-control {
+        flex: 1 1 auto;
         min-width: 0;
     }
 
-    .hero-actions {
+    .sort-control {
+        width: 300px;
+        min-width: 220px;
+        flex: 0 0 auto;
+    }
+
+        .search-control .mud-input-control,
+        .sort-control .mud-input-control {
+            margin-top: 0;
+        }
+
+        .search-control .mud-input-root,
+        .sort-control .mud-input-root {
+            min-height: 44px;
+            height: 44px;
+        }
+
+        .search-control .mud-input-slot,
+        .sort-control .mud-input-slot {
+            min-height: 44px;
+            font-size: .88rem;
+        }
+
+        .search-control input,
+        .sort-control input {
+            padding-top: 10px;
+            padding-bottom: 10px;
+            font-size: .88rem;
+        }
+
+        .search-control .mud-input-adornment,
+        .sort-control .mud-input-adornment {
+            font-size: .98rem;
+        }
+
+        .search-control .mud-input-label,
+        .sort-control .mud-input-label,
+        .search-control .mud-select-label,
+        .sort-control .mud-select-label,
+        .search-control .mud-input > input::placeholder,
+        .sort-control .mud-input > input::placeholder {
+            font-size: .82rem;
+        }
+
+    .hero-chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-        min-width: 0;
+        gap: 8px;
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(99,102,241,.18);
+        background: rgba(255,255,255,.72);
+        color: rgba(17,24,39,.82);
+        font-weight: 900;
+        font-size: .85rem;
+        letter-spacing: .12px;
+        backdrop-filter: blur(4px);
     }
 
     .btn-soft {
         border-radius: 14px;
-        font-weight: 950;
+        font-weight: 900;
         letter-spacing: .2px;
         padding: 10px 14px;
         background: rgba(255,255,255,.55);
         border: 1px solid rgba(0,0,0,.08);
     }
 
-    .hero-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        min-width: 0;
-    }
-
-    .chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: rgba(255,255,255,.65);
-        font-weight: 900;
-        letter-spacing: .15px;
-        color: rgba(17,24,39,.8);
-        font-size: .85rem;
-        max-width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
     .layout {
         display: grid;
-        grid-template-columns: 340px minmax(0, 1fr);
-        gap: 16px;
+        grid-template-columns: 340px minmax(0,1fr);
+        gap: 18px;
         align-items: start;
-        min-width: 0;
     }
 
-    .filters {
+    .filters-shell {
         position: sticky;
         top: 92px;
-        border-radius: 22px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        border-radius: 24px;
+        border: 1px solid rgba(0,0,0,.07);
+        background: rgba(255,255,255,.96);
+        box-shadow: 0 18px 44px rgba(15,23,42,.06);
         overflow: hidden;
-        min-width: 0;
     }
 
     .filters-head {
-        padding: 16px 18px;
+        padding: 18px 20px 16px 20px;
         border-bottom: 1px solid rgba(0,0,0,.06);
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        min-width: 0;
+        gap: 12px;
+        align-items: flex-start;
     }
 
     .filters-title {
         font-weight: 950;
         color: #111827;
+        font-size: 1.06rem;
         letter-spacing: .2px;
-        min-width: 0;
     }
 
-    .reset {
-        font-weight: 950;
+    .filters-sub {
+        color: rgba(17,24,39,.6);
+        font-size: .93rem;
+        margin-top: 4px;
+        line-height: 1.35;
+    }
+
+    .reset-btn {
+        font-weight: 900;
         letter-spacing: .2px;
     }
 
     .filters-body {
-        padding: 16px 18px 18px 18px;
+        padding: 18px 20px 20px 20px;
         display: grid;
         gap: 12px;
-        min-width: 0;
     }
 
-    .two {
+    .two-cols {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: minmax(0,1fr) minmax(0,1fr);
         gap: 10px;
-        min-width: 0;
     }
 
-    .apply {
+    .switch-shell {
+        border-radius: 16px;
+        border: 1px dashed rgba(99,102,241,.18);
+        background: rgba(99,102,241,.04);
+        padding: 4px 12px;
+    }
+
+    .btn-strong {
         border-radius: 14px;
-        font-weight: 950;
+        font-weight: 900;
         letter-spacing: .2px;
         padding: 10px 14px;
     }
@@ -325,110 +423,131 @@
         min-width: 0;
     }
 
-    .link {
+    .card-link {
         display: block;
-        text-decoration: none;
-        color: inherit;
+        text-decoration: none !important;
+        color: inherit !important;
         min-width: 0;
     }
 
-    .card {
-        height: 270px;
-        border-radius: 20px;
+        .card-link:hover,
+        .card-link:focus,
+        .card-link:active,
+        .card-link * {
+            text-decoration: none !important;
+        }
+
+    .service-card {
+        min-height: 290px;
+        height: 100%;
+        border-radius: 24px;
         padding: 18px;
-        background: #fff;
-        border: 1px solid rgba(0,0,0,.08);
-        box-shadow: 0 12px 28px rgba(0,0,0,.06);
-        transition: transform .18s ease, box-shadow .18s ease;
+        background: linear-gradient(180deg,#ffffff 0%,#fcfcff 100%);
+        border: 1px solid rgba(0,0,0,.07);
+        box-shadow: 0 12px 28px rgba(15,23,42,.05);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         display: flex;
         flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .card-link:hover .service-card {
+        transform: translateY(-6px);
+        box-shadow: 0 22px 48px rgba(15,23,42,.09);
+        border-color: rgba(99,102,241,.18);
+    }
+
+    .card-top {
+        display: grid;
         gap: 10px;
         min-width: 0;
     }
 
-    .link:hover .card {
-        transform: translateY(-6px);
-        box-shadow: 0 20px 48px rgba(0,0,0,.10);
-    }
-
-    .top {
-        display: grid;
-        gap: 8px;
-        min-width: 0;
-    }
-
-    .title {
+    .card-title {
         font-weight: 950;
         color: #111827;
         font-size: 1.05rem;
-        letter-spacing: .2px;
-        line-height: 1.15;
+        line-height: 1.18;
         min-width: 0;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
+        word-break: break-word;
+    }
+
+    .pill-row {
+        display: flex;
+        min-width: 0;
+        max-width: 100%;
     }
 
     .pill {
-        justify-self: start;
+        max-width: 100%;
         display: inline-flex;
-        padding: 6px 10px;
+        align-items: center;
+        min-height: 34px;
+        padding: 6px 12px;
         border-radius: 999px;
         background: rgba(99,102,241,.10);
         border: 1px solid rgba(99,102,241,.22);
-        color: rgba(17,24,39,.75);
-        font-weight: 950;
-        font-size: .85rem;
-        max-width: 100%;
+        color: rgba(55,65,81,.9);
+        font-weight: 900;
+        font-size: .84rem;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        min-width: 0;
     }
 
-    .desc {
-        color: rgba(17,24,39,.65);
-        font-size: .92rem;
-        line-height: 1.25;
+    .card-desc {
+        color: rgba(17,24,39,.66);
+        font-size: .93rem;
+        line-height: 1.32;
         flex: 1;
-        white-space: pre-wrap;
         min-width: 0;
+        white-space: pre-wrap;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 4;
         -webkit-box-orient: vertical;
+        word-break: break-word;
     }
 
-    .meta {
+    .card-bottom {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-top: auto;
         min-width: 0;
+        flex-wrap: wrap;
     }
 
-    .rating {
-        display: inline-flex;
+    .rating-row {
+        display: flex;
         align-items: center;
         gap: 6px;
         min-width: 0;
+        flex: 1 1 auto;
         overflow: hidden;
     }
 
     .stars {
         font-weight: 950;
-        letter-spacing: .6px;
+        letter-spacing: .45px;
         color: #111827;
         white-space: nowrap;
+        flex: 0 0 auto;
     }
 
-    .muted {
-        color: rgba(17,24,39,.65);
-        font-weight: 950;
-        font-size: .88rem;
+    .rating-value,
+    .reviews-count {
+        color: rgba(17,24,39,.66);
+        font-weight: 900;
+        font-size: .9rem;
         white-space: nowrap;
+        flex: 0 0 auto;
     }
 
     .price {
@@ -436,42 +555,64 @@
         color: #111827;
         white-space: nowrap;
         flex: 0 0 auto;
+        font-size: 1rem;
     }
 
-    .user {
+    .card-user {
         display: flex;
         align-items: center;
         gap: 10px;
         min-width: 0;
-        margin-top: 10px;
+        padding-top: 2px;
     }
 
     .avatar {
-        width: 34px;
-        height: 34px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         object-fit: cover;
-        border: 1px solid rgba(0,0,0,.12);
+        border: 1px solid rgba(0,0,0,.1);
         flex: 0 0 auto;
         background: #fff;
     }
 
-    .uname {
+    .user-name {
         font-weight: 950;
         color: #111827;
-        font-size: .92rem;
+        font-size: .93rem;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
+    .empty-shell {
+        border-radius: 24px;
+        border: 1px solid rgba(0,0,0,.07);
+        background: #fff;
+        box-shadow: 0 18px 46px rgba(15,23,42,.05);
+        padding: 34px 28px;
+        text-align: center;
+    }
+
+    .empty-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.12rem;
+    }
+
+    .empty-sub {
+        color: rgba(17,24,39,.65);
+        margin-top: 8px;
+        line-height: 1.35;
+    }
+
     .skeleton {
         background: #fff;
-        border-radius: 20px;
+        border-radius: 24px;
         position: relative;
         overflow: hidden;
-        height: 270px;
+        min-height: 290px;
         border: 1px solid rgba(0,0,0,.08);
     }
 
@@ -486,49 +627,81 @@
 
     @@keyframes shimmer {
         0% {
-            background-position: 0% 0
+            background-position: 0% 0;
         }
 
         100% {
-            background-position: 200% 0
+            background-position: 200% 0;
+        }
+    }
+
+    @@media (max-width: 1280px) {
+        .sort-control {
+            width: 280px;
         }
     }
 
     @@media (max-width: 1200px) {
         .layout {
-            grid-template-columns: 320px minmax(0, 1fr);
-        }
-
-        .hero-controls {
-            grid-template-columns: minmax(0, 1fr) 240px;
+            grid-template-columns: 320px minmax(0,1fr);
         }
     }
 
     @@media (max-width: 992px) {
         .layout {
-            grid-template-columns: minmax(0, 1fr);
+            grid-template-columns: minmax(0,1fr);
         }
 
-        .filters {
+        .filters-shell {
             position: static;
             top: auto;
         }
 
         .hero-controls {
-            grid-template-columns: minmax(0, 1fr);
+            flex-direction: column;
+            align-items: stretch;
         }
 
-        .two {
-            grid-template-columns: minmax(0, 1fr);
+        .sort-control {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .two-cols {
+            grid-template-columns: minmax(0,1fr);
+        }
+    }
+
+    @@media (max-width: 600px) {
+        .hero-inner {
+            padding: 22px;
+        }
+
+        .hero-title {
+            font-size: 1.65rem;
+        }
+
+        .service-card {
+            min-height: 260px;
+        }
+
+        .card-bottom {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .rating-row {
+            width: 100%;
+        }
+
+        .pill {
+            max-width: 140px;
         }
     }
 </style>
 
 @code {
-    [Parameter] public int CategoryId { get; set; }
-
     private bool _loading = true;
-
     private string _categoryName = "Category";
     private List<ServiceCardVm> _services = new();
 
@@ -538,6 +711,8 @@
     private int _minRating = 0;
     private bool _onlyWithReviews = false;
     private string _sort = "new";
+
+    [Parameter] public int CategoryId { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -557,6 +732,7 @@
             .Where(x => x.CategoryId == CategoryId);
 
         var s = (_search ?? "").Trim();
+
         if (!string.IsNullOrWhiteSpace(s))
             qBase = qBase.Where(x => x.Title.Contains(s) || x.Description.Contains(s));
 
@@ -575,7 +751,7 @@
                 CreatedAt = x.CreatedAt,
                 OwnerUser = x.OwnerUser,
                 ReviewsCount = Db.Reviews.Count(r => r.TargetUserId == x.OwnerUserId),
-                RatingAvg = (Db.Reviews.Where(r => r.TargetUserId == x.OwnerUserId).Select(r => (double?)r.Stars).Average() ?? 0)
+                RatingAvg = Db.Reviews.Where(r => r.TargetUserId == x.OwnerUserId).Select(r => (double?)r.Stars).Average() ?? 0
             });
 
         if (_onlyWithReviews)
@@ -610,12 +786,41 @@
         await LoadAsync();
     }
 
-    private async Task OnSearchChanged(string v) { _search = v ?? ""; await LoadAsync(); }
-    private async Task OnSortChanged(string v) { _sort = string.IsNullOrWhiteSpace(v) ? "new" : v; await LoadAsync(); }
-    private Task OnMinPriceChanged(decimal? v) { _minPrice = v; return Task.CompletedTask; }
-    private Task OnMaxPriceChanged(decimal? v) { _maxPrice = v; return Task.CompletedTask; }
-    private Task OnMinRatingChanged(int v) { _minRating = v; return Task.CompletedTask; }
-    private Task OnOnlyWithReviewsChanged(bool v) { _onlyWithReviews = v; return Task.CompletedTask; }
+    private async Task OnSearchChanged(string v)
+    {
+        _search = v ?? "";
+        await LoadAsync();
+    }
+
+    private async Task OnSortChanged(string v)
+    {
+        _sort = string.IsNullOrWhiteSpace(v) ? "new" : v;
+        await LoadAsync();
+    }
+
+    private Task OnMinPriceChanged(decimal? v)
+    {
+        _minPrice = v;
+        return Task.CompletedTask;
+    }
+
+    private Task OnMaxPriceChanged(decimal? v)
+    {
+        _maxPrice = v;
+        return Task.CompletedTask;
+    }
+
+    private Task OnMinRatingChanged(int v)
+    {
+        _minRating = v;
+        return Task.CompletedTask;
+    }
+
+    private Task OnOnlyWithReviewsChanged(bool v)
+    {
+        _onlyWithReviews = v;
+        return Task.CompletedTask;
+    }
 
     private static string Trim(string? s, int max)
         => string.IsNullOrWhiteSpace(s) ? "" : (s.Length <= max ? s : s.Substring(0, max) + "...");

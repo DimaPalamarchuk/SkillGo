@@ -7,31 +7,99 @@
 
 <MudDialog>
     <DialogContent>
-        <MudStack Spacing="2">
-            <MudText Typo="Typo.h6" Class="fw-bold">Report to admin</MudText>
+        <div class="dialog-shell">
+            <div class="dialog-head">
+                <div class="dialog-title">Report to admin</div>
+                <div class="dialog-sub">Describe the problem clearly so it can be reviewed faster.</div>
+            </div>
 
-            <MudTextField @bind-Value="_subject"
-                          Label="Subject"
-                          Variant="Variant.Outlined"
-                          Immediate="true"
-                          MaxLength="120" />
+            <div class="dialog-body">
+                <MudStack Spacing="2">
+                    <MudTextField @bind-Value="_subject"
+                                  Label="Subject"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true"
+                                  MaxLength="120" />
 
-            <MudTextField @bind-Value="_description"
-                          Label="Description"
-                          Variant="Variant.Outlined"
-                          Lines="5"
-                          Immediate="true"
-                          MaxLength="2000" />
-        </MudStack>
+                    <MudTextField @bind-Value="_description"
+                                  Label="Description"
+                                  Variant="Variant.Outlined"
+                                  Lines="6"
+                                  Immediate="true"
+                                  MaxLength="2000" />
+                </MudStack>
+            </div>
+        </div>
     </DialogContent>
 
     <DialogActions>
-        <MudButton Variant="Variant.Text" Color="Color.Default" Disabled="_saving" OnClick="Cancel">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="_saving || string.IsNullOrWhiteSpace(_subject) || string.IsNullOrWhiteSpace(_description)" OnClick="Submit">
-            @(_saving ? "Submitting..." : "Submit")
-        </MudButton>
+        <div class="dialog-actions">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Default"
+                       Disabled="_saving"
+                       Class="btn-strong"
+                       OnClick="Cancel">
+                Cancel
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Error"
+                       Disabled="_saving || string.IsNullOrWhiteSpace(_subject) || string.IsNullOrWhiteSpace(_description)"
+                       Class="btn-strong"
+                       OnClick="Submit">
+                @(_saving ? "Submitting..." : "Submit")
+            </MudButton>
+        </div>
     </DialogActions>
 </MudDialog>
+
+<style>
+    .dialog-shell {
+        display: grid;
+        gap: 16px;
+    }
+
+    .dialog-head {
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: linear-gradient(135deg,#fef2f2,#fee2e2);
+        padding: 16px;
+    }
+
+    .dialog-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.05rem;
+        letter-spacing: .2px;
+    }
+
+    .dialog-sub {
+        color: rgba(17,24,39,.65);
+        margin-top: 6px;
+        line-height: 1.35;
+    }
+
+    .dialog-body {
+        padding-top: 2px;
+    }
+
+    .dialog-actions {
+        width: 100%;
+        padding: 0 24px 20px 24px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 14px;
+    }
+</style>
 
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;

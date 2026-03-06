@@ -19,6 +19,8 @@ public class Message
     public int? OrderId { get; set; }
     public Order? Order { get; set; }
 
+    public bool IsOrderDelivery { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public DateTime? EditedAtUtc { get; set; }

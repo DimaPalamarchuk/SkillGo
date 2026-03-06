@@ -68,12 +68,9 @@
                         Create service
                     </MudNavLink>
 
-                    @if (!string.IsNullOrWhiteSpace(_myUserName))
-                    {
-                        <MudNavLink Href="@($"/profile/{_myUserName}")" Match="NavLinkMatch.Prefix" Class="sg-nav-link sg-nav-link-child" Icon="@Icons.Material.Filled.PersonOutline">
-                            My profile
-                        </MudNavLink>
-                    }
+                    <MudNavLink Href="/my-services" Match="NavLinkMatch.Prefix" Class="sg-nav-link sg-nav-link-child" Icon="@Icons.Material.Filled.DashboardCustomize">
+                        My services
+                    </MudNavLink>
                 </MudNavGroup>
             </Authorized>
         </AuthorizeView>

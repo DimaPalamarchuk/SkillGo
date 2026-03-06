@@ -8,33 +8,119 @@
 
 <MudDialog>
     <DialogContent>
-        <MudStack Spacing="2">
-            <MudText Typo="Typo.h6" Class="fw-bold">Leave a review</MudText>
+        <div class="dialog-shell">
+            <div class="dialog-head">
+                <div class="dialog-title">Leave a review</div>
+                <div class="dialog-sub">Your feedback helps other clients choose a freelancer.</div>
+            </div>
 
-            <MudSelect T="int" Variant="Variant.Outlined" Label="Stars" Value="@_stars" ValueChanged="OnStarsChanged">
-                <MudSelectItem T="int" Value="1">1</MudSelectItem>
-                <MudSelectItem T="int" Value="2">2</MudSelectItem>
-                <MudSelectItem T="int" Value="3">3</MudSelectItem>
-                <MudSelectItem T="int" Value="4">4</MudSelectItem>
-                <MudSelectItem T="int" Value="5">5</MudSelectItem>
-            </MudSelect>
+            <div class="dialog-body">
+                <MudStack Spacing="2">
+                    <MudSelect T="int"
+                               Variant="Variant.Outlined"
+                               Label="Stars"
+                               Value="@_stars"
+                               ValueChanged="OnStarsChanged">
+                        <MudSelectItem T="int" Value="1">1</MudSelectItem>
+                        <MudSelectItem T="int" Value="2">2</MudSelectItem>
+                        <MudSelectItem T="int" Value="3">3</MudSelectItem>
+                        <MudSelectItem T="int" Value="4">4</MudSelectItem>
+                        <MudSelectItem T="int" Value="5">5</MudSelectItem>
+                    </MudSelect>
 
-            <MudTextField @bind-Value="_comment"
-                          Label="Comment"
-                          Variant="Variant.Outlined"
-                          Lines="4"
-                          Immediate="true"
-                          MaxLength="1000" />
-        </MudStack>
+                    <div class="stars-preview">@Stars(_stars)</div>
+
+                    <MudTextField @bind-Value="_comment"
+                                  Label="Comment"
+                                  Variant="Variant.Outlined"
+                                  Lines="5"
+                                  Immediate="true"
+                                  MaxLength="1000" />
+                </MudStack>
+            </div>
+        </div>
     </DialogContent>
 
     <DialogActions>
-        <MudButton Variant="Variant.Text" Color="Color.Default" Disabled="_saving" OnClick="Cancel">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="_saving || _stars < 1 || _stars > 5" OnClick="Submit">
-            @(_saving ? "Submitting..." : "Submit")
-        </MudButton>
+        <div class="dialog-actions">
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Default"
+                       Disabled="_saving"
+                       Class="btn-strong"
+                       OnClick="Cancel">
+                Cancel
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       Disabled="_saving || _stars < 1 || _stars > 5"
+                       Class="btn-strong"
+                       OnClick="Submit">
+                @(_saving ? "Submitting..." : "Submit")
+            </MudButton>
+        </div>
     </DialogActions>
 </MudDialog>
+
+<style>
+    .dialog-shell {
+        display: grid;
+        gap: 16px;
+    }
+
+    .dialog-head {
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
+        padding: 16px;
+    }
+
+    .dialog-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.05rem;
+        letter-spacing: .2px;
+    }
+
+    .dialog-sub {
+        color: rgba(17,24,39,.65);
+        margin-top: 6px;
+        line-height: 1.35;
+    }
+
+    .dialog-body {
+        padding-top: 2px;
+    }
+
+    .stars-preview {
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: rgba(99,102,241,.05);
+        padding: 12px 14px;
+        font-size: 1.2rem;
+        font-weight: 950;
+        letter-spacing: .5px;
+        color: #111827;
+        text-align: center;
+    }
+
+    .dialog-actions {
+        width: 100%;
+        padding: 0 24px 20px 24px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 14px;
+    }
+</style>
 
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
@@ -116,5 +202,11 @@
         {
             _saving = false;
         }
+    }
+
+    static string Stars(int rating)
+    {
+        var full = Math.Clamp(rating, 0, 5);
+        return new string('★', full) + new string('☆', 5 - full);
     }
 }

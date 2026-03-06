@@ -1,3 +1,4 @@
+using SkillGo.Data.Models.Chat;
 using SkillGo.Data.Models.Orders;
 
 namespace SkillGo.Services;
@@ -10,8 +11,10 @@ public class MessageDto
     public string? Body { get; set; }
     public int? OrderId { get; set; }
     public Order? Order { get; set; }
+    public bool IsOrderDelivery { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? EditedAtUtc { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
+    public List<MessageAttachment> Attachments { get; set; } = new();
 }

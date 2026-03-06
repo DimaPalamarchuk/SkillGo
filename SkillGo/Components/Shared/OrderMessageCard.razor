@@ -9,7 +9,6 @@
 
 <MudPaper Class="order-card" Elevation="0">
     <MudStack Spacing="1">
-
         <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
             <MudText Typo="Typo.h6" Class="fw-bold">
                 Order #@Order.Id
@@ -63,7 +62,6 @@
         <MudDivider Class="my-2" />
 
         <MudStack Direction="Row" Spacing="1" JustifyContent="JustifyContent.End">
-
             <MudButton Variant="Variant.Text"
                        Size="Size.Small"
                        OnClick="GoService">
@@ -83,6 +81,16 @@
                 Report
             </MudButton>
 
+            @if (Order.Status == OrderStatus.InProgress && IsSeller)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Size="Size.Small"
+                           Color="Color.Primary"
+                           OnClick="DeliverFiles">
+                    Deliver files
+                </MudButton>
+            }
+
             @if (Order.Status == OrderStatus.InProgress)
             {
                 <MudButton Variant="Variant.Filled"
@@ -93,14 +101,11 @@
                     Complete
                 </MudButton>
             }
-
         </MudStack>
-
     </MudStack>
 </MudPaper>
 
 <style>
-
     .order-card {
         padding: 14px 16px;
         border-radius: 16px;
@@ -115,18 +120,18 @@
         border-radius: 12px;
         background: rgba(99,102,241,.08);
     }
-
 </style>
 
 @code {
-
     [Parameter] public Order Order { get; set; } = default!;
     [Parameter] public string CurrentUserId { get; set; } = "";
     [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<int> OnDeliver { get; set; }
 
     bool _busy;
 
     bool IsBuyer => Order.BuyerId == CurrentUserId;
+    bool IsSeller => Order.SellerId == CurrentUserId;
 
     void GoService()
     {
@@ -138,20 +143,26 @@
         Nav.NavigateTo($"/orders/{Order.Id}");
     }
 
+    async Task DeliverFiles()
+    {
+        if (OnDeliver.HasDelegate)
+            await OnDeliver.InvokeAsync(Order.Id);
+    }
+
     async Task OpenDispute()
     {
         var p = new DialogParameters
-            {
-                ["OrderId"] = Order.Id,
-                ["ReporterId"] = CurrentUserId
-            };
+        {
+            ["OrderId"] = Order.Id,
+            ["ReporterId"] = CurrentUserId
+        };
 
         var o = new DialogOptions
-            {
-                CloseButton = true,
-                MaxWidth = MaxWidth.Small,
-                FullWidth = true
-            };
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
 
         DialogService.Show<OrderDisputeDialog>("Report to admin", p, o);
     }
@@ -159,18 +170,18 @@
     async Task OpenReview()
     {
         var p = new DialogParameters
-            {
-                ["OrderId"] = Order.Id,
-                ["TargetUserId"] = Order.SellerId,
-                ["AuthorUserId"] = CurrentUserId
-            };
+        {
+            ["OrderId"] = Order.Id,
+            ["TargetUserId"] = Order.SellerId,
+            ["AuthorUserId"] = CurrentUserId
+        };
 
         var o = new DialogOptions
-            {
-                CloseButton = true,
-                MaxWidth = MaxWidth.Small,
-                FullWidth = true
-            };
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
 
         var d = DialogService.Show<OrderReviewDialog>("Leave review", p, o);
         var r = await d.Result;

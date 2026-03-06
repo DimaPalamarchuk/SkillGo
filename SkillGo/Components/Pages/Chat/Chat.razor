@@ -1,13 +1,17 @@
 ﻿@page "/chat/{ConversationId:int}"
 @rendermode InteractiveServer
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Rendering
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models.Chat
+@using SkillGo.Data.Models.Orders
 @using SkillGo.Data.Models.Presence
 @using SkillGo.Services
 @using SkillGo.Components.Shared
@@ -17,141 +21,239 @@
 @inject UserPresenceService Presence
 @inject UserPresenceBroadcast PresenceBroadcast
 @inject IDialogService DialogService
+@inject IJSRuntime JS
+@inject IWebHostEnvironment Env
+@inject ISnackbar Snackbar
 @attribute [Authorize]
 @implements IDisposable
 
 <PageTitle>Chat</PageTitle>
 
-<div class="sg-chat-shell">
-    <MudContainer MaxWidth="MaxWidth.False" Class="pa-0 sg-chat-container">
-        @if (_loading)
-        {
-            <MudPaper Elevation="0" Class="pa-4 sg-chat-paper">
-                <MudStack Spacing="2">
-                    <MudSkeleton Height="42px" Width="40%" />
-                    <MudStack Spacing="2" Style="flex:1; height: calc(100% - 120px); overflow:hidden;">
-                        <MudSkeleton Height="64px" Width="72%" />
-                        <MudSkeleton Height="52px" Width="58%" Style="margin-left:auto;" />
-                        <MudSkeleton Height="64px" Width="78%" />
-                        <MudSkeleton Height="52px" Width="54%" Style="margin-left:auto;" />
+<div class="sg-chat-page">
+    <div class="sg-chat-shell">
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-0 sg-chat-container">
+            @if (_loading)
+            {
+                <MudPaper Elevation="0" Class="pa-4 sg-chat-paper">
+                    <MudStack Spacing="2">
+                        <MudSkeleton Height="42px" Width="40%" />
+                        <MudStack Spacing="2" Style="flex:1; height: calc(100% - 120px); overflow:hidden;">
+                            <MudSkeleton Height="64px" Width="72%" />
+                            <MudSkeleton Height="52px" Width="58%" Style="margin-left:auto;" />
+                            <MudSkeleton Height="64px" Width="78%" />
+                            <MudSkeleton Height="52px" Width="54%" Style="margin-left:auto;" />
+                        </MudStack>
+                        <MudSkeleton Height="44px" />
                     </MudStack>
-                    <MudSkeleton Height="44px" />
-                </MudStack>
-            </MudPaper>
-        }
-        else if (_forbidden)
-        {
-            <MudPaper Class="pa-4 sg-chat-paper" Elevation="0">
-                <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
-                <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
-            </MudPaper>
-        }
-        else
-        {
-            <MudPaper Elevation="0" Class="sg-chat-paper" Style="display:flex; flex-direction:column;">
-                <div class="sg-chat-header">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
-                            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                                           Color="Color.Default"
-                                           OnClick="GoBack"
-                                           Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
+                </MudPaper>
+            }
+            else if (_forbidden)
+            {
+                <MudPaper Class="pa-4 sg-chat-paper" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
+                    <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Elevation="0" Class="sg-chat-paper" Style="display:flex; flex-direction:column;">
+                    <div class="sg-chat-header">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                               Color="Color.Default"
+                                               OnClick="GoBack"
+                                               Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
 
-                            <MudAvatar Size="Size.Medium"
-                                       Style="background: rgba(99,102,241,.16); color: rgba(17,24,39,1); border:1px solid rgba(0,0,0,.06);">
-                                @_otherInitials
-                            </MudAvatar>
+                                <MudAvatar Size="Size.Medium"
+                                           Style="background: rgba(99,102,241,.16); color: rgba(17,24,39,1); border:1px solid rgba(0,0,0,.06);">
+                                    @_otherInitials
+                                </MudAvatar>
 
-                            <div style="min-width:0;">
-                                <MudText Typo="Typo.h6" Class="fw-bold" Style="line-height:1.1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    @_title
-                                </MudText>
-
-                                <div style="display:flex; align-items:center; gap:10px; margin-top:3px;">
-                                    <span style="display:inline-flex; align-items:center; gap:6px;">
-                                        <span style="width:8px; height:8px; border-radius:999px; background:@(_otherOnline ? "#22c55e" : "#94a3b8"); display:inline-block;"></span>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
-                                            @(_otherOnline ? "Online" : _otherLastSeenText)
-                                        </MudText>
-                                    </span>
-
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
-                                        • #@ConversationId
+                                <div style="min-width:0;">
+                                    <MudText Typo="Typo.h6" Class="fw-bold" Style="line-height:1.1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                        @_title
                                     </MudText>
+
+                                    <div style="display:flex; align-items:center; gap:10px; margin-top:3px;">
+                                        <span style="display:inline-flex; align-items:center; gap:6px;">
+                                            <span style="width:8px; height:8px; border-radius:999px; background:@(_otherOnline ? "#22c55e" : "#94a3b8"); display:inline-block;"></span>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                                @(_otherOnline ? "Online" : _otherLastSeenText)
+                                            </MudText>
+                                        </span>
+
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                            • #@ConversationId
+                                        </MudText>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="sg-chat-messages">
-                    <div style="min-height:100%; padding:14px 16px 12px 16px;">
-                        @if (_messages.Count == 0)
-                        {
-                            <MudPaper Elevation="0" Class="pa-4"
-                                      Style="border:1px dashed rgba(0,0,0,.12); border-radius:12px; background: rgba(255,255,255,.70); max-width:520px;">
-                                <MudText Typo="Typo.h6" Class="fw-bold">No messages yet</MudText>
-                                <MudText Color="Color.Secondary">Say hi 👋</MudText>
-                            </MudPaper>
-                        }
-                        else
-                        {
-                            <div style="display:flex; flex-direction:column; gap:12px;">
-                                @{
-                                    DateOnly? currentDay = null;
-                                }
-
-                                @foreach (var m in _messages)
-                                {
-                                    var mine = m.SenderId == _meId;
-                                    var local = m.CreatedAtUtc.ToLocalTime();
-                                    var day = DateOnly.FromDateTime(local);
-
-                                    if (currentDay != day)
-                                    {
-                                        currentDay = day;
-
-                                        <div style="display:flex; justify-content:center; padding:8px 0 2px 0;">
-                                            <MudChip T="string"
-                                                     Size="Size.Small"
-                                                     Variant="Variant.Outlined"
-                                                     Style="background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); border-radius:999px;">
-                                                @FormatDayChip(day)
-                                            </MudChip>
-                                        </div>
+                    <div class="sg-chat-messages" id="sg-chat-messages-host">
+                        <div style="min-height:100%; padding:14px 16px 12px 16px;">
+                            @if (_messages.Count == 0)
+                            {
+                                <MudPaper Elevation="0" Class="pa-4"
+                                          Style="border:1px dashed rgba(0,0,0,.12); border-radius:12px; background: rgba(255,255,255,.70); max-width:520px;">
+                                    <MudText Typo="Typo.h6" Class="fw-bold">No messages yet</MudText>
+                                    <MudText Color="Color.Secondary">Say hi 👋</MudText>
+                                </MudPaper>
+                            }
+                            else
+                            {
+                                <div style="display:flex; flex-direction:column; gap:12px;">
+                                    @{
+                                        DateOnly? currentDay = null;
                                     }
 
-                                    <div style="width:100%; display:flex; @(mine ? "justify-content:flex-end;" : "justify-content:flex-start;")">
-                                        <div style="display:flex; gap:10px; align-items:flex-end; max-width:100%; @(mine ? "flex-direction:row-reverse;" : "flex-direction:row;")">
-                                            @if (!mine)
-                                            {
-                                                <MudAvatar Size="Size.Small"
-                                                           Style="background: rgba(15,23,42,.06); border:1px solid rgba(0,0,0,.06); color:#111827;">
-                                                    @_otherInitials
-                                                </MudAvatar>
-                                            }
-                                            else
-                                            {
-                                                <div style="width:32px;"></div>
-                                            }
+                                    @foreach (var m in _messages)
+                                    {
+                                        var mine = m.SenderId == _meId;
+                                        var local = m.CreatedAtUtc.ToLocalTime();
+                                        var day = DateOnly.FromDateTime(local);
 
-                                            <div style="max-width: min(760px, 78vw); width:fit-content;">
-                                                @if (m.OrderId != null && m.Order != null)
+                                        if (currentDay != day)
+                                        {
+                                            currentDay = day;
+
+                                            <div style="display:flex; justify-content:center; padding:8px 0 2px 0;">
+                                                <MudChip T="string"
+                                                         Size="Size.Small"
+                                                         Variant="Variant.Outlined"
+                                                         Style="background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); border-radius:999px;">
+                                                    @FormatDayChip(day)
+                                                </MudChip>
+                                            </div>
+                                        }
+
+                                        <div style="width:100%; display:flex; @(mine ? "justify-content:flex-end;" : "justify-content:flex-start;")">
+                                            <div style="display:flex; gap:10px; align-items:flex-end; max-width:100%; @(mine ? "flex-direction:row-reverse;" : "flex-direction:row;")">
+                                                @if (!mine)
                                                 {
-                                                    <OrderMessageCard Order="m.Order"
-                                                                      CurrentUserId="@(_meId ?? "")"
-                                                                      OnChanged="ReloadAsync" />
-                                                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
-                                                        <span>@local.ToString("HH:mm")</span>
-                                                    </div>
+                                                    <MudAvatar Size="Size.Small"
+                                                               Style="background: rgba(15,23,42,.06); border:1px solid rgba(0,0,0,.06); color:#111827;">
+                                                        @_otherInitials
+                                                    </MudAvatar>
                                                 }
                                                 else
                                                 {
-                                                    <div style="@BubbleShellStyle(mine)">
-                                                        <div style="display:flex; align-items:flex-start; gap:10px;">
-                                                            <div style="flex:1; min-width:0;">
-                                                                @if (_editingId == m.Id)
+                                                    <div style="width:32px;"></div>
+                                                }
+
+                                                <div style="max-width: min(760px, 78vw); width:fit-content;">
+                                                    @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && !HasVisibleContent(m))
+                                                    {
+                                                        <OrderMessageCard Order="m.Order"
+                                                                          CurrentUserId="@(_meId ?? "")"
+                                                                          OnChanged="ReloadAsync"
+                                                                          OnDeliver="OpenDeliveryForOrder" />
+                                                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
+                                                            <span>@local.ToString("HH:mm")</span>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div style="@BubbleShellStyle(mine)">
+                                                            @if (m.IsOrderDelivery)
+                                                            {
+                                                                <div class="sg-delivery-head">
+                                                                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
+                                                                    <span>Delivery for order #@m.OrderId</span>
+                                                                </div>
+                                                            }
+
+                                                            @if (!m.IsDeleted)
+                                                            {
+                                                                @if (!string.IsNullOrWhiteSpace(m.Body))
                                                                 {
+                                                                    <div class="sg-message-body">
+                                                                        @m.Body
+                                                                    </div>
+                                                                }
+
+                                                                @if (m.Attachments.Any())
+                                                                {
+                                                                    <div class="sg-attachments-grid">
+                                                                        @foreach (var att in m.Attachments)
+                                                                        {
+                                                                            @if (att.IsImage)
+                                                                            {
+                                                                                <a href="@att.Url" target="_blank" class="sg-attachment-image-link">
+                                                                                    <img src="@att.Url" alt="@att.FileName" class="sg-attachment-image" />
+                                                                                </a>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <a href="@att.Url" target="_blank" download="@att.FileName" class="sg-file-attachment">
+                                                                                    <div class="sg-file-attachment-icon">
+                                                                                        <MudIcon Icon="@Icons.Material.Filled.AttachFile" />
+                                                                                    </div>
+
+                                                                                    <div class="sg-file-attachment-copy">
+                                                                                        <div class="sg-file-attachment-name">@att.FileName</div>
+                                                                                        <div class="sg-file-attachment-meta">@FormatBytes(att.SizeBytes)</div>
+                                                                                    </div>
+                                                                                </a>
+                                                                            }
+                                                                        }
+                                                                    </div>
+                                                                }
+
+                                                                @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && HasVisibleContent(m))
+                                                                {
+                                                                    <div style="margin-top:10px;">
+                                                                        <OrderMessageCard Order="m.Order"
+                                                                                          CurrentUserId="@(_meId ?? "")"
+                                                                                          OnChanged="ReloadAsync"
+                                                                                          OnDeliver="OpenDeliveryForOrder" />
+                                                                    </div>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <div style="font-style:italic; opacity:.70; font-size:0.98rem;">
+                                                                    message deleted
+                                                                </div>
+                                                            }
+
+                                                            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
+                                                                <span>@local.ToString("HH:mm")</span>
+                                                                @if (m.EditedAtUtc.HasValue && !m.IsDeleted)
+                                                                {
+                                                                    <span>• edited</span>
+                                                                }
+                                                            </div>
+
+                                                            @if (mine && _editingId != m.Id && !m.IsDeleted && !m.IsOrderDelivery && m.OrderId == null && !m.Attachments.Any())
+                                                            {
+                                                                <div style="display:flex; justify-content:flex-end; margin-top:6px;">
+                                                                    <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                                                        <ActivatorContent>
+                                                                            <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
+                                                                                           Size="Size.Small"
+                                                                                           Color="Color.Default"
+                                                                                           Style="opacity:.78;" />
+                                                                        </ActivatorContent>
+
+                                                                        <ChildContent>
+                                                                            <MudMenuItem OnClick="@(() => BeginEdit(m))">
+                                                                                <MudIcon Icon="@Icons.Material.Filled.Edit" Class="me-2" /> Edit
+                                                                            </MudMenuItem>
+
+                                                                            <MudMenuItem OnClick="@(() => DeleteAsync(m.Id))">
+                                                                                <MudIcon Icon="@Icons.Material.Filled.Delete" Class="me-2" /> Delete
+                                                                            </MudMenuItem>
+                                                                        </ChildContent>
+                                                                    </MudMenu>
+                                                                </div>
+                                                            }
+
+                                                            @if (_editingId == m.Id)
+                                                            {
+                                                                <div style="margin-top:10px;">
                                                                     <MudTextField @bind-Value="_editingText"
                                                                                   Variant="Variant.Outlined"
                                                                                   Margin="Margin.Dense"
@@ -177,109 +279,130 @@
                                                                             Save
                                                                         </MudButton>
                                                                     </div>
-                                                                }
-                                                                else
-                                                                {
-                                                                    @if (m.IsDeleted)
-                                                                    {
-                                                                        <div style="font-style:italic; opacity:.70; font-size:0.98rem;">
-                                                                            message deleted
-                                                                        </div>
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        <div style="white-space:pre-wrap; word-break:break-word; font-size:1.02rem; line-height:1.28;">
-                                                                            @m.Body
-                                                                        </div>
-                                                                    }
-
-                                                                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
-                                                                        <span>@local.ToString("HH:mm")</span>
-                                                                        @if (m.EditedAtUtc.HasValue && !m.IsDeleted)
-                                                                        {
-                                                                            <span>• edited</span>
-                                                                        }
-                                                                    </div>
-                                                                }
-                                                            </div>
-
-                                                            @if (mine && _editingId != m.Id)
-                                                            {
-                                                                <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                                                                    <ActivatorContent>
-                                                                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
-                                                                                       Size="Size.Small"
-                                                                                       Color="Color.Default"
-                                                                                       Style="opacity:.78;" />
-                                                                    </ActivatorContent>
-
-                                                                    <ChildContent>
-                                                                        <MudMenuItem Disabled="@m.IsDeleted" OnClick="@(() => BeginEdit(m))">
-                                                                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="me-2" /> Edit
-                                                                        </MudMenuItem>
-
-                                                                        <MudMenuItem Disabled="@m.IsDeleted" OnClick="@(() => DeleteAsync(m.Id))">
-                                                                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="me-2" /> Delete
-                                                                        </MudMenuItem>
-                                                                    </ChildContent>
-                                                                </MudMenu>
+                                                                </div>
                                                             }
                                                         </div>
-                                                    </div>
-                                                }
+                                                    }
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <div class="sg-chat-composer">
-                    <MudStack Spacing="1">
-                        @if (!string.IsNullOrWhiteSpace(_error))
-                        {
-                            <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined">
-                                @_error
-                            </MudAlert>
-                        }
-
-                        <div style="display:flex; gap:10px; align-items:flex-end;">
-                            <MudTextField @bind-Value="_text"
-                                          Placeholder="Write a message..."
-                                          Variant="Variant.Outlined"
-                                          Margin="Margin.Dense"
-                                          Immediate="true"
-                                          FullWidth="true"
-                                          Lines="2"
-                                          Disabled="_sending || _editingId.HasValue"
-                                          @onkeydown="OnComposerKeyDownRaw"
-                                          Style="border-radius:14px; background: rgba(255,255,255,.90);" />
-
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       Disabled="_sending || _editingId.HasValue || string.IsNullOrWhiteSpace(_text)"
-                                       OnClick="SendAsync"
-                                       Style="border-radius:14px; min-width:132px; height:40px;">
-                                @SendButtonContent()
-                            </MudButton>
+                                    }
+                                </div>
+                            }
                         </div>
+                    </div>
 
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin-top:2px;">
-                            Enter — send • Shift+Enter — new line
-                        </MudText>
-                    </MudStack>
-                </div>
-            </MudPaper>
-        }
-    </MudContainer>
+                    <div class="sg-chat-composer">
+                        <MudStack Spacing="1">
+                            @if (!string.IsNullOrWhiteSpace(_error))
+                            {
+                                <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined">
+                                    @_error
+                                </MudAlert>
+                            }
+
+                            @if (_deliveryOrderId.HasValue)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+                                    Delivery mode for order #@_deliveryOrderId
+                                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelDeliveryMode">Cancel</MudButton>
+                                </MudAlert>
+                            }
+
+                            <InputFile id="sg-hidden-file-input"
+                                       OnChange="OnFilesSelected"
+                                       multiple
+                                       class="sg-hidden-file-input" />
+
+                            @if (_pendingFiles.Any())
+                            {
+                                <div class="sg-pending-files">
+                                    @for (var i = 0; i < _pendingFiles.Count; i++)
+                                    {
+                                        var file = _pendingFiles[i];
+
+                                        <div class="sg-pending-file">
+                                            <div class="sg-pending-file-icon">
+                                                <MudIcon Icon="@(IsImageFile(file.Name) ? Icons.Material.Filled.Image : Icons.Material.Filled.InsertDriveFile)" />
+                                            </div>
+
+                                            <div class="sg-pending-file-copy">
+                                                <div class="sg-pending-file-name">@file.Name</div>
+                                                <div class="sg-pending-file-meta">@FormatBytes(file.Size)</div>
+                                            </div>
+
+                                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => RemovePendingFile(i))" />
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            <div class="sg-chat-composer-row">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Disabled="_sending || _editingId.HasValue"
+                                           OnClick="OpenFilePicker"
+                                           Class="sg-attach-btn">
+                                    <MudIcon Icon="@Icons.Material.Filled.AttachFile" Class="me-2" />
+                                    Attach
+                                </MudButton>
+
+                                <MudTextField @bind-Value="_text"
+                                              Placeholder="@(_deliveryOrderId.HasValue ? "Write a delivery note..." : "Write a message...")"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Immediate="true"
+                                              FullWidth="true"
+                                              Lines="2"
+                                              Disabled="_sending || _editingId.HasValue"
+                                              @onkeydown="OnComposerKeyDownRaw"
+                                              Style="border-radius:14px; background: rgba(255,255,255,.90);" />
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Disabled="@IsSendDisabled"
+                                           OnClick="SendAsync"
+                                           Class="sg-send-btn">
+                                    @SendButtonContent()
+                                </MudButton>
+                            </div>
+
+                        </MudStack>
+                    </div>
+                </MudPaper>
+            }
+        </MudContainer>
+    </div>
 </div>
 
+<script>
+    window.sgChat = {
+        scrollToBottom: function (id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.scrollTop = el.scrollHeight;
+        },
+        openFilePicker: function (id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.click();
+        }
+    };
+</script>
+
 <style>
+    .sg-chat-page {
+        margin: -34px -32px -32px -32px;
+        height: calc(100vh - 78px);
+        overflow: hidden;
+    }
+
     .sg-chat-shell {
-        height: calc(100vh - 72px);
+        height: 100%;
         min-height: 520px;
+        overflow: hidden;
     }
 
     .sg-chat-container {
@@ -290,17 +413,20 @@
         height: 100%;
         border: 1px solid rgba(0,0,0,.08);
         border-radius: 0;
+        overflow: hidden;
     }
 
     .sg-chat-header {
         padding: 12px 14px 10px 14px;
         background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,0));
         border-bottom: 1px solid rgba(0,0,0,.06);
+        flex: 0 0 auto;
     }
 
     .sg-chat-messages {
-        flex: 1;
+        flex: 1 1 auto;
         overflow: auto;
+        min-height: 0;
         background: radial-gradient(1200px 400px at 20% 0%, rgba(99,102,241,.08), transparent), linear-gradient(180deg, rgba(2,6,23,.02), rgba(2,6,23,0));
     }
 
@@ -308,15 +434,182 @@
         padding: 12px 14px;
         background: rgba(255,255,255,.78);
         border-top: 1px solid rgba(0,0,0,.06);
+        flex: 0 0 auto;
     }
 
-    @@media (min-width: 960px) {
-        body.mud-drawer-open .sg-chat-shell {
-            width: calc(100vw - 260px);
+    .sg-hidden-file-input {
+        display: none;
+    }
+
+    .sg-chat-composer-row {
+        display: grid;
+        grid-template-columns: auto minmax(0,1fr) auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .sg-attach-btn {
+        min-width: 124px;
+        height: 40px;
+        border-radius: 14px;
+        white-space: nowrap;
+    }
+
+    .sg-send-btn {
+        min-width: 148px;
+        height: 40px;
+        border-radius: 14px;
+        white-space: nowrap;
+    }
+
+    .sg-pending-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .sg-pending-file {
+        min-width: 220px;
+        max-width: 340px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(99,102,241,.08);
+        border: 1px solid rgba(99,102,241,.10);
+    }
+
+    .sg-pending-file-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(79,70,229,.12);
+        color: #4338ca;
+        flex: 0 0 auto;
+    }
+
+    .sg-pending-file-copy {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .sg-pending-file-name {
+        font-weight: 800;
+        color: #111827;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sg-pending-file-meta {
+        color: rgba(17,24,39,.56);
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .sg-message-body {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 1.02rem;
+        line-height: 1.28;
+    }
+
+    .sg-delivery-head {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(16,185,129,.14);
+        color: #065f46;
+        font-weight: 900;
+        margin-bottom: 10px;
+    }
+
+    .sg-attachments-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .sg-attachment-image-link {
+        display: block;
+        text-decoration: none;
+    }
+
+    .sg-attachment-image {
+        display: block;
+        max-width: 280px;
+        max-height: 220px;
+        width: auto;
+        height: auto;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,.08);
+        object-fit: cover;
+        background: #fff;
+    }
+
+    .sg-file-attachment {
+        min-width: 220px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        text-decoration: none;
+        background: rgba(255,255,255,.88);
+        border: 1px solid rgba(0,0,0,.08);
+        color: #111827;
+    }
+
+    .sg-file-attachment-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(79,70,229,.10);
+        color: #4338ca;
+        flex: 0 0 auto;
+    }
+
+    .sg-file-attachment-copy {
+        min-width: 0;
+    }
+
+    .sg-file-attachment-name {
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sg-file-attachment-meta {
+        color: rgba(17,24,39,.56);
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    @@media (max-width: 900px) {
+        .sg-chat-composer-row {
+            grid-template-columns: 1fr;
         }
 
-        body.mud-drawer-open .sg-chat-container {
-            padding-left: 260px;
+        .sg-attach-btn,
+        .sg-send-btn {
+            width: 100%;
+        }
+    }
+
+    @@media (max-width: 760px) {
+        .sg-chat-page {
+            margin: -22px -14px -20px -14px;
         }
     }
 </style>
@@ -328,6 +621,7 @@
     private bool _loading = true;
     private bool _forbidden;
     private bool _sending;
+    private bool _pendingScrollToBottom;
 
     private string _title = "Chat";
     private string _otherDisplay = "User";
@@ -340,6 +634,7 @@
     private string? _error;
 
     private readonly List<MessageDto> _messages = new();
+    private readonly List<PendingUploadFile> _pendingFiles = new();
 
     private IDisposable? _msgSub;
     private IDisposable? _presenceSub;
@@ -350,6 +645,12 @@
     private int? _editingId;
     private string? _editingText;
     private bool _savingEdit;
+    private int? _deliveryOrderId;
+
+    private bool IsSendDisabled =>
+        _sending ||
+        _editingId.HasValue ||
+        (!HasTextToSend() && !_pendingFiles.Any());
 
     protected override async Task OnParametersSetAsync()
     {
@@ -361,6 +662,9 @@
         _editingId = null;
         _editingText = null;
         _savingEdit = false;
+        _pendingScrollToBottom = false;
+        _deliveryOrderId = null;
+        _pendingFiles.Clear();
         StateHasChanged();
 
         try
@@ -374,7 +678,7 @@
                 return;
             }
 
-            _meId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            _meId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrWhiteSpace(_meId))
             {
                 _forbidden = true;
@@ -384,6 +688,8 @@
             await LoadConversationAndMessagesAsync();
             if (_forbidden) return;
 
+            _pendingScrollToBottom = true;
+
             _msgSub = Broadcast.SubscribeMessages(ConversationId, dto =>
             {
                 if (dto.ConversationId != ConversationId) return;
@@ -391,10 +697,13 @@
                 lock (_messages)
                 {
                     var idx = _messages.FindIndex(x => x.Id == dto.Id);
-                    if (idx >= 0) _messages[idx] = dto;
-                    else _messages.Add(dto);
+                    if (idx >= 0)
+                        _messages[idx] = dto;
+                    else
+                        _messages.Add(dto);
                 }
 
+                _pendingScrollToBottom = true;
                 _ = InvokeAsync(StateHasChanged);
             });
 
@@ -415,6 +724,15 @@
         {
             _loading = false;
             StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingScrollToBottom && !_loading && !_forbidden)
+        {
+            _pendingScrollToBottom = false;
+            await JS.InvokeVoidAsync("sgChat.scrollToBottom", "sg-chat-messages-host");
         }
     }
 
@@ -475,22 +793,37 @@
         var list = await db.Messages.AsNoTracking()
             .Include(x => x.Order)
             .ThenInclude(x => x.ServiceOffer)
+            .Include(x => x.Attachments)
             .Where(x => x.ConversationId == ConversationId)
             .OrderBy(x => x.CreatedAtUtc)
             .Take(500)
             .Select(x => new MessageDto
-                {
-                    Id = x.Id,
-                    ConversationId = x.ConversationId,
-                    SenderId = x.SenderId,
-                    Body = x.Body,
-                    OrderId = x.OrderId,
-                    Order = x.Order,
-                    CreatedAtUtc = x.CreatedAtUtc,
-                    EditedAtUtc = x.EditedAtUtc,
-                    IsDeleted = x.IsDeleted,
-                    DeletedAtUtc = x.DeletedAtUtc
-                })
+            {
+                Id = x.Id,
+                ConversationId = x.ConversationId,
+                SenderId = x.SenderId,
+                Body = x.Body,
+                OrderId = x.OrderId,
+                Order = x.Order,
+                IsOrderDelivery = x.IsOrderDelivery,
+                CreatedAtUtc = x.CreatedAtUtc,
+                EditedAtUtc = x.EditedAtUtc,
+                IsDeleted = x.IsDeleted,
+                DeletedAtUtc = x.DeletedAtUtc,
+                Attachments = x.Attachments
+                    .OrderBy(a => a.Id)
+                    .Select(a => new MessageAttachment
+                    {
+                        Id = a.Id,
+                        MessageId = a.MessageId,
+                        FileName = a.FileName,
+                        Url = a.Url,
+                        ContentType = a.ContentType,
+                        SizeBytes = a.SizeBytes,
+                        IsImage = a.IsImage
+                    })
+                    .ToList()
+            })
             .ToListAsync();
 
         _messages.Clear();
@@ -507,6 +840,7 @@
         {
             await LoadConversationAndMessagesAsync();
             RefreshOtherPresence();
+            _pendingScrollToBottom = true;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -516,15 +850,96 @@
         }
     }
 
+    private async Task OpenFilePicker()
+    {
+        await JS.InvokeVoidAsync("sgChat.openFilePicker", "sg-hidden-file-input");
+    }
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+
+        foreach (var file in e.GetMultipleFiles(6))
+        {
+            if (_pendingFiles.Count >= 6)
+            {
+                Snackbar.Add("You can attach up to 6 files", Severity.Warning);
+                break;
+            }
+
+            if (file.Size > 25 * 1024 * 1024)
+            {
+                Snackbar.Add($"{file.Name} is larger than 25 MB", Severity.Warning);
+                continue;
+            }
+
+            _pendingFiles.Add(new PendingUploadFile(file));
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void RemovePendingFile(int index)
+    {
+        if (index < 0 || index >= _pendingFiles.Count)
+            return;
+
+        _pendingFiles.RemoveAt(index);
+    }
+
+    private async Task OpenDeliveryForOrder(int orderId)
+    {
+        if (string.IsNullOrWhiteSpace(_meId))
+            return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var order = await db.Orders.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == orderId && x.ConversationId == ConversationId);
+
+        if (order == null)
+        {
+            Snackbar.Add("Order not found", Severity.Error);
+            return;
+        }
+
+        if (order.SellerId != _meId)
+        {
+            Snackbar.Add("Only freelancer can send delivery files", Severity.Error);
+            return;
+        }
+
+        if (order.Status != OrderStatus.InProgress)
+        {
+            Snackbar.Add("Delivery is available only for active orders", Severity.Warning);
+            return;
+        }
+
+        _deliveryOrderId = orderId;
+        _text = null;
+        Snackbar.Add($"Delivery mode enabled for order #{orderId}", Severity.Success);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CancelDeliveryMode()
+    {
+        _deliveryOrderId = null;
+    }
+
     private async Task SendAsync()
     {
         if (_sending) return;
         if (_editingId.HasValue) return;
         if (string.IsNullOrWhiteSpace(_meId)) return;
-        if (string.IsNullOrWhiteSpace(_text)) return;
+        if (!HasTextToSend() && !_pendingFiles.Any()) return;
 
-        var body = _text.Trim();
-        if (body.Length == 0) return;
+        if (_deliveryOrderId.HasValue && !_pendingFiles.Any())
+        {
+            Snackbar.Add("Attach at least one file for delivery", Severity.Warning);
+            return;
+        }
+
+        var body = string.IsNullOrWhiteSpace(_text) ? null : _text.Trim();
 
         _sending = true;
         _error = null;
@@ -535,45 +950,110 @@
             await using var db = await DbFactory.CreateDbContextAsync();
 
             var conv = await db.Conversations.FirstOrDefaultAsync(x => x.Id == ConversationId);
-            if (conv == null) { _error = "Chat not found."; return; }
+            if (conv == null)
+            {
+                _error = "Chat not found.";
+                return;
+            }
 
             var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
-            if (!isMember) { _error = "Access denied."; return; }
+            if (!isMember)
+            {
+                _error = "Access denied.";
+                return;
+            }
+
+            Order? deliveryOrder = null;
+
+            if (_deliveryOrderId.HasValue)
+            {
+                deliveryOrder = await db.Orders
+                    .Include(x => x.ServiceOffer)
+                    .FirstOrDefaultAsync(x => x.Id == _deliveryOrderId.Value && x.ConversationId == ConversationId);
+
+                if (deliveryOrder == null)
+                {
+                    _error = "Order not found.";
+                    return;
+                }
+
+                if (deliveryOrder.SellerId != _meId)
+                {
+                    _error = "Only freelancer can send delivery files.";
+                    return;
+                }
+
+                if (deliveryOrder.Status != OrderStatus.InProgress)
+                {
+                    _error = "Order is not active.";
+                    return;
+                }
+            }
 
             var msg = new Message
-                {
-                    ConversationId = ConversationId,
-                    SenderId = _meId!,
-                    Body = body,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
+            {
+                ConversationId = ConversationId,
+                SenderId = _meId!,
+                Body = body,
+                OrderId = _deliveryOrderId,
+                IsOrderDelivery = _deliveryOrderId.HasValue,
+                CreatedAtUtc = DateTime.UtcNow
+            };
 
             db.Messages.Add(msg);
             conv.LastMessageAtUtc = msg.CreatedAtUtc;
 
             await db.SaveChangesAsync();
 
+            if (_pendingFiles.Any())
+            {
+                var saved = await SaveUploadedFilesAsync(msg.Id, _pendingFiles, _deliveryOrderId.HasValue);
+
+                if (saved.Any())
+                {
+                    db.MessageAttachments.AddRange(saved);
+                    await db.SaveChangesAsync();
+                    msg.Attachments = saved;
+                }
+            }
+
             _text = null;
+            _pendingFiles.Clear();
+            _deliveryOrderId = null;
 
             var dto = new MessageDto
-                {
-                    Id = msg.Id,
-                    ConversationId = msg.ConversationId,
-                    SenderId = msg.SenderId,
-                    Body = msg.Body,
-                    OrderId = msg.OrderId,
-                    Order = null,
-                    CreatedAtUtc = msg.CreatedAtUtc,
-                    EditedAtUtc = msg.EditedAtUtc,
-                    IsDeleted = msg.IsDeleted,
-                    DeletedAtUtc = msg.DeletedAtUtc
-                };
+            {
+                Id = msg.Id,
+                ConversationId = msg.ConversationId,
+                SenderId = msg.SenderId,
+                Body = msg.Body,
+                OrderId = msg.OrderId,
+                Order = deliveryOrder,
+                IsOrderDelivery = msg.IsOrderDelivery,
+                CreatedAtUtc = msg.CreatedAtUtc,
+                EditedAtUtc = msg.EditedAtUtc,
+                IsDeleted = msg.IsDeleted,
+                DeletedAtUtc = msg.DeletedAtUtc,
+                Attachments = msg.Attachments
+                    .Select(a => new MessageAttachment
+                    {
+                        Id = a.Id,
+                        MessageId = a.MessageId,
+                        FileName = a.FileName,
+                        Url = a.Url,
+                        ContentType = a.ContentType,
+                        SizeBytes = a.SizeBytes,
+                        IsImage = a.IsImage
+                    })
+                    .ToList()
+            };
 
             lock (_messages)
             {
                 _messages.Add(dto);
             }
 
+            _pendingScrollToBottom = true;
             Broadcast.PublishMessage(dto);
         }
         finally
@@ -583,11 +1063,88 @@
         }
     }
 
+    private async Task<List<MessageAttachment>> SaveUploadedFilesAsync(int messageId, List<PendingUploadFile> files, bool isDelivery)
+    {
+        var result = new List<MessageAttachment>();
+
+        var now = DateTime.UtcNow;
+
+        var root = Path.Combine(
+            Env.WebRootPath,
+            "uploads",
+            isDelivery ? "deliveries" : "chat",
+            now.ToString("yyyy"),
+            now.ToString("MM"));
+
+        Directory.CreateDirectory(root);
+
+        var relativeFolder = Path.Combine(
+            "uploads",
+            isDelivery ? "deliveries" : "chat",
+            now.ToString("yyyy"),
+            now.ToString("MM"))
+            .Replace("\\", "/");
+
+        foreach (var pending in files)
+        {
+            var file = pending.File;
+            var ext = Path.GetExtension(file.Name);
+            var safeName = MakeSafeFileName(Path.GetFileNameWithoutExtension(file.Name));
+            var storedName = $"{Guid.NewGuid():N}_{safeName}{ext}";
+            var physicalPath = Path.Combine(root, storedName);
+
+            await using var source = file.OpenReadStream(25 * 1024 * 1024);
+            await using var target = File.Create(physicalPath);
+            await source.CopyToAsync(target);
+
+            var url = $"/{relativeFolder}/{storedName}";
+            var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+
+            result.Add(new MessageAttachment
+            {
+                MessageId = messageId,
+                FileName = file.Name,
+                Url = url,
+                ContentType = contentType,
+                SizeBytes = file.Size,
+                IsImage = contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            });
+        }
+
+        return result;
+    }
+
+    private static string MakeSafeFileName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var cleaned = new string(name.Where(c => !invalid.Contains(c)).ToArray()).Trim();
+
+        if (string.IsNullOrWhiteSpace(cleaned))
+            cleaned = "file";
+
+        if (cleaned.Length > 80)
+            cleaned = cleaned[..80];
+
+        return cleaned.Replace(" ", "_");
+    }
+
+    private bool HasTextToSend()
+    {
+        return !string.IsNullOrWhiteSpace(_text);
+    }
+
+    private static bool HasVisibleContent(MessageDto m)
+    {
+        return !string.IsNullOrWhiteSpace(m.Body) || m.Attachments.Any();
+    }
+
     private void BeginEdit(MessageDto m)
     {
         if (m.SenderId != _meId) return;
         if (m.IsDeleted) return;
         if (m.OrderId != null) return;
+        if (m.IsOrderDelivery) return;
+        if (m.Attachments.Any()) return;
 
         _editingId = m.Id;
         _editingText = m.Body ?? "";
@@ -620,11 +1177,16 @@
         {
             await using var db = await DbFactory.CreateDbContextAsync();
 
-            var msg = await db.Messages.FirstOrDefaultAsync(x => x.Id == messageId && x.ConversationId == ConversationId);
+            var msg = await db.Messages
+                .Include(x => x.Attachments)
+                .FirstOrDefaultAsync(x => x.Id == messageId && x.ConversationId == ConversationId);
+
             if (msg == null) { _error = "Message not found."; return; }
             if (msg.SenderId != _meId) { _error = "Access denied."; return; }
             if (msg.IsDeleted) { _error = "Message deleted."; return; }
             if (msg.OrderId != null) { _error = "Can't edit order message."; return; }
+            if (msg.IsOrderDelivery) { _error = "Can't edit delivery message."; return; }
+            if (msg.Attachments.Any()) { _error = "Can't edit attachment message."; return; }
 
             msg.Body = text;
             msg.EditedAtUtc = DateTime.UtcNow;
@@ -632,18 +1194,20 @@
             await db.SaveChangesAsync();
 
             var dto = new MessageDto
-                {
-                    Id = msg.Id,
-                    ConversationId = msg.ConversationId,
-                    SenderId = msg.SenderId,
-                    Body = msg.Body,
-                    OrderId = msg.OrderId,
-                    Order = null,
-                    CreatedAtUtc = msg.CreatedAtUtc,
-                    EditedAtUtc = msg.EditedAtUtc,
-                    IsDeleted = msg.IsDeleted,
-                    DeletedAtUtc = msg.DeletedAtUtc
-                };
+            {
+                Id = msg.Id,
+                ConversationId = msg.ConversationId,
+                SenderId = msg.SenderId,
+                Body = msg.Body,
+                OrderId = msg.OrderId,
+                Order = null,
+                IsOrderDelivery = msg.IsOrderDelivery,
+                CreatedAtUtc = msg.CreatedAtUtc,
+                EditedAtUtc = msg.EditedAtUtc,
+                IsDeleted = msg.IsDeleted,
+                DeletedAtUtc = msg.DeletedAtUtc,
+                Attachments = new List<MessageAttachment>()
+            };
 
             lock (_messages)
             {
@@ -686,11 +1250,16 @@
         {
             await using var db = await DbFactory.CreateDbContextAsync();
 
-            var msg = await db.Messages.FirstOrDefaultAsync(x => x.Id == messageId && x.ConversationId == ConversationId);
+            var msg = await db.Messages
+                .Include(x => x.Attachments)
+                .FirstOrDefaultAsync(x => x.Id == messageId && x.ConversationId == ConversationId);
+
             if (msg == null) { _error = "Message not found."; return; }
             if (msg.SenderId != _meId) { _error = "Access denied."; return; }
             if (msg.IsDeleted) return;
             if (msg.OrderId != null) { _error = "Can't delete order message."; return; }
+            if (msg.IsOrderDelivery) { _error = "Can't delete delivery message."; return; }
+            if (msg.Attachments.Any()) { _error = "Can't delete attachment message."; return; }
 
             msg.IsDeleted = true;
             msg.DeletedAtUtc = DateTime.UtcNow;
@@ -699,18 +1268,20 @@
             await db.SaveChangesAsync();
 
             var dto = new MessageDto
-                {
-                    Id = msg.Id,
-                    ConversationId = msg.ConversationId,
-                    SenderId = msg.SenderId,
-                    Body = msg.Body,
-                    OrderId = msg.OrderId,
-                    Order = null,
-                    CreatedAtUtc = msg.CreatedAtUtc,
-                    EditedAtUtc = msg.EditedAtUtc,
-                    IsDeleted = msg.IsDeleted,
-                    DeletedAtUtc = msg.DeletedAtUtc
-                };
+            {
+                Id = msg.Id,
+                ConversationId = msg.ConversationId,
+                SenderId = msg.SenderId,
+                Body = msg.Body,
+                OrderId = msg.OrderId,
+                Order = null,
+                IsOrderDelivery = msg.IsOrderDelivery,
+                CreatedAtUtc = msg.CreatedAtUtc,
+                EditedAtUtc = msg.EditedAtUtc,
+                IsDeleted = msg.IsDeleted,
+                DeletedAtUtc = msg.DeletedAtUtc,
+                Attachments = new List<MessageAttachment>()
+            };
 
             lock (_messages)
             {
@@ -736,9 +1307,7 @@
     private async Task OnComposerKeyDownRaw(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && !e.ShiftKey)
-        {
             await SendAsync();
-        }
     }
 
     private string BubbleShellStyle(bool mine)
@@ -759,9 +1328,18 @@
         return day.ToString("yyyy-MM-dd");
     }
 
-    private void GoBack()
+    private static string FormatBytes(long bytes)
     {
-        Nav.NavigateTo("/chats");
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024d:0.#} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / 1024d / 1024d:0.#} MB";
+        return $"{bytes / 1024d / 1024d / 1024d:0.#} GB";
+    }
+
+    private static bool IsImageFile(string name)
+    {
+        var ext = Path.GetExtension(name)?.ToLowerInvariant();
+        return ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp";
     }
 
     private RenderFragment SendButtonContent() => builder =>
@@ -775,17 +1353,22 @@
             builder.AddAttribute(seq++, "Indeterminate", true);
             builder.AddAttribute(seq++, "Class", "me-2");
             builder.CloseComponent();
-            builder.AddContent(seq++, "Sending");
+            builder.AddContent(seq++, _deliveryOrderId.HasValue ? "Delivering" : "Sending");
         }
         else
         {
             builder.OpenComponent<MudIcon>(seq++);
-            builder.AddAttribute(seq++, "Icon", Icons.Material.Filled.Send);
+            builder.AddAttribute(seq++, "Icon", _deliveryOrderId.HasValue ? Icons.Material.Filled.Inventory2 : Icons.Material.Filled.Send);
             builder.AddAttribute(seq++, "Class", "me-2");
             builder.CloseComponent();
-            builder.AddContent(seq++, "Send");
+            builder.AddContent(seq++, _deliveryOrderId.HasValue ? "Send delivery" : "Send");
         }
     };
+
+    private void GoBack()
+    {
+        Nav.NavigateTo("/chats");
+    }
 
     private void CleanupSubs()
     {
@@ -799,5 +1382,19 @@
     public void Dispose()
     {
         CleanupSubs();
+    }
+
+    private sealed class PendingUploadFile
+    {
+        public PendingUploadFile(IBrowserFile file)
+        {
+            File = file;
+            Name = file.Name;
+            Size = file.Size;
+        }
+
+        public IBrowserFile File { get; }
+        public string Name { get; }
+        public long Size { get; }
     }
 }

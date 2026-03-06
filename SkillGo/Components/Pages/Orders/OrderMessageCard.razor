@@ -6,59 +6,82 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudPaper Class="pa-4" Elevation="0" Style="border:1px solid rgba(0,0,0,.08);border-radius:16px;background:rgba(255,255,255,.92);">
-    <MudStack Spacing="1">
-        <MudStack Direction="Row" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
-            <MudText Typo="Typo.h6" Class="fw-bold">Order #@Order.Id</MudText>
+<MudPaper Class="message-card" Elevation="0">
+    <MudStack Spacing="2">
+        <div class="top-row">
+            <div class="title-wrap">
+                <div class="title">Order #@Order.Id</div>
+                <div class="sub">@Order.ServiceOffer?.Title</div>
+            </div>
 
-            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(Order.Status)" Variant="Variant.Filled">
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@GetStatusColor(Order.Status)"
+                     Variant="Variant.Filled">
                 @Order.Status.ToString()
             </MudChip>
-        </MudStack>
+        </div>
 
-        <MudText Color="Color.Secondary">@Order.ServiceOffer?.Title</MudText>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Amount</div>
+                <div class="stat-value">@Order.Amount.ToString("0.00") zł</div>
+            </div>
 
-        <MudStack Direction="Row" Spacing="2" AlignItems="AlignItems.Center">
-            <MudText>Amount: <b>@Order.Amount.ToString("0.00") zł</b></MudText>
-            <MudText>Escrow: <b>@Order.EscrowAmount.ToString("0.00") zł</b></MudText>
-        </MudStack>
+            <div class="stat-box">
+                <div class="stat-label">Escrow</div>
+                <div class="stat-value">@Order.EscrowAmount.ToString("0.00") zł</div>
+            </div>
+        </div>
 
-        <MudText Color="Color.Secondary" Typo="Typo.caption">
+        <div class="date-line">
             Created: @Order.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC
             @if (Order.CompletedAtUtc != null)
             {
                 <span> • Completed: @Order.CompletedAtUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC</span>
             }
-        </MudText>
-
-        <MudDivider Class="my-2" />
+        </div>
 
         @if (Order.Status == OrderStatus.Completed && Order.ReviewId == null && IsBuyer)
         {
-            <MudPaper Elevation="0" Class="pa-3 mb-2" Style="border:1px dashed rgba(0,0,0,.14);border-radius:14px;background:rgba(99,102,241,.06);">
-                <MudStack Spacing="1">
-                    <MudText Class="fw-bold">Order completed</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Leave a review to help this freelancer</MudText>
+            <div class="callout">
+                <div class="callout-title">Order completed</div>
+                <div class="callout-sub">Leave a review to help this freelancer.</div>
 
-                    <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Disabled="_busy" OnClick="OpenReview">
-                            Leave review
-                        </MudButton>
-                    </MudStack>
-                </MudStack>
-            </MudPaper>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Disabled="_busy"
+                           Class="btn-strong mt-2"
+                           OnClick="OpenReview">
+                    Leave review
+                </MudButton>
+            </div>
         }
 
-        <MudStack Direction="Row" Spacing="2" JustifyContent="JustifyContent.End" Style="flex-wrap:wrap;">
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="GoService">
+        <div class="actions">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       Class="btn-strong"
+                       OnClick="GoService">
                 View service
             </MudButton>
 
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="GoOrder">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       Class="btn-strong"
+                       OnClick="GoOrder">
                 Open order
             </MudButton>
 
-            <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" Disabled="_busy" OnClick="OpenDispute">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       Size="Size.Small"
+                       Class="btn-strong"
+                       Disabled="_busy"
+                       OnClick="OpenDispute">
                 Report
             </MudButton>
 
@@ -67,21 +90,129 @@
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Success"
                            Size="Size.Small"
+                           Class="btn-strong"
                            Disabled="@(!IsBuyer || _busy)"
                            OnClick="Complete">
                     @(_busy ? "Completing..." : "Complete")
                 </MudButton>
             }
-        </MudStack>
+        </div>
 
         @if (Order.Status == OrderStatus.InProgress && !IsBuyer)
         {
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
-                Only buyer can complete the order
-            </MudText>
+            <div class="hint">Only buyer can complete the order.</div>
         }
     </MudStack>
 </MudPaper>
+
+<style>
+    .message-card {
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 20px;
+        background: rgba(255,255,255,.94);
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        padding: 18px;
+    }
+
+    .top-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .title-wrap {
+        min-width: 0;
+    }
+
+    .title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.05rem;
+        line-height: 1.15;
+        letter-spacing: .2px;
+    }
+
+    .sub {
+        color: rgba(17,24,39,.65);
+        margin-top: 6px;
+        line-height: 1.3;
+        word-break: break-word;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 10px;
+    }
+
+    .stat-box {
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: rgba(99,102,241,.04);
+        padding: 12px 14px;
+    }
+
+    .stat-label {
+        color: rgba(17,24,39,.6);
+        font-size: .86rem;
+        font-weight: 800;
+    }
+
+    .stat-value {
+        margin-top: 6px;
+        color: #111827;
+        font-weight: 950;
+        line-height: 1.2;
+    }
+
+    .date-line {
+        color: rgba(17,24,39,.6);
+        font-size: .88rem;
+        line-height: 1.35;
+    }
+
+    .callout {
+        border-radius: 18px;
+        border: 1px dashed rgba(0,0,0,.14);
+        background: rgba(99,102,241,.05);
+        padding: 14px;
+    }
+
+    .callout-title {
+        font-weight: 950;
+        color: #111827;
+    }
+
+    .callout-sub {
+        color: rgba(17,24,39,.65);
+        margin-top: 4px;
+        line-height: 1.3;
+    }
+
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+    }
+
+    .hint {
+        color: rgba(17,24,39,.6);
+        font-size: .85rem;
+    }
+
+    @@media (max-width: 700px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
 @code {
     [Parameter] public Order Order { get; set; } = default!;

@@ -8,7 +8,7 @@
 @using SkillGo.Data.Models
 @using SkillGo.Data.Models.Orders
 @using SkillGo.Repository.IRepository
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager Nav
 @inject IOrderRepository OrderRepo
@@ -144,10 +144,12 @@
 
     async Task LoadAsync()
     {
+        if (_loading && _orders.Count == 0)
+            StateHasChanged();
+
         _loading = true;
         _orders.Clear();
         _users.Clear();
-        StateHasChanged();
 
         var authState = await AuthenticationStateTask;
         var principal = authState.User;
@@ -155,6 +157,7 @@
         if (principal?.Identity?.IsAuthenticated != true)
         {
             Nav.NavigateTo("/Account/Login");
+            _loading = false;
             return;
         }
 
@@ -162,6 +165,7 @@
         if (me == null)
         {
             Nav.NavigateTo("/Account/Login");
+            _loading = false;
             return;
         }
 
@@ -176,7 +180,12 @@
         _orders = orders;
 
         var ids = _orders.SelectMany(o => new[] { o.BuyerId, o.SellerId }).Distinct().ToList();
-        var users = await Db.Users.Where(u => ids.Contains(u.Id)).ToListAsync();
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var users = await db.Users
+            .AsNoTracking()
+            .Where(u => ids.Contains(u.Id))
+            .ToListAsync();
 
         _users = users.ToDictionary(x => x.Id, x => x);
 

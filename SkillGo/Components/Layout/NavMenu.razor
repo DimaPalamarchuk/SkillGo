@@ -1,81 +1,320 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @using MudBlazor
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Nav
 
-<MudNavMenu>
+<div class="sg-nav-shell">
+    <div class="sg-nav-top">
+        <a href="/" class="sg-nav-brand">
+            <div class="sg-nav-brand-mark">S</div>
 
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
-        Home
-    </MudNavLink>
+            <div class="sg-nav-brand-copy">
+                <div class="sg-nav-brand-title">SkillGo</div>
+                <div class="sg-nav-brand-sub">Freelance marketplace</div>
+            </div>
+        </a>
 
-    <MudNavLink Href="/services/category" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Search">
-        Browse services
-    </MudNavLink>
+        <div class="sg-nav-profile-card" @onclick="OpenProfileCard">
+            <div class="sg-nav-profile-left">
+                <div class="sg-nav-profile-avatar">@UserInitial</div>
 
-    <AuthorizeView>
-        <Authorized>
-            <MudNavGroup Title="Become a Freelancer" Icon="@Icons.Material.Filled.Work" @bind-Expanded="_becomeExpanded">
-                <MudNavLink Href="/services/create" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AddCircle">
-                    Create service
+                <div class="sg-nav-profile-copy">
+                    <div class="sg-nav-profile-name">@DisplayUserName</div>
+                    <div class="sg-nav-profile-sub">@ProfileSubText</div>
+                </div>
+            </div>
+
+            <div class="sg-nav-profile-arrow">
+                <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowRight" />
+            </div>
+        </div>
+    </div>
+
+    <MudNavMenu Class="sg-nav-menu">
+        <div class="sg-nav-section-title">Explore</div>
+
+        <MudNavLink Href="/" Match="NavLinkMatch.All" Class="sg-nav-link" Icon="@Icons.Material.Filled.Home">
+            Home
+        </MudNavLink>
+
+        <MudNavLink Href="/services/category" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.TravelExplore">
+            Browse services
+        </MudNavLink>
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="sg-nav-section-title sg-nav-section-gap">Workspace</div>
+
+                <MudNavLink Href="/chats" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.ChatBubbleOutline">
+                    Chats
                 </MudNavLink>
 
-                @if (!string.IsNullOrWhiteSpace(_myUserName))
-                {
-                    <MudNavLink Href="@($"/profile/{_myUserName}")" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">
-                        My profile
+                <MudNavLink Href="/orders" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.ReceiptLong">
+                    Orders
+                </MudNavLink>
+
+                <MudNavLink Href="/wallet" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.AccountBalanceWallet">
+                    Wallet
+                </MudNavLink>
+
+                <div class="sg-nav-section-title sg-nav-section-gap">Freelancer</div>
+
+                <MudNavGroup Title="Become a Freelancer"
+                             Icon="@Icons.Material.Filled.WorkOutline"
+                             Expanded="_becomeExpanded"
+                             ExpandedChanged="OnBecomeExpandedChanged"
+                             Class="sg-nav-group">
+                    <MudNavLink Href="/services/create" Match="NavLinkMatch.Prefix" Class="sg-nav-link sg-nav-link-child" Icon="@Icons.Material.Filled.AddCircleOutline">
+                        Create service
                     </MudNavLink>
-                }
-            </MudNavGroup>
-        </Authorized>
-    </AuthorizeView>
 
-    <AuthorizeView Roles="Admin">
-        <MudNavLink Href="/category" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category">
-            Category
-        </MudNavLink>
-    </AuthorizeView>
+                    @if (!string.IsNullOrWhiteSpace(_myUserName))
+                    {
+                        <MudNavLink Href="@($"/profile/{_myUserName}")" Match="NavLinkMatch.Prefix" Class="sg-nav-link sg-nav-link-child" Icon="@Icons.Material.Filled.PersonOutline">
+                            My profile
+                        </MudNavLink>
+                    }
+                </MudNavGroup>
+            </Authorized>
+        </AuthorizeView>
 
-    <MudDivider Class="my-2" />
+        <AuthorizeView Roles="Admin">
+            <div class="sg-nav-section-title sg-nav-section-gap">Administration</div>
 
-    <AuthorizeView>
-        <Authorized>
-
-            <MudNavLink Href="/chats" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Chat">
-                Chats
+            <MudNavLink Href="/category" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.Category">
+                Category
             </MudNavLink>
+        </AuthorizeView>
 
-            <MudNavLink Href="/orders" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ReceiptLong">
-                Orders
-            </MudNavLink>
+        <AuthorizeView>
+            <Authorized>
+                <div class="sg-nav-section-title sg-nav-section-gap">Account</div>
 
-            <MudNavLink Href="/Account/Manage" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ManageAccounts">
-                Account
-            </MudNavLink>
+                <MudNavLink Href="/Account/Manage" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.Settings">
+                    Account settings
+                </MudNavLink>
 
-            <MudNavLink Href="/Account/Logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">
-                Logout
-            </MudNavLink>
+                <MudNavLink Href="/Account/Logout" Match="NavLinkMatch.Prefix" Class="sg-nav-link sg-nav-link-danger" Icon="@Icons.Material.Filled.Logout">
+                    Logout
+                </MudNavLink>
+            </Authorized>
 
-        </Authorized>
+            <NotAuthorized>
+                <div class="sg-nav-section-title sg-nav-section-gap">Account</div>
 
-        <NotAuthorized>
+                <MudNavLink Href="/Account/Login" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.Login">
+                    Login
+                </MudNavLink>
 
-            <MudNavLink Href="/Account/Login" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Login">
-                Login
-            </MudNavLink>
+                <MudNavLink Href="/Account/Register" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.PersonAddAlt1">
+                    Register
+                </MudNavLink>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudNavMenu>
+</div>
 
-            <MudNavLink Href="/Account/Register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PersonAdd">
-                Register
-            </MudNavLink>
+<style>
+    .sg-nav-shell {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 16px 14px 18px 14px;
+        background: radial-gradient(420px 160px at 0% 0%, rgba(79,70,229,.08), transparent 65%), linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.90) 100%);
+    }
 
-        </NotAuthorized>
-    </AuthorizeView>
+    .sg-nav-top {
+        padding: 2px 2px 14px 2px;
+    }
 
-</MudNavMenu>
+    .sg-nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+        padding: 6px 6px 16px 6px;
+    }
+
+    .sg-nav-brand-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+        color: #fff;
+        font-weight: 950;
+        font-size: 1.04rem;
+        box-shadow: 0 16px 28px rgba(79,70,229,.18);
+        flex: 0 0 auto;
+    }
+
+    .sg-nav-brand-copy {
+        min-width: 0;
+    }
+
+    .sg-nav-brand-title {
+        color: #111827;
+        font-weight: 950;
+        font-size: 1.02rem;
+        line-height: 1.05;
+        letter-spacing: .2px;
+    }
+
+    .sg-nav-brand-sub {
+        margin-top: 4px;
+        color: rgba(17,24,39,.56);
+        font-size: .8rem;
+        font-weight: 700;
+    }
+
+    .sg-nav-profile-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(79,70,229,.08), rgba(79,70,229,.03));
+        border: 1px solid rgba(79,70,229,.08);
+        box-shadow: 0 10px 24px rgba(15,23,42,.04);
+        cursor: pointer;
+        transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+
+        .sg-nav-profile-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 30px rgba(79,70,229,.10);
+            background: linear-gradient(180deg, rgba(79,70,229,.10), rgba(79,70,229,.05));
+        }
+
+    .sg-nav-profile-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .sg-nav-profile-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        color: #4338ca;
+        font-weight: 950;
+        border: 1px solid rgba(79,70,229,.12);
+        flex: 0 0 auto;
+    }
+
+    .sg-nav-profile-copy {
+        min-width: 0;
+    }
+
+    .sg-nav-profile-name {
+        color: #111827;
+        font-weight: 900;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sg-nav-profile-sub {
+        margin-top: 3px;
+        color: rgba(17,24,39,.58);
+        font-size: .79rem;
+        font-weight: 700;
+    }
+
+    .sg-nav-profile-arrow {
+        color: rgba(17,24,39,.38);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+
+    .sg-nav-menu {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding-right: 2px;
+    }
+
+    .sg-nav-section-title {
+        padding: 14px 12px 8px 12px;
+        color: rgba(17,24,39,.42);
+        font-size: .71rem;
+        font-weight: 950;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+
+    .sg-nav-section-gap {
+        margin-top: 8px;
+    }
+
+    .sg-nav-shell .mud-nav-link {
+        min-height: 50px;
+        margin: 5px 0;
+        border-radius: 18px;
+        font-weight: 850;
+        color: #111827;
+        transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+    }
+
+        .sg-nav-shell .mud-nav-link:hover {
+            transform: translateX(2px);
+            background: rgba(79,70,229,.07);
+        }
+
+        .sg-nav-shell .mud-nav-link.active {
+            color: #4338ca;
+            background: linear-gradient(135deg, rgba(79,70,229,.14), rgba(99,102,241,.08));
+            box-shadow: inset 0 0 0 1px rgba(79,70,229,.08);
+        }
+
+        .sg-nav-shell .mud-nav-link .mud-nav-link-icon {
+            color: inherit;
+        }
+
+    .sg-nav-group {
+        margin-top: 4px;
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .sg-nav-shell .mud-nav-group > .mud-nav-link {
+        border-radius: 18px;
+    }
+
+    .sg-nav-link-child {
+        margin-left: 8px;
+    }
+
+    .sg-nav-link-danger,
+    .sg-nav-link-danger .mud-nav-link-icon {
+        color: #b91c1c !important;
+    }
+</style>
 
 @code {
     private string? _myUserName;
     private bool _becomeExpanded;
+
+    private string DisplayUserName =>
+        string.IsNullOrWhiteSpace(_myUserName) ? "Guest" : _myUserName!;
+
+    private string ProfileSubText =>
+        string.IsNullOrWhiteSpace(_myUserName) ? "Click to login" : "Open profile";
+
+    private string UserInitial =>
+        string.IsNullOrWhiteSpace(DisplayUserName) ? "G" : DisplayUserName.Substring(0, 1).ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
     {
@@ -85,5 +324,19 @@
         _myUserName = principal?.Identity?.IsAuthenticated == true
             ? principal.Identity?.Name
             : null;
+    }
+
+    private void OpenProfileCard()
+    {
+        if (string.IsNullOrWhiteSpace(_myUserName))
+            Nav.NavigateTo("/Account/Login");
+        else
+            Nav.NavigateTo($"/profile/{_myUserName}");
+    }
+
+    private Task OnBecomeExpandedChanged(bool value)
+    {
+        _becomeExpanded = value;
+        return Task.CompletedTask;
     }
 }

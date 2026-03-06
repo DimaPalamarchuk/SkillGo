@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SkillGo.Data.Models;
@@ -16,11 +17,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
-    public DbSet<FreelancerProfile> FreelancerProfiles => Set<FreelancerProfile>();
 
     public DbSet<ServiceOffer> ServiceOffers => Set<ServiceOffer>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Report> Reports => Set<Report>();
+    public DbSet<UserBan> UserBans => Set<UserBan>();
 
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
 
@@ -203,5 +204,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<Report>()
             .HasIndex(x => x.CreatedAt);
+
+        builder.Entity<UserBan>()
+            .HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<UserBan>()
+            .HasOne(x => x.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<UserBan>()
+            .HasIndex(x => x.UserId);
+
+        builder.Entity<UserBan>()
+            .HasIndex(x => x.StartsAtUtc);
+
+        builder.Entity<UserBan>()
+            .HasIndex(x => x.EndsAtUtc);
+
+        builder.Entity<Report>()
+            .HasOne(x => x.ResolvedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.ResolvedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Report>()
+            .HasIndex(x => x.Status);
+
+        builder.Entity<Report>()
+            .HasIndex(x => x.ResolvedAtUtc);
+
     }
 }

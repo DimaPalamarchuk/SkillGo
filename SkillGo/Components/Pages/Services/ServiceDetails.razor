@@ -78,9 +78,11 @@
                                 View freelancer profile
                             </MudButton>
 
-                            <MudButton Variant="Variant.Outlined" Color="Color.Error" Class="btn-strong"
-                                       OnClick="@OpenReportDialog">
-                                Report
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Class="btn-strong"
+                                       Href="@($"/reports/create?type=service&targetUserId={service.OwnerUserId}&serviceOfferId={service.Id}")">
+                                Report service
                             </MudButton>
                         </div>
                     </div>
@@ -164,9 +166,12 @@
                         View freelancer profile
                     </MudButton>
 
-                    <MudButton FullWidth="true" Variant="Variant.Outlined" Color="Color.Error" Class="btn-strong mt-2"
-                               OnClick="@OpenReportDialog">
-                        Report
+                    <MudButton FullWidth="true"
+                               Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Class="btn-strong mt-2"
+                               Href="@($"/reports/create?type=service&targetUserId={service.OwnerUserId}&serviceOfferId={service.Id}")">
+                        Report service
                     </MudButton>
                 </div>
             </MudItem>
@@ -644,47 +649,6 @@
         var name = (u.UserName ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(name))
             Nav.NavigateTo($"/profile/{name}");
-    }
-
-    private async Task OpenReportDialog()
-    {
-        if (service is null) return;
-
-        var authState = await AuthenticationStateTask;
-        var principal = authState.User;
-
-        if (principal?.Identity?.IsAuthenticated != true)
-        {
-            var p = new DialogParameters
-                {
-                    ["TitleText"] = "Login required",
-                    ["BodyText"] = "You must be logged in to submit a report."
-                };
-
-            var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-            DialogService.Show<InfoDialog>("Info", p, o);
-            return;
-        }
-
-        var me = await UserManager.GetUserAsync(principal);
-        if (me is null) return;
-
-        var parameters = new DialogParameters
-            {
-                ["ReporterUserId"] = me.Id,
-                ["TargetUserId"] = service.OwnerUserId,
-                ["ServiceOfferId"] = service.Id
-            };
-
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = DialogService.Show<ReportDialog>("Report", parameters, options);
-
-        var result = await dialog.Result;
-        if (!result.Canceled)
-        {
-            await OnParametersSetAsync();
-            StateHasChanged();
-        }
     }
 
     private static string DisplayName(ApplicationUser u)

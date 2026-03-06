@@ -1,8 +1,11 @@
 ﻿@page "/profile/{UserName}"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models
+@using SkillGo.Data.Models.Chat
 @inject ApplicationDbContext Db
 @inject NavigationManager Nav
 
@@ -33,7 +36,20 @@
                 <div class="hero-left">
                     <img class="avatar" src="@(_user.AvatarUrl ?? "/images/default-avatar.png")" />
                     <div class="name-block">
-                        <div class="name">@DisplayName(_user)</div>
+                        <div class="name-row">
+                            <div class="name">@DisplayName(_user)</div>
+
+                            @if (_isTargetAdmin)
+                            {
+                                <div class="admin-badge">Admin</div>
+                            }
+
+                            @if (_hasActiveBan)
+                            {
+                                <div class="ban-badge">Banned</div>
+                            }
+                        </div>
+
                         <div class="username">@("@" + (_user.UserName ?? ""))</div>
                     </div>
                 </div>
@@ -57,6 +73,29 @@
             {
                 <div class="bio">@_user.Bio</div>
             }
+
+            <div class="profile-actions">
+                @if (_canStartChat)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Class="btn-strong"
+                               Disabled="_startingChat"
+                               OnClick="StartChatAsync">
+                        @(_startingChat ? "Opening..." : "Start chat")
+                    </MudButton>
+                }
+
+                @if (!_isOwnProfile)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Class="btn-strong"
+                               Href="@($"/reports/create?type=profile&targetUserId={_user.Id}")">
+                        Report profile
+                    </MudButton>
+                }
+            </div>
         </div>
 
         <MudGrid Spacing="4" Class="mt-4">
@@ -81,7 +120,7 @@
                                         <a class="card-link" href="@($"/services/{s.Id}")">
                                             <div class="card">
                                                 <div class="card-title">@s.Title</div>
-                                                <div class="card-desc">@Trim(s.Description, 120)</div>
+                                                <div class="card-desc">@TrimText(s.Description, 120)</div>
                                                 <div class="card-row">
                                                     <div class="muted">Price</div>
                                                     <div class="price">@s.Price.ToString("0.##") zł</div>
@@ -112,10 +151,19 @@
                                 @foreach (var r in _reviews)
                                 {
                                     <MudPaper Class="pa-3" Elevation="0" Style="border-radius:16px;border:1px solid rgba(0,0,0,.08);">
+                                        <a class="review-author" href="@AuthorProfileUrl(r.AuthorUser)">
+                                            <img class="review-author-avatar" src="@AuthorAvatar(r.AuthorUser)" />
+                                            <div class="review-author-copy">
+                                                <div class="review-author-name">@DisplayName(r.AuthorUser)</div>
+                                                <div class="review-author-username">@("@" + (r.AuthorUser?.UserName ?? ""))</div>
+                                            </div>
+                                        </a>
+
                                         <div class="review-top">
                                             <div class="stars">@Stars(r.Stars)</div>
                                             <div class="muted">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
                                         </div>
+
                                         @if (!string.IsNullOrWhiteSpace(r.Comment))
                                         {
                                             <div class="review-text">@r.Comment</div>
@@ -123,6 +171,17 @@
                                     </MudPaper>
                                 }
                             </MudStack>
+
+                            @if (reviewsCount > 0 && !string.IsNullOrWhiteSpace(_user.UserName))
+                            {
+                                <div class="reviews-more">
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               Href="@($"/profile/{_user.UserName}/reviews")">
+                                        View all reviews
+                                    </MudButton>
+                                </div>
+                            }
                         }
                     </div>
                 </div>
@@ -198,6 +257,13 @@
         min-width: 0
     }
 
+    .name-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
     .name {
         font-weight: 950;
         color: #111827;
@@ -208,6 +274,36 @@
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 520px;
+    }
+
+    .admin-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: #111827;
+        color: #fff;
+        font-size: .78rem;
+        font-weight: 900;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .ban-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: #b91c1c;
+        color: #fff;
+        font-size: .78rem;
+        font-weight: 900;
+        letter-spacing: .04em;
+        text-transform: uppercase;
     }
 
     .username {
@@ -258,6 +354,22 @@
         color: rgba(17,24,39,.78);
         line-height: 1.35;
         white-space: pre-wrap;
+    }
+
+    .profile-actions {
+        position: relative;
+        z-index: 1;
+        margin-top: 16px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 14px;
     }
 
     .shell {
@@ -359,6 +471,42 @@
         margin-top: 14px
     }
 
+    .review-author {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        color: inherit;
+        margin-bottom: 10px;
+    }
+
+    .review-author-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        flex: 0 0 auto;
+    }
+
+    .review-author-copy {
+        min-width: 0;
+    }
+
+    .review-author-name {
+        font-weight: 900;
+        color: #111827;
+        line-height: 1.1;
+    }
+
+    .review-author-username {
+        margin-top: 3px;
+        color: rgba(17,24,39,.58);
+        font-size: .88rem;
+        font-weight: 800;
+    }
+
     .review-top {
         display: flex;
         align-items: center;
@@ -371,6 +519,12 @@
         color: rgba(17,24,39,.78);
         line-height: 1.35;
         white-space: pre-wrap
+    }
+
+    .reviews-more {
+        margin-top: 12px;
+        display: flex;
+        justify-content: center;
     }
 
     .skeleton {
@@ -422,8 +576,10 @@
 
 @code {
     [Parameter] public string UserName { get; set; } = default!;
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     private bool _loading = true;
+    private bool _startingChat;
 
     private ApplicationUser? _user;
     private List<ServiceOffer> _offers = new();
@@ -432,9 +588,19 @@
     private double avgRating;
     private int reviewsCount;
 
+    private string? _meId;
+    private bool _isOwnProfile;
+    private bool _isTargetAdmin;
+    private bool _hasActiveBan;
+
+    private bool _canStartChat => !string.IsNullOrWhiteSpace(_meId) && _user is not null && !_isOwnProfile;
+
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
+
+        var auth = await AuthenticationStateTask;
+        _meId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         var userName = (UserName ?? "").Trim();
         if (string.IsNullOrWhiteSpace(userName))
@@ -452,9 +618,22 @@
             return;
         }
 
+        _isOwnProfile = _meId == _user.Id;
+
+        _isTargetAdmin = await Db.UserRoles
+            .Join(Db.Roles,
+                ur => ur.RoleId,
+                r => r.Id,
+                (ur, r) => new { ur.UserId, r.Name })
+            .AnyAsync(x => x.UserId == _user.Id && x.Name == "Admin");
+
+        var now = DateTime.UtcNow;
+        _hasActiveBan = await Db.UserBans
+            .AnyAsync(x => x.UserId == _user.Id && x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now));
+
         _offers = await Db.ServiceOffers
             .Where(x => x.OwnerUserId == _user.Id)
-            .OrderByDescending(x => x .CreatedAt)
+            .OrderByDescending(x => x.CreatedAt)
             .ToListAsync();
 
         var q = Db.Reviews.Where(r => r.TargetUserId == _user.Id);
@@ -462,23 +641,81 @@
         avgRating = reviewsCount == 0 ? 0 : await q.AverageAsync(r => (double)r.Stars);
 
         _reviews = await Db.Reviews
+            .Include(r => r.AuthorUser)
             .Where(r => r.TargetUserId == _user.Id)
             .OrderByDescending(r => r.CreatedAt)
-            .Take(10)
+            .Take(3)
             .ToListAsync();
 
         _loading = false;
     }
 
-    private static string DisplayName(ApplicationUser u)
-        => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName! : (u.UserName ?? "User");
-
-    private static string Trim(string s, int max) => s.Length <= max ? s : s.Substring(0, max) + "...";
-
-    private static string Stars(double rating)
+    private async Task StartChatAsync()
     {
-        var full = (int)Math.Round(rating);
-        full = Math.Clamp(full, 0, 5);
+        if (_startingChat || string.IsNullOrWhiteSpace(_meId) || _user is null || _meId == _user.Id)
+            return;
+
+        _startingChat = true;
+
+        try
+        {
+            var a = _meId;
+            var b = _user.Id;
+
+            if (string.CompareOrdinal(a, b) > 0)
+            {
+                var t = a;
+                a = b;
+                b = t;
+            }
+
+            var existing = await Db.Conversations.FirstOrDefaultAsync(x => x.UserAId == a && x.UserBId == b);
+
+            if (existing is null)
+            {
+                existing = new Conversation
+                    {
+                        UserAId = a,
+                        UserBId = b,
+                        CreatedAtUtc = DateTime.UtcNow
+                    };
+
+                Db.Conversations.Add(existing);
+                await Db.SaveChangesAsync();
+            }
+
+            Nav.NavigateTo($"/chat/{existing.Id}");
+        }
+        finally
+        {
+            _startingChat = false;
+        }
+    }
+
+    private static string DisplayName(ApplicationUser? u)
+        => u is null
+            ? "User"
+            : !string.IsNullOrWhiteSpace(u.DisplayName)
+                ? u.DisplayName!
+                : (u.UserName ?? "User");
+
+    private static string TrimText(string? s, int max)
+    {
+        if (string.IsNullOrWhiteSpace(s))
+            return string.Empty;
+
+        return s.Length <= max ? s : s.Substring(0, max) + "...";
+    }
+
+    private static string Stars(int rating)
+    {
+        var full = Math.Clamp(rating, 0, 5);
         return new string('★', full) + new string('☆', 5 - full);
     }
+
+    private static string AuthorAvatar(ApplicationUser? user)
+        => user?.AvatarUrl ?? "/images/default-avatar.png";
+
+    private static string AuthorProfileUrl(ApplicationUser? user)
+        => !string.IsNullOrWhiteSpace(user?.UserName) ? $"/profile/{user!.UserName}" : "#";
 }

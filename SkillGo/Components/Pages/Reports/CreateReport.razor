@@ -25,7 +25,7 @@
         <MudText Typo="Typo.h6">Loading report form...</MudText>
     </MudPaper>
 }
-else if (_targetUser is null)
+else if (_targetUser is null || !_targetType.HasValue)
 {
     <MudPaper Class="report-empty" Elevation="0">
         <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" />
@@ -40,7 +40,7 @@ else
                 <div>
                     <MudText Class="report-kicker">Safety</MudText>
                     <MudText Class="report-title">Submit a report</MudText>
-                    <MudText Class="report-subtitle">Type: @_targetType.ToString()</MudText>
+                    <MudText Class="report-subtitle">Type: @_targetType.Value.ToString()</MudText>
                 </div>
             </div>
         </MudPaper>
@@ -55,7 +55,7 @@ else
 
                     <div class="report-info-card">
                         <div class="report-info-label">Target type</div>
-                        <div class="report-info-value">@_targetType</div>
+                        <div class="report-info-value">@_targetType.Value</div>
                     </div>
 
                     @if (_serviceOffer is not null)
@@ -227,7 +227,7 @@ else
 </style>
 
 @code {
-    [SupplyParameterFromQuery] public ReportTargetType? Type { get; set; }
+    [SupplyParameterFromQuery(Name = "type")] public string? TypeRaw { get; set; }
     [SupplyParameterFromQuery] public string? TargetUserId { get; set; }
     [SupplyParameterFromQuery] public int? ServiceOfferId { get; set; }
     [SupplyParameterFromQuery] public int? OrderId { get; set; }
@@ -236,7 +236,7 @@ else
     private bool _loading = true;
     private bool _saving;
 
-    private ReportTargetType _targetType;
+    private ReportTargetType? _targetType;
     private ApplicationUser? _targetUser;
     private ServiceOffer? _serviceOffer;
     private Order? _order;
@@ -244,15 +244,20 @@ else
 
     private ReportInputModel _model = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        if (Type is null || string.IsNullOrWhiteSpace(TargetUserId))
+        _loading = true;
+        _targetUser = null;
+        _serviceOffer = null;
+        _order = null;
+        _message = null;
+        _targetType = ParseTargetType(TypeRaw);
+
+        if (_targetType is null || string.IsNullOrWhiteSpace(TargetUserId))
         {
             _loading = false;
             return;
         }
-
-        _targetType = Type.Value;
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
@@ -288,9 +293,9 @@ else
             return;
         }
 
-        if (_targetUser is null)
+        if (_targetUser is null || !_targetType.HasValue)
         {
-            Snackbar.Add("Target user not found", Severity.Error);
+            Snackbar.Add("Target not found", Severity.Error);
             return;
         }
 
@@ -308,7 +313,7 @@ else
             {
                 ReporterUserId = reporterUserId,
                 TargetUserId = _targetUser.Id,
-                TargetType = _targetType,
+                TargetType = _targetType.Value,
                 ServiceOfferId = _targetType == ReportTargetType.Service ? ServiceOfferId : null,
                 OrderId = _targetType == ReportTargetType.Order ? OrderId : null,
                 MessageId = _targetType == ReportTargetType.Message ? MessageId : null,
@@ -327,7 +332,13 @@ else
 
     private void GoBack()
     {
-        switch (_targetType)
+        if (!_targetType.HasValue)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        switch (_targetType.Value)
         {
             case ReportTargetType.Service:
                 if (ServiceOfferId.HasValue)
@@ -346,12 +357,8 @@ else
                 break;
 
             case ReportTargetType.Order:
-                if (OrderId.HasValue)
-                {
-                    Nav.NavigateTo($"/orders/{OrderId.Value}");
-                    return;
-                }
-                break;
+                Nav.NavigateTo("/orders");
+                return;
 
             case ReportTargetType.Message:
                 if (_message?.ConversationId is int conversationId)
@@ -363,6 +370,21 @@ else
         }
 
         Nav.NavigateTo("/");
+    }
+
+    private static ReportTargetType? ParseTargetType(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "profile" => ReportTargetType.Profile,
+            "service" => ReportTargetType.Service,
+            "order" => ReportTargetType.Order,
+            "message" => ReportTargetType.Message,
+            _ => null
+        };
     }
 
     private static string DisplayUserName(ApplicationUser user)

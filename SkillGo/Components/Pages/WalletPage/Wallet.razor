@@ -1,15 +1,18 @@
 ﻿@page "/wallet"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using MudBlazor
+@using SkillGo.Data
 @using SkillGo.Data.Models
 @using SkillGo.Repository.IRepository
 @using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
 @using SkillGo.Components.Pages.WalletPage
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IWalletRepository WalletRepo
 @inject SkillGo.Repository.WalletState WalletState
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 
 <PageTitle>Wallet</PageTitle>
 
@@ -53,10 +56,6 @@
                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" OnClick="OpenWithdrawAsync" Disabled="_loading || _balance <= 0">
                         Withdraw to card
                     </MudButton>
-
-                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
-                        Full history (soon)
-                    </MudButton>
                 </MudStack>
             </MudPaper>
         </MudItem>
@@ -72,29 +71,41 @@
 
                 <MudDivider Class="my-4" />
 
-                <MudTable Dense="true" Elevation="0" Class="sg-table" Items="_tx" Hover="true">
-                    <HeaderContent>
-                        <MudTh>Date</MudTh>
-                        <MudTh>Type</MudTh>
-                        <MudTh Align="Align.Right">Amount</MudTh>
-                        <MudTh>Note</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Date">@context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudTd>
-                        <MudTd DataLabel="Type">
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetTypeColor(context.Type)">
-                                @FormatType(context.Type)
-                            </MudChip>
-                        </MudTd>
-                        <MudTd DataLabel="Amount" Align="Align.Right" Class="fw-bold">
-                            @($"{context.Amount:0.##} zł")
-                        </MudTd>
-                        <MudTd DataLabel="Note">@context.Note</MudTd>
-                    </RowTemplate>
-                    <NoRecordsContent>
-                        <MudText Class="text-muted">No transactions yet</MudText>
-                    </NoRecordsContent>
-                </MudTable>
+                @if (_tx.Count == 0)
+                {
+                    <MudText Class="text-muted">No transactions yet</MudText>
+                }
+                else
+                {
+                    <div class="tx-list">
+                        @foreach (var tx in _tx)
+                        {
+                            <div class="tx-item">
+                                <div class="tx-item-left">
+                                    <div class="tx-item-top">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetTypeColor(tx.Type)">
+                                            @FormatType(tx.Type)
+                                        </MudChip>
+
+                                        <div class="tx-date">@tx.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                    </div>
+
+                                    <div class="tx-note">@tx.Note</div>
+                                </div>
+
+                                <div class="tx-amount">@($"{tx.Amount:0.##} zł")</div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="tx-pagination">
+                        <MudPagination Count="@_totalPages"
+                                       Selected="@_page"
+                                       SelectedChanged="OnPageChanged"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Outlined" />
+                    </div>
+                }
             </MudPaper>
         </MudItem>
     </MudGrid>
@@ -107,10 +118,69 @@
         background: white;
     }
 
-    .sg-table .mud-table-container {
-        border-radius: 14px;
-        overflow: hidden;
+    .tx-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .tx-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px;
+        border-radius: 18px;
         border: 1px solid rgba(0,0,0,.06);
+        background: #fff;
+    }
+
+    .tx-item-left {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .tx-item-top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .tx-date {
+        color: rgba(17,24,39,.56);
+        font-size: .88rem;
+        font-weight: 700;
+    }
+
+    .tx-note {
+        margin-top: 8px;
+        color: #111827;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .tx-amount {
+        flex: 0 0 auto;
+        font-weight: 900;
+        color: #111827;
+        white-space: nowrap;
+    }
+
+    .tx-pagination {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+    }
+
+    @@media (max-width: 760px) {
+        .tx-item {
+            flex-direction: column;
+        }
+
+        .tx-amount {
+            width: 100%;
+        }
     }
 </style>
 
@@ -119,6 +189,11 @@
     private bool _loadedOnce;
     private decimal _balance;
     private List<WalletTransaction> _tx = new();
+
+    private int _page = 1;
+    private int _pageSize = 10;
+    private int _totalItems;
+    private int _totalPages = 1;
 
     protected override async Task OnInitializedAsync()
     {
@@ -148,13 +223,37 @@
             }
 
             _balance = await WalletRepo.GetBalanceAsync(userId);
-            _tx = await WalletRepo.GetTransactionsAsync(userId, 30);
+
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var query = db.WalletTransactions
+                .AsNoTracking()
+                .Where(x => x.UserId == userId);
+
+            _totalItems = await query.CountAsync();
+            _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
+
+            if (_page > _totalPages)
+                _page = _totalPages;
+
+            _tx = await query
+                .OrderByDescending(x => x.CreatedAt)
+                .Skip((_page - 1) * _pageSize)
+                .Take(_pageSize)
+                .ToListAsync();
+
             _loadedOnce = true;
         }
         finally
         {
             _loading = false;
         }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = page;
+        await RefreshAsync();
     }
 
     private async Task OpenTopUpAsync()
@@ -175,6 +274,8 @@
         {
             var note = $"Top up via card **** {data.Last4}";
             await WalletRepo.TopUpAsync(userId, data.Amount, note);
+
+            _page = 1;
 
             await WalletState.RefreshAsync();
             await RefreshAsync();
@@ -214,6 +315,8 @@
         {
             var note = $"Withdrawal to card **** {data.Last4}";
             await WalletRepo.WithdrawAsync(userId, data.Amount, note);
+
+            _page = 1;
 
             await WalletState.RefreshAsync();
             await RefreshAsync();

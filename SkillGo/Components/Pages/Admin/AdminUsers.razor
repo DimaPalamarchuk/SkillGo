@@ -1,11 +1,14 @@
 ﻿@page "/admin/users"
 @attribute [Authorize(Roles = "Admin")]
 @layout SkillGo.Components.Layout.AdminLayout
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
+@using SkillGo.Data.Models
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<IdentityRole> RoleManager
@@ -39,9 +42,13 @@
         {
             <MudProgressCircular Indeterminate="true" />
         }
+        else if (_pagedUsers.Count == 0)
+        {
+            <MudText Color="Color.Secondary">No users found</MudText>
+        }
         else
         {
-            <MudTable Items="@FilteredUsers"
+            <MudTable Items="@_pagedUsers"
                       Hover="true"
                       Dense="true"
                       Bordered="false"
@@ -59,9 +66,15 @@
                 <RowTemplate>
                     <MudTd DataLabel="User">
                         <div class="admin-user-cell">
-                            <div class="admin-user-avatar">@GetInitial(context.UserName)</div>
+                            <a class="admin-user-avatar-link" href="@ProfileUrl(context)">
+                                <img class="admin-user-avatar" src="@Avatar(context)" />
+                            </a>
+
                             <div class="admin-user-copy">
-                                <div class="admin-user-name">@context.UserName</div>
+                                <a class="admin-user-name-link" href="@ProfileUrl(context)">
+                                    <div class="admin-user-name">@context.UserName</div>
+                                </a>
+
                                 <div class="admin-user-id">@context.Id</div>
                             </div>
                         </div>
@@ -87,7 +100,9 @@
                     <MudTd DataLabel="Status">
                         @if (context.IsBlocked)
                         {
-                            <span class="admin-status-badge admin-status-badge-blocked">Blocked</span>
+                            <MudTooltip Text="@BlockedTooltip(context)">
+                                <span class="admin-status-badge admin-status-badge-blocked">Blocked</span>
+                            </MudTooltip>
                         }
                         else
                         {
@@ -121,15 +136,86 @@
                             }
                             else
                             {
-                                <MudMenuItem OnClick="() => BlockUser(context)">Block</MudMenuItem>
+                                <MudMenuItem OnClick="() => OpenBlockModal(context)">Block</MudMenuItem>
                             }
                         </MudMenu>
                     </MudTd>
                 </RowTemplate>
             </MudTable>
+
+            <div class="admin-users-pagination">
+                <MudPagination Count="@_totalPages"
+                               Selected="@_page"
+                               SelectedChanged="OnPageChanged"
+                               Color="Color.Primary"
+                               Variant="Variant.Outlined" />
+            </div>
         }
     </MudStack>
 </MudPaper>
+
+@if (_blockModalOpen && _blockTarget is not null)
+{
+    <div class="sg-block-overlay" @onclick="CloseBlockModal">
+        <div class="sg-block-modal" @onclick:stopPropagation="true">
+            <div class="sg-block-head">
+                <div>
+                    <div class="sg-block-kicker">Moderation</div>
+                    <div class="sg-block-title">Block @(_blockTarget.UserName)</div>
+                </div>
+
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Color="Color.Default"
+                               OnClick="CloseBlockModal" />
+            </div>
+
+            <div class="sg-block-user">
+                <img class="sg-block-user-avatar" src="@Avatar(_blockTarget)" />
+                <div class="sg-block-user-copy">
+                    <div class="sg-block-user-name">@_blockTarget.UserName</div>
+                    <div class="sg-block-user-email">@_blockTarget.Email</div>
+                </div>
+            </div>
+
+            <MudSelect T="string"
+                       Label="Block duration"
+                       Variant="Variant.Outlined"
+                       Value="@_blockDuration"
+                       ValueChanged="OnBlockDurationChanged"
+                       Class="mt-4">
+                <MudSelectItem T="string" Value="@("1d")">1 day</MudSelectItem>
+                <MudSelectItem T="string" Value="@("7d")">7 days</MudSelectItem>
+                <MudSelectItem T="string" Value="@("30d")">30 days</MudSelectItem>
+                <MudSelectItem T="string" Value="@("perm")">Permanent</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField @bind-Value="_blockReason"
+                          Label="Reason"
+                          Variant="Variant.Outlined"
+                          Lines="5"
+                          Immediate="true"
+                          Counter="500"
+                          MaxLength="500"
+                          Class="mt-4" />
+
+            <div class="sg-block-actions">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           Disabled="_blockSaving"
+                           OnClick="CloseBlockModal">
+                    Cancel
+                </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           Disabled="_blockSaving || string.IsNullOrWhiteSpace(_blockReason)"
+                           OnClick="ConfirmBlockAsync">
+                    @(_blockSaving ? "Saving..." : "Block user")
+                </MudButton>
+            </div>
+        </div>
+    </div>
+}
 
 <style>
     .admin-users-panel {
@@ -151,21 +237,29 @@
         min-width: 0;
     }
 
+    .admin-user-avatar-link {
+        display: inline-flex;
+        text-decoration: none;
+        flex: 0 0 auto;
+    }
+
     .admin-user-avatar {
-        width: 38px;
-        height: 38px;
+        width: 42px;
+        height: 42px;
         border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-        color: #4338ca;
-        font-weight: 950;
+        object-fit: cover;
+        background: #fff;
+        border: 1px solid rgba(0,0,0,.08);
         flex: 0 0 auto;
     }
 
     .admin-user-copy {
         min-width: 0;
+    }
+
+    .admin-user-name-link {
+        text-decoration: none;
+        color: inherit;
     }
 
     .admin-user-name {
@@ -224,12 +318,122 @@
         color: #b91c1c;
         border: 1px solid rgba(220,38,38,.12);
     }
+
+    .admin-users-pagination {
+        margin-top: 18px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .sg-block-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15,23,42,.48);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 1600;
+    }
+
+    .sg-block-modal {
+        width: min(100%, 540px);
+        border-radius: 24px;
+        background: #ffffff;
+        border: 1px solid rgba(15,23,42,.08);
+        box-shadow: 0 30px 80px rgba(15,23,42,.24);
+        padding: 20px;
+    }
+
+    .sg-block-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .sg-block-kicker {
+        color: rgba(17,24,39,.46);
+        font-size: .75rem;
+        font-weight: 900;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+
+    .sg-block-title {
+        margin-top: 4px;
+        color: #111827;
+        font-size: 1.25rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }
+
+    .sg-block-user {
+        margin-top: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid rgba(15,23,42,.06);
+    }
+
+    .sg-block-user-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        object-fit: cover;
+        background: #fff;
+        border: 1px solid rgba(0,0,0,.08);
+        flex: 0 0 auto;
+    }
+
+    .sg-block-user-copy {
+        min-width: 0;
+    }
+
+    .sg-block-user-name {
+        color: #111827;
+        font-weight: 900;
+        line-height: 1.1;
+    }
+
+    .sg-block-user-email {
+        margin-top: 4px;
+        color: rgba(17,24,39,.58);
+        font-size: .88rem;
+        font-weight: 700;
+        word-break: break-word;
+    }
+
+    .sg-block-actions {
+        margin-top: 18px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
 </style>
 
 @code {
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
     private bool _loading = true;
     private string? _search;
     private List<AdminUserRow> _users = new();
+    private List<AdminUserRow> _pagedUsers = new();
+
+    private int _page = 1;
+    private int _pageSize = 10;
+    private int _totalItems;
+    private int _totalPages = 1;
+
+    private bool _blockModalOpen;
+    private bool _blockSaving;
+    private AdminUserRow? _blockTarget;
+    private string _blockDuration = "7d";
+    private string? _blockReason;
 
     private IEnumerable<AdminUserRow> FilteredUsers =>
         string.IsNullOrWhiteSpace(_search)
@@ -259,27 +463,55 @@
         StateHasChanged();
 
         await using var db = await DbFactory.CreateDbContextAsync();
-        var users = await db.Users.OrderBy(x => x.UserName).ToListAsync();
+        var now = DateTime.UtcNow;
+
+        var users = await db.Users
+            .AsNoTracking()
+            .OrderBy(x => x.UserName)
+            .ToListAsync();
+
+        var activeBans = await db.UserBans
+            .AsNoTracking()
+            .Include(x => x.CreatedByUser)
+            .Where(x => x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now))
+            .ToListAsync();
+
+        var activeBanMap = activeBans
+            .GroupBy(x => x.UserId)
+            .ToDictionary(x => x.Key, x => x.OrderByDescending(v => v.StartsAtUtc).First());
 
         var list = new List<AdminUserRow>();
 
         foreach (var user in users)
         {
             var roles = await UserManager.GetRolesAsync(user);
+            activeBanMap.TryGetValue(user.Id, out var ban);
+
             list.Add(new AdminUserRow
                 {
                     Id = user.Id,
                     UserName = user.UserName ?? "-",
                     Email = user.Email ?? "-",
+                    AvatarUrl = user.AvatarUrl,
                     Balance = user.Balance,
                     Roles = roles.ToList(),
                     HasAdminRole = roles.Contains("Admin"),
                     HasFreelancerRole = roles.Contains("Freelancer"),
-                    IsBlocked = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow
+                    IsBlocked = ban is not null,
+                    ActiveBanReason = ban?.Reason,
+                    ActiveBanEndsAtUtc = ban?.EndsAtUtc,
+                    ActiveBanCreatedBy = ban?.CreatedByUser is null
+                        ? null
+                        : (!string.IsNullOrWhiteSpace(ban.CreatedByUser.DisplayName)
+                            ? ban.CreatedByUser.DisplayName
+                            : ban.CreatedByUser.UserName ?? ban.CreatedByUser.Email ?? ban.CreatedByUser.Id)
                 });
         }
 
         _users = list;
+        _page = 1;
+        ApplyPaging();
+
         _loading = false;
         StateHasChanged();
     }
@@ -287,7 +519,125 @@
     private Task OnSearchChanged(string value)
     {
         _search = value;
+        _page = 1;
+        ApplyPaging();
         return Task.CompletedTask;
+    }
+
+    private Task OnPageChanged(int page)
+    {
+        _page = page;
+        ApplyPaging();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyPaging()
+    {
+        var filtered = FilteredUsers.ToList();
+
+        _totalItems = filtered.Count;
+        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
+
+        if (_page > _totalPages)
+            _page = _totalPages;
+
+        _pagedUsers = filtered
+            .Skip((_page - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+
+        StateHasChanged();
+    }
+
+    private void OpenBlockModal(AdminUserRow row)
+    {
+        _blockTarget = row;
+        _blockDuration = "7d";
+        _blockReason = null;
+        _blockSaving = false;
+        _blockModalOpen = true;
+        StateHasChanged();
+    }
+
+    private void CloseBlockModal()
+    {
+        _blockModalOpen = false;
+        _blockSaving = false;
+        _blockTarget = null;
+        _blockDuration = "7d";
+        _blockReason = null;
+        StateHasChanged();
+    }
+
+    private Task OnBlockDurationChanged(string value)
+    {
+        _blockDuration = value ?? "7d";
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmBlockAsync()
+    {
+        if (_blockSaving || _blockTarget is null || string.IsNullOrWhiteSpace(_blockReason))
+            return;
+
+        var auth = await AuthenticationStateTask;
+        var adminId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(adminId))
+            return;
+
+        _blockSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var now = DateTime.UtcNow;
+
+            var endsAt = _blockDuration switch
+            {
+                "1d" => now.AddDays(1),
+                "7d" => now.AddDays(7),
+                "30d" => now.AddDays(30),
+                "perm" => (DateTime?)null,
+                _ => now.AddDays(7)
+            };
+
+            var active = await db.UserBans
+                .Where(x => x.UserId == _blockTarget.Id && x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now))
+                .OrderByDescending(x => x.StartsAtUtc)
+                .FirstOrDefaultAsync();
+
+            if (active is not null)
+            {
+                active.Reason = _blockReason.Trim();
+                active.EndsAtUtc = endsAt;
+                active.CreatedByUserId = adminId;
+            }
+            else
+            {
+                db.UserBans.Add(new UserBan
+                    {
+                        UserId = _blockTarget.Id,
+                        CreatedByUserId = adminId,
+                        Reason = _blockReason.Trim(),
+                        StartsAtUtc = now,
+                        EndsAtUtc = endsAt
+                    });
+            }
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add("User blocked", Severity.Warning);
+            CloseBlockModal();
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _blockSaving = false;
+            StateHasChanged();
+        }
     }
 
     private async Task MakeAdmin(AdminUserRow row)
@@ -362,45 +712,52 @@
         }
     }
 
-    private async Task BlockUser(AdminUserRow row)
-    {
-        var user = await UserManager.FindByIdAsync(row.Id);
-        if (user == null)
-            return;
-
-        var result = await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
-        if (result.Succeeded)
-        {
-            Snackbar.Add("User blocked", Severity.Warning);
-            await LoadUsers();
-        }
-        else
-        {
-            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
-        }
-    }
-
     private async Task UnblockUser(AdminUserRow row)
     {
-        var user = await UserManager.FindByIdAsync(row.Id);
-        if (user == null)
-            return;
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var now = DateTime.UtcNow;
 
-        var result = await UserManager.SetLockoutEndDateAsync(user, null);
-        if (result.Succeeded)
+        var activeBans = await db.UserBans
+            .Where(x => x.UserId == row.Id && x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now))
+            .ToListAsync();
+
+        if (activeBans.Count == 0)
         {
-            Snackbar.Add("User unblocked", Severity.Success);
-            await LoadUsers();
+            Snackbar.Add("Active ban not found", Severity.Error);
+            return;
         }
-        else
-        {
-            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
-        }
+
+        foreach (var ban in activeBans)
+            ban.EndsAtUtc = now;
+
+        await db.SaveChangesAsync();
+
+        Snackbar.Add("User unblocked", Severity.Success);
+        await LoadUsers();
     }
 
-    private static string GetInitial(string? value)
+    private static string ProfileUrl(AdminUserRow row)
     {
-        return string.IsNullOrWhiteSpace(value) ? "U" : value.Substring(0, 1).ToUpperInvariant();
+        return !string.IsNullOrWhiteSpace(row.UserName) && row.UserName != "-"
+            ? $"/profile/{row.UserName}"
+            : "#";
+    }
+
+    private static string Avatar(AdminUserRow row)
+    {
+        return row.AvatarUrl ?? "/images/default-avatar.png";
+    }
+
+    private static string BlockedTooltip(AdminUserRow row)
+    {
+        var endText = row.ActiveBanEndsAtUtc.HasValue
+            ? row.ActiveBanEndsAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            : "Permanent";
+
+        var reason = string.IsNullOrWhiteSpace(row.ActiveBanReason) ? "No reason" : row.ActiveBanReason;
+        var by = string.IsNullOrWhiteSpace(row.ActiveBanCreatedBy) ? "Unknown admin" : row.ActiveBanCreatedBy;
+
+        return $"By: {by}\nEnds: {endText}\nReason: {reason}";
     }
 
     private sealed class AdminUserRow
@@ -408,10 +765,14 @@
         public string Id { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
         public decimal Balance { get; set; }
         public List<string> Roles { get; set; } = new();
         public bool HasAdminRole { get; set; }
         public bool HasFreelancerRole { get; set; }
         public bool IsBlocked { get; set; }
+        public string? ActiveBanReason { get; set; }
+        public DateTime? ActiveBanEndsAtUtc { get; set; }
+        public string? ActiveBanCreatedBy { get; set; }
     }
 }

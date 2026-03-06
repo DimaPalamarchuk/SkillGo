@@ -34,5 +34,18 @@ namespace SkillGo.Data.Models.Reports
         public string Reason { get; set; } = default!;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public ReportStatus Status { get; set; } = ReportStatus.Open;
+
+        public string? ResolvedByUserId { get; set; }
+        public ApplicationUser? ResolvedByUser { get; set; }
+
+        public DateTime? ResolvedAtUtc { get; set; }
+
+        [MaxLength(120)]
+        public string? ResolutionResult { get; set; }
+
+        [MaxLength(1000)]
+        public string? ResolutionNote { get; set; }
     }
 }

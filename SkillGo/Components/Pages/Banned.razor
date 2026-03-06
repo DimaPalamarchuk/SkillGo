@@ -1,0 +1,94 @@
+﻿@page "/banned"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>Banned</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-6" Elevation="0" Style="border-radius:24px;border:1px solid rgba(0,0,0,.08);">
+        @if (_loading)
+        {
+            <MudStack Spacing="2">
+                <MudSkeleton Height="28px" Width="40%" />
+                <MudSkeleton Height="20px" Width="100%" />
+                <MudSkeleton Height="20px" Width="80%" />
+            </MudStack>
+        }
+        else if (_ban is null)
+        {
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h5" Class="fw-bold">Access restored</MudText>
+                <MudText Color="Color.Secondary">No active restriction was found.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Nav.NavigateTo("/"))">
+                    Go home
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <div>
+                    <MudText Typo="Typo.h4" Class="fw-bold">Account restricted</MudText>
+                    <MudText Color="Color.Secondary">Your account is temporarily unavailable.</MudText>
+                </div>
+
+                <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);background:#fff7ed;">
+                    <MudText Typo="Typo.subtitle2" Class="fw-bold">Reason</MudText>
+                    <MudText Class="mt-2">@_ban.Reason</MudText>
+                </MudPaper>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);">
+                            <MudText Typo="Typo.caption" Class="fw-bold">Started</MudText>
+                            <MudText Typo="Typo.body1" Class="mt-1">@_ban.StartsAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudText>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);">
+                            <MudText Typo="Typo.caption" Class="fw-bold">Ends</MudText>
+                            <MudText Typo="Typo.body1" Class="mt-1">@(_ban.EndsAtUtc.HasValue ? _ban.EndsAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "Permanent")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private bool _loading = true;
+    private UserBan? _ban;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthenticationStateTask;
+        var userId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            _loading = false;
+            return;
+        }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var now = DateTime.UtcNow;
+
+        _ban = await db.UserBans
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now))
+            .OrderByDescending(x => x.StartsAtUtc)
+            .FirstOrDefaultAsync();
+
+        _loading = false;
+    }
+}

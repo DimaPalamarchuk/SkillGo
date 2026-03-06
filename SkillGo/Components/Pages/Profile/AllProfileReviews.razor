@@ -1,0 +1,362 @@
+﻿@page "/profile/{UserName}/reviews"
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+
+<PageTitle>Reviews</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    @if (_loading)
+    {
+        <MudGrid Spacing="3">
+            @for (var i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" md="6">
+                    <MudSkeleton Height="180px" Animation="Animation.Wave" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_user is null)
+    {
+        <MudPaper Class="pa-5" Elevation="0" Style="border-radius:20px;border:1px solid rgba(0,0,0,.08);">
+            User not found.
+        </MudPaper>
+    }
+    else
+    {
+        <div class="reviews-hero">
+            <div class="reviews-hero-top">
+                <div>
+                    <div class="reviews-kicker">Profile</div>
+                    <div class="reviews-title">Reviews for @DisplayName(_user)</div>
+                    <div class="reviews-sub">@_totalItems review(s) found</div>
+                </div>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="@(() => Nav.NavigateTo($"/profile/{_user.UserName}"))">
+                    Back to profile
+                </MudButton>
+            </div>
+
+            <div class="reviews-toolbar">
+                <MudSelect T="int?" Label="Rating" Variant="Variant.Outlined" Value="@_ratingFilter" ValueChanged="OnRatingChanged" Class="filter-control">
+                    <MudSelectItem T="int?" Value="@((int?)null)">All ratings</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)5)">5 stars</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)4)">4 stars</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)3)">3 stars</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)2)">2 stars</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)1)">1 star</MudSelectItem>
+                </MudSelect>
+
+                <MudSelect T="string" Label="Sort by date" Variant="Variant.Outlined" Value="@_sort" ValueChanged="OnSortChanged" Class="filter-control">
+                    <MudSelectItem T="string" Value="@("newest")">Newest first</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("oldest")">Oldest first</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+
+        @if (_reviews.Count == 0)
+        {
+            <MudPaper Class="reviews-empty mt-4" Elevation="0">
+                <div class="reviews-empty-title">No reviews found</div>
+                <div class="reviews-empty-sub">Try changing the filters.</div>
+            </MudPaper>
+        }
+        else
+        {
+            <MudGrid Spacing="3" Class="mt-4">
+                @foreach (var r in _reviews)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="review-card" Elevation="0">
+                            <a class="review-author" href="@AuthorProfileUrl(r.AuthorUser)">
+                                <img class="review-author-avatar" src="@AuthorAvatar(r.AuthorUser)" />
+                                <div class="review-author-copy">
+                                    <div class="review-author-name">@DisplayName(r.AuthorUser)</div>
+                                    <div class="review-author-username">@("@" + (r.AuthorUser?.UserName ?? ""))</div>
+                                </div>
+                            </a>
+
+                            <div class="review-top">
+                                <div class="stars">@Stars(r.Stars)</div>
+                                <div class="muted">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(r.Comment))
+                            {
+                                <div class="review-text">@r.Comment</div>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <div class="reviews-pagination">
+                <MudPagination Count="@_totalPages"
+                               Selected="@_page"
+                               SelectedChanged="OnPageChanged"
+                               Color="Color.Primary"
+                               Variant="Variant.Outlined" />
+            </div>
+        }
+    }
+</MudContainer>
+
+<style>
+    .reviews-hero {
+        border-radius: 24px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        padding: 22px;
+    }
+
+    .reviews-hero-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .reviews-kicker {
+        color: rgba(17,24,39,.56);
+        font-size: .78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+    }
+
+    .reviews-title {
+        margin-top: 8px;
+        color: #111827;
+        font-size: 1.6rem;
+        font-weight: 950;
+        line-height: 1.08;
+    }
+
+    .reviews-sub {
+        margin-top: 6px;
+        color: rgba(17,24,39,.62);
+        font-weight: 800;
+    }
+
+    .reviews-toolbar {
+        margin-top: 18px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .filter-control {
+        min-width: 220px;
+    }
+
+    .review-card {
+        border-radius: 20px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(0,0,0,.05);
+        padding: 18px;
+        height: 100%;
+    }
+
+    .review-author {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        color: inherit;
+        margin-bottom: 12px;
+    }
+
+    .review-author-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        flex: 0 0 auto;
+    }
+
+    .review-author-copy {
+        min-width: 0;
+    }
+
+    .review-author-name {
+        font-weight: 900;
+        color: #111827;
+        line-height: 1.1;
+    }
+
+    .review-author-username {
+        margin-top: 3px;
+        color: rgba(17,24,39,.58);
+        font-size: .88rem;
+        font-weight: 800;
+    }
+
+    .review-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .stars {
+        font-weight: 950;
+        letter-spacing: .6px;
+        color: #111827;
+    }
+
+    .muted {
+        color: rgba(17,24,39,.65);
+    }
+
+    .review-text {
+        margin-top: 10px;
+        color: rgba(17,24,39,.78);
+        line-height: 1.45;
+        white-space: pre-wrap;
+    }
+
+    .reviews-empty {
+        border-radius: 22px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+        box-shadow: 0 18px 46px rgba(0,0,0,.06);
+        padding: 28px;
+        text-align: center;
+    }
+
+    .reviews-empty-title {
+        font-weight: 950;
+        color: #111827;
+        font-size: 1.1rem;
+    }
+
+    .reviews-empty-sub {
+        margin-top: 8px;
+        color: rgba(17,24,39,.62);
+    }
+
+    .reviews-pagination {
+        margin-top: 22px;
+        display: flex;
+        justify-content: center;
+    }
+</style>
+
+@code {
+    [Parameter] public string UserName { get; set; } = default!;
+
+    private bool _loading = true;
+    private ApplicationUser? _user;
+    private List<Review> _reviews = new();
+
+    private int? _ratingFilter;
+    private string _sort = "newest";
+
+    private int _page = 1;
+    private int _pageSize = 8;
+    private int _totalItems;
+    private int _totalPages = 1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+
+        var userName = (UserName ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(userName))
+        {
+            _user = null;
+            _loading = false;
+            return;
+        }
+
+        _user = await Db.Users.FirstOrDefaultAsync(u => u.UserName == userName);
+
+        if (_user is null)
+        {
+            _loading = false;
+            return;
+        }
+
+        await LoadReviewsAsync();
+        _loading = false;
+    }
+
+    private async Task LoadReviewsAsync()
+    {
+        if (_user is null)
+            return;
+
+        var query = Db.Reviews
+            .AsNoTracking()
+            .Include(x => x.AuthorUser)
+            .Where(x => x.TargetUserId == _user.Id);
+
+        if (_ratingFilter.HasValue)
+            query = query.Where(x => x.Stars == _ratingFilter.Value);
+
+        query = _sort == "oldest"
+            ? query.OrderBy(x => x.CreatedAt)
+            : query.OrderByDescending(x => x.CreatedAt);
+
+        _totalItems = await query.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
+
+        if (_page > _totalPages)
+            _page = _totalPages;
+
+        _reviews = await query
+            .Skip((_page - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToListAsync();
+    }
+
+    private async Task OnRatingChanged(int? value)
+    {
+        _ratingFilter = value;
+        _page = 1;
+        await LoadReviewsAsync();
+    }
+
+    private async Task OnSortChanged(string value)
+    {
+        _sort = value ?? "newest";
+        _page = 1;
+        await LoadReviewsAsync();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = page;
+        await LoadReviewsAsync();
+    }
+
+    private static string DisplayName(ApplicationUser? u)
+        => u is null
+            ? "User"
+            : !string.IsNullOrWhiteSpace(u.DisplayName)
+                ? u.DisplayName!
+                : (u.UserName ?? "User");
+
+    private static string Stars(int rating)
+    {
+        var full = Math.Clamp(rating, 0, 5);
+        return new string('★', full) + new string('☆', 5 - full);
+    }
+
+    private static string AuthorAvatar(ApplicationUser? user)
+        => user?.AvatarUrl ?? "/images/default-avatar.png";
+
+    private static string AuthorProfileUrl(ApplicationUser? user)
+        => !string.IsNullOrWhiteSpace(user?.UserName) ? $"/profile/{user!.UserName}" : "#";
+}

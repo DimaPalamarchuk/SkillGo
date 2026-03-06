@@ -1,186 +1,469 @@
 ﻿@page "/admin/reports"
 @attribute [Authorize(Roles = "Admin")]
-@layout SkillGo.Components.Layout.AdminLayout
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
+@using SkillGo.Data.Models
+@using SkillGo.Data.Models.Reports
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
-@inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
 <PageTitle>Admin Reports</PageTitle>
 
-<MudPaper Class="admin-reports-panel" Elevation="0">
-    <MudStack Spacing="2">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-            <MudText Typo="Typo.h6" Class="fw-bold">Reports</MudText>
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-6">
+    <div class="reports-hero">
+        <div>
+            <div class="reports-kicker">Administration</div>
+            <div class="reports-title">Reports</div>
+            <div class="reports-subtitle">Review user, service, order and message violations.</div>
+        </div>
+    </div>
 
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Refresh"
-                       OnClick="LoadReports">
-                Refresh
-            </MudButton>
-        </MudStack>
+    <MudPaper Class="reports-shell mt-4" Elevation="0">
+        <div class="reports-toolbar">
+            <MudTextField T="string"
+                          Value="@_search"
+                          ValueChanged="OnSearchChanged"
+                          Placeholder="Search by reason, reporter, target..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          Class="reports-search" />
 
-        <MudTextField T="string"
-                      Variant="Variant.Outlined"
-                      Placeholder="Search by reporter, target, service or reason"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true"
-                      Value="@_search"
-                      ValueChanged="OnSearchChanged" />
+            <MudSelect T="string"
+                       Value="@_typeFilter"
+                       ValueChanged="OnTypeChanged"
+                       Variant="Variant.Outlined"
+                       Class="reports-filter">
+                <MudSelectItem T="string" Value="@("All")">All types</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Profile")">Profile</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Service")">Service</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Order")">Order</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Message")">Message</MudSelectItem>
+            </MudSelect>
+
+            <MudSelect T="string"
+                       Value="@_statusFilter"
+                       ValueChanged="OnStatusChanged"
+                       Variant="Variant.Outlined"
+                       Class="reports-filter">
+                <MudSelectItem T="string" Value="@("All")">All statuses</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Open")">Open</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Resolved")">Resolved</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Rejected")">Rejected</MudSelectItem>
+            </MudSelect>
+        </div>
 
         @if (_loading)
         {
-            <MudProgressCircular Indeterminate="true" />
+            <div class="reports-loading">
+                <MudProgressCircular Indeterminate="true" />
+            </div>
         }
-        else if (!FilteredReports.Any())
+        else if (_items.Count == 0)
         {
-            <div class="admin-reports-empty">
-                <MudIcon Icon="@Icons.Material.Filled.Verified" Size="Size.Large" />
-                <MudText Typo="Typo.h6">No reports found</MudText>
-                <MudText Color="Color.Secondary">Everything looks clean right now.</MudText>
+            <div class="reports-empty">
+                <MudIcon Icon="@Icons.Material.Filled.ReportGmailerrorred" Size="Size.Large" />
+                <div class="reports-empty-title">No reports found</div>
+                <div class="reports-empty-subtitle">Try changing filters or wait for new reports.</div>
             </div>
         }
         else
         {
-            <MudTable Items="FilteredReports" Hover="true" Dense="true">
-                <HeaderContent>
-                    <MudTh>ID</MudTh>
-                    <MudTh>Reporter</MudTh>
-                    <MudTh>Target user</MudTh>
-                    <MudTh>Service</MudTh>
-                    <MudTh>Reason</MudTh>
-                    <MudTh>Created</MudTh>
-                    <MudTh Align="Align.Right">Actions</MudTh>
-                </HeaderContent>
+            <div class="reports-grid">
+                @foreach (var item in _items)
+                {
+                    <div class="report-card">
+                        <div class="report-card-top">
+                            <div>
+                                <div class="report-id">Report #@item.Id</div>
+                                <div class="report-type">@item.TargetType</div>
+                            </div>
 
-                <RowTemplate>
-                    <MudTd DataLabel="ID">@context.Id</MudTd>
-                    <MudTd DataLabel="Reporter">@context.ReporterUserName</MudTd>
-                    <MudTd DataLabel="Target user">@context.TargetUserName</MudTd>
-                    <MudTd DataLabel="Service">@context.ServiceTitle</MudTd>
-                    <MudTd DataLabel="Reason">
-                        <div class="admin-report-reason">@context.Reason</div>
-                    </MudTd>
-                    <MudTd DataLabel="Created">@context.CreatedAtText</MudTd>
-                    <MudTd DataLabel="Actions" Align="Align.Right">
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Error"
-                                   StartIcon="@Icons.Material.Filled.Delete"
-                                   OnClick="() => DeleteReport(context.Id)">
-                            Delete
-                        </MudButton>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+                            <MudStack Spacing="1" AlignItems="AlignItems.End">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@TargetTypeColor(item.TargetType)">
+                                    @item.TargetType
+                                </MudChip>
+
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(item.Status)">
+                                    @item.Status
+                                </MudChip>
+                            </MudStack>
+                        </div>
+
+                        <div class="report-meta-grid">
+                            <div class="report-meta-box">
+                                <div class="report-meta-label">Reporter</div>
+                                <div class="report-meta-value">@DisplayUser(item.ReporterUser)</div>
+                            </div>
+
+                            <div class="report-meta-box">
+                                <div class="report-meta-label">Target</div>
+                                <div class="report-meta-value">@DisplayUser(item.TargetUser)</div>
+                            </div>
+
+                            <div class="report-meta-box">
+                                <div class="report-meta-label">Created</div>
+                                <div class="report-meta-value">@item.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                            </div>
+
+                            <div class="report-meta-box">
+                                <div class="report-meta-label">Object</div>
+                                <div class="report-meta-value">@TargetObjectText(item)</div>
+                            </div>
+                        </div>
+
+                        <div class="report-reason-label">Reason</div>
+                        <div class="report-reason">@TrimText(item.Reason, 180)</div>
+
+                        @if (item.Status != ReportStatus.Open)
+                        {
+                            <div class="report-resolution-box">
+                                <div class="report-resolution-label">Closed by</div>
+                                <div class="report-resolution-value">@DisplayUser(item.ResolvedByUser)</div>
+
+                                <div class="report-resolution-label mt-2">Result</div>
+                                <div class="report-resolution-value">@ResolutionResultText(item)</div>
+                            </div>
+                        }
+
+                        <div class="report-actions">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => Nav.NavigateTo($"/admin/reports/{item.Id}"))">
+                                Open
+                            </MudButton>
+                        </div>
+                    </div>
+                }
+            </div>
         }
-    </MudStack>
-</MudPaper>
+    </MudPaper>
+</MudContainer>
 
 <style>
-    .admin-reports-panel {
-        padding: 22px;
-        border-radius: 24px;
-        background: rgba(255,255,255,.94);
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 18px 36px rgba(15,23,42,.05);
+    .reports-hero {
+        border-radius: 26px;
+        padding: 28px;
+        background: linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%);
+        color: #fff;
+        box-shadow: 0 24px 56px rgba(15,23,42,.18);
     }
 
-    .admin-reports-empty {
+    .reports-kicker {
+        color: rgba(255,255,255,.68);
+        font-size: .78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .16em;
+    }
+
+    .reports-title {
+        margin-top: 8px;
+        font-size: 2rem;
+        font-weight: 950;
+        line-height: 1.04;
+    }
+
+    .reports-subtitle {
+        margin-top: 8px;
+        color: rgba(255,255,255,.78);
+        font-weight: 700;
+    }
+
+    .reports-shell {
+        padding: 22px;
+        border-radius: 24px;
+        background: rgba(255,255,255,.96);
+        border: 1px solid rgba(15,23,42,.06);
+        box-shadow: 0 18px 40px rgba(15,23,42,.05);
+    }
+
+    .reports-toolbar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+    }
+
+    .reports-search {
+        flex: 1 1 360px;
+    }
+
+    .reports-filter {
+        width: 220px;
+    }
+
+    .reports-loading,
+    .reports-empty {
         min-height: 280px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 12px;
         text-align: center;
-        color: #6b7280;
     }
 
-    .admin-report-reason {
-        max-width: 340px;
-        white-space: normal;
-        line-height: 1.35;
+    .reports-empty-title {
+        font-size: 1.08rem;
+        font-weight: 900;
+        color: #111827;
+    }
+
+    .reports-empty-subtitle {
+        color: rgba(17,24,39,.62);
+        font-weight: 700;
+    }
+
+    .reports-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 16px;
+    }
+
+    .report-card {
+        border-radius: 22px;
+        border: 1px solid rgba(15,23,42,.08);
+        background: #fff;
+        box-shadow: 0 14px 34px rgba(15,23,42,.05);
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .report-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .report-id {
+        color: #111827;
+        font-size: 1.04rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }
+
+    .report-type {
+        margin-top: 4px;
+        color: rgba(17,24,39,.56);
+        font-weight: 800;
+    }
+
+    .report-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .report-meta-box {
+        border-radius: 16px;
+        border: 1px solid rgba(15,23,42,.06);
+        background: #f8fafc;
+        padding: 12px;
+        min-width: 0;
+    }
+
+    .report-meta-label {
+        color: rgba(17,24,39,.56);
+        font-size: .72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .report-meta-value {
+        margin-top: 6px;
+        color: #111827;
+        font-weight: 900;
+        line-height: 1.3;
+        word-break: break-word;
+    }
+
+    .report-reason-label,
+    .report-resolution-label {
+        color: rgba(17,24,39,.56);
+        font-size: .72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .report-reason,
+    .report-resolution-value {
+        color: #111827;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .report-resolution-box {
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #f8fafc;
+        padding: 12px;
+    }
+
+    .report-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: auto;
+    }
+
+    @@media (max-width: 760px) {
+        .reports-title {
+            font-size: 1.6rem;
+        }
+
+        .reports-filter {
+            width: 100%;
+        }
+
+        .report-meta-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
 @code {
     private bool _loading = true;
-    private string? _search;
-    private List<AdminReportRow> _reports = new();
-
-    private IEnumerable<AdminReportRow> FilteredReports =>
-        string.IsNullOrWhiteSpace(_search)
-            ? _reports
-            : _reports.Where(x =>
-                x.ReporterUserName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                x.TargetUserName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                x.ServiceTitle.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                x.Reason.Contains(_search, StringComparison.OrdinalIgnoreCase));
+    private string _search = string.Empty;
+    private string _typeFilter = "All";
+    private string _statusFilter = "All";
+    private List<Report> _items = new();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadReports();
+        await LoadAsync();
     }
 
-    private async Task LoadReports()
+    private async Task LoadAsync()
     {
         _loading = true;
-        StateHasChanged();
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        _reports = await db.Reports
+        var query = db.Reports
+            .AsNoTracking()
             .Include(x => x.ReporterUser)
             .Include(x => x.TargetUser)
             .Include(x => x.ServiceOffer)
+            .Include(x => x.ResolvedByUser)
+            .AsQueryable();
+
+        if (_typeFilter != "All" && Enum.TryParse<ReportTargetType>(_typeFilter, true, out var parsedType))
+            query = query.Where(x => x.TargetType == parsedType);
+
+        if (_statusFilter != "All" && Enum.TryParse<ReportStatus>(_statusFilter, true, out var parsedStatus))
+            query = query.Where(x => x.Status == parsedStatus);
+
+        var term = _search.Trim();
+
+        if (!string.IsNullOrWhiteSpace(term))
+        {
+            query = query.Where(x =>
+                x.Reason.Contains(term) ||
+                (x.ResolutionNote != null && x.ResolutionNote.Contains(term)) ||
+                (x.ResolutionResult != null && x.ResolutionResult.Contains(term)) ||
+                (x.ReporterUser.DisplayName != null && x.ReporterUser.DisplayName.Contains(term)) ||
+                (x.ReporterUser.UserName != null && x.ReporterUser.UserName.Contains(term)) ||
+                (x.ReporterUser.Email != null && x.ReporterUser.Email.Contains(term)) ||
+                (x.TargetUser.DisplayName != null && x.TargetUser.DisplayName.Contains(term)) ||
+                (x.TargetUser.UserName != null && x.TargetUser.UserName.Contains(term)) ||
+                (x.TargetUser.Email != null && x.TargetUser.Email.Contains(term)) ||
+                (x.ResolvedByUser != null && x.ResolvedByUser.UserName != null && x.ResolvedByUser.UserName.Contains(term)));
+        }
+
+        _items = await query
             .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new AdminReportRow
-                {
-                    Id = x.Id,
-                    ReporterUserName = x.ReporterUser != null ? x.ReporterUser.UserName ?? "-" : "-",
-                    TargetUserName = x.TargetUser != null ? x.TargetUser.UserName ?? "-" : "-",
-                    ServiceTitle = x.ServiceOffer != null ? x.ServiceOffer.Title ?? $"Service #{x.ServiceOfferId}" : "-",
-                    Reason = x.Reason,
-                    CreatedAtText = x.CreatedAt.ToString("yyyy-MM-dd HH:mm")
-                })
             .ToListAsync();
 
         _loading = false;
         StateHasChanged();
     }
 
-    private Task OnSearchChanged(string value)
+    private async Task OnSearchChanged(string value)
     {
-        _search = value;
-        return Task.CompletedTask;
+        _search = value ?? string.Empty;
+        await LoadAsync();
     }
 
-    private async Task DeleteReport(int id)
+    private async Task OnTypeChanged(string value)
     {
-        await using var db = await DbFactory.CreateDbContextAsync();
-        var entity = await db.Reports.FirstOrDefaultAsync(x => x.Id == id);
-
-        if (entity == null)
-            return;
-
-        db.Reports.Remove(entity);
-        await db.SaveChangesAsync();
-
-        Snackbar.Add("Report deleted", Severity.Success);
-        await LoadReports();
+        _typeFilter = value ?? "All";
+        await LoadAsync();
     }
 
-    private sealed class AdminReportRow
+    private async Task OnStatusChanged(string value)
     {
-        public int Id { get; set; }
-        public string ReporterUserName { get; set; } = "-";
-        public string TargetUserName { get; set; } = "-";
-        public string ServiceTitle { get; set; } = "-";
-        public string Reason { get; set; } = "-";
-        public string CreatedAtText { get; set; } = "-";
+        _statusFilter = value ?? "All";
+        await LoadAsync();
+    }
+
+    private static string DisplayUser(ApplicationUser? user)
+    {
+        if (user is null)
+            return "-";
+
+        if (!string.IsNullOrWhiteSpace(user.DisplayName))
+            return user.DisplayName;
+
+        return user.UserName ?? user.Email ?? user.Id;
+    }
+
+    private static string TargetObjectText(Report report)
+    {
+        return report.TargetType switch
+        {
+            ReportTargetType.Profile => $"Profile of {DisplayUser(report.TargetUser)}",
+            ReportTargetType.Service => report.ServiceOffer is null ? "Service" : $"Service #{report.ServiceOffer.Id}",
+            ReportTargetType.Order => report.OrderId.HasValue ? $"Order #{report.OrderId.Value}" : "Order",
+            ReportTargetType.Message => report.MessageId.HasValue ? $"Message #{report.MessageId.Value}" : "Message",
+            _ => "-"
+        };
+    }
+
+    private static string TrimText(string? text, int max)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "-";
+
+        return text.Length <= max ? text : text.Substring(0, max) + "...";
+    }
+
+    private static string ResolutionResultText(Report report)
+    {
+        if (!string.IsNullOrWhiteSpace(report.ResolutionResult))
+            return report.ResolutionResult!;
+
+        return report.Status.ToString();
+    }
+
+    private static Color TargetTypeColor(ReportTargetType type)
+    {
+        return type switch
+        {
+            ReportTargetType.Profile => Color.Info,
+            ReportTargetType.Service => Color.Primary,
+            ReportTargetType.Order => Color.Warning,
+            ReportTargetType.Message => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private static Color StatusColor(ReportStatus status)
+    {
+        return status switch
+        {
+            ReportStatus.Open => Color.Warning,
+            ReportStatus.Resolved => Color.Success,
+            ReportStatus.Rejected => Color.Secondary,
+            _ => Color.Default
+        };
     }
 }

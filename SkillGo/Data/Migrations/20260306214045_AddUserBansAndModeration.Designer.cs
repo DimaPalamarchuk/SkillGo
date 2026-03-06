@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SkillGo.Data;
 
@@ -11,9 +12,11 @@ using SkillGo.Data;
 namespace SkillGo.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260306214045_AddUserBansAndModeration")]
+    partial class AddUserBansAndModeration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -510,24 +513,7 @@ namespace SkillGo.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("ResolutionNote")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("ResolutionResult")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<DateTime?>("ResolvedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ResolvedByUserId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<int?>("ServiceOfferId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.Property<int>("TargetType")
@@ -547,13 +533,7 @@ namespace SkillGo.Migrations
 
                     b.HasIndex("ReporterUserId");
 
-                    b.HasIndex("ResolvedAtUtc");
-
-                    b.HasIndex("ResolvedByUserId");
-
                     b.HasIndex("ServiceOfferId");
-
-                    b.HasIndex("Status");
 
                     b.HasIndex("TargetType");
 
@@ -873,11 +853,6 @@ namespace SkillGo.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SkillGo.Data.ApplicationUser", "ResolvedByUser")
-                        .WithMany()
-                        .HasForeignKey("ResolvedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("SkillGo.Data.Models.ServiceOffer", "ServiceOffer")
                         .WithMany()
                         .HasForeignKey("ServiceOfferId")
@@ -894,8 +869,6 @@ namespace SkillGo.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("ReporterUser");
-
-                    b.Navigation("ResolvedByUser");
 
                     b.Navigation("ServiceOffer");
 

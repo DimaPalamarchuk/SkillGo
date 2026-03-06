@@ -1,0 +1,1119 @@
+﻿@page "/admin/reports/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@using SkillGo.Data.Models
+@using SkillGo.Data.Models.Chat
+@using SkillGo.Data.Models.Orders
+@using SkillGo.Data.Models.Reports
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Report Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-6">
+    @if (_loading)
+    {
+        <MudPaper Class="details-loading" Elevation="0">
+            <MudProgressCircular Indeterminate="true" />
+        </MudPaper>
+    }
+    else if (_report is null)
+    {
+        <MudPaper Class="details-empty" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" />
+            <div class="details-empty-title">Report not found</div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="GoBack">
+                Back to reports
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="details-hero">
+            <div class="details-hero-left">
+                <div class="details-kicker">Administration</div>
+                <div class="details-title">Report #@_report.Id</div>
+                <div class="details-subtitle">Inspect the reported violation and related object.</div>
+            </div>
+
+            <div class="details-hero-right">
+                <MudStack Row="true" Spacing="1">
+                    <MudChip T="string" Variant="Variant.Filled" Color="@TargetTypeColor(_report.TargetType)">
+                        @_report.TargetType
+                    </MudChip>
+
+                    <MudChip T="string" Variant="Variant.Outlined" Color="@StatusColor(_report.Status)">
+                        @_report.Status
+                    </MudChip>
+                </MudStack>
+            </div>
+        </div>
+
+        <div class="details-grid mt-4">
+            <MudPaper Class="details-main" Elevation="0">
+                <div class="details-section">
+                    <div class="details-section-title">Report information</div>
+
+                    <div class="details-info-grid">
+                        <div class="details-info-card">
+                            <div class="details-info-label">Reporter</div>
+                            <div class="details-info-value">@DisplayUser(_report.ReporterUser)</div>
+                        </div>
+
+                        <div class="details-info-card">
+                            <div class="details-info-label">Target user</div>
+                            <div class="details-info-value">@DisplayUser(_report.TargetUser)</div>
+                        </div>
+
+                        <div class="details-info-card">
+                            <div class="details-info-label">Created</div>
+                            <div class="details-info-value">@_report.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        </div>
+
+                        <div class="details-info-card">
+                            <div class="details-info-label">Type</div>
+                            <div class="details-info-value">@_report.TargetType</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <div class="details-section-title">Reason</div>
+                    <div class="details-reason">@_report.Reason</div>
+                </div>
+
+                @if (_report.Status != ReportStatus.Open)
+                {
+                    <div class="details-section">
+                        <div class="details-section-title">Resolution</div>
+
+                        <div class="details-info-grid">
+                            <div class="details-info-card">
+                                <div class="details-info-label">Closed by</div>
+                                <div class="details-info-value">@DisplayUser(_report.ResolvedByUser)</div>
+                            </div>
+
+                            <div class="details-info-card">
+                                <div class="details-info-label">Closed at</div>
+                                <div class="details-info-value">@(_report.ResolvedAtUtc.HasValue ? _report.ResolvedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-")</div>
+                            </div>
+
+                            <div class="details-info-card">
+                                <div class="details-info-label">Result</div>
+                                <div class="details-info-value">@(_report.ResolutionResult ?? "-")</div>
+                            </div>
+
+                            <div class="details-info-card">
+                                <div class="details-info-label">Status</div>
+                                <div class="details-info-value">@_report.Status</div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_report.ResolutionNote))
+                        {
+                            <div class="details-reason">@_report.ResolutionNote</div>
+                        }
+                    </div>
+                }
+
+                @if (_report.TargetType == ReportTargetType.Message)
+                {
+                    <div class="details-section">
+                        <div class="details-section-title">Reported message</div>
+
+                        @if (_message is null)
+                        {
+                            <div class="details-note">Message was not found.</div>
+                        }
+                        else
+                        {
+                            <div class="message-card">
+                                <div class="message-top">
+                                    <div class="message-top-left">
+                                        <div class="message-user">@DisplayUser(_messageSender)</div>
+                                        <div class="message-time">@_message.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                                    </div>
+
+                                    @if (_message.ConversationId > 0)
+                                    {
+                                        <MudButton Variant="Variant.Outlined"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => Nav.NavigateTo($"/chat/{_message.ConversationId}"))">
+                                            Open chat
+                                        </MudButton>
+                                    }
+                                </div>
+
+                                @if (_message.IsDeleted)
+                                {
+                                    <div class="details-note">Message deleted</div>
+                                }
+                                else
+                                {
+                                    @if (!string.IsNullOrWhiteSpace(_message.Body))
+                                    {
+                                        <div class="message-body">@_message.Body</div>
+                                    }
+
+                                    @if (_message.Attachments.Any())
+                                    {
+                                        <div class="attachments-list">
+                                            @foreach (var att in _message.Attachments)
+                                            {
+                                                <a class="attachment-item" href="@att.Url" target="_blank">
+                                                    <MudIcon Icon="@(att.IsImage ? Icons.Material.Filled.Image : Icons.Material.Filled.AttachFile)" />
+                                                    <span>@att.FileName</span>
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (_report.TargetType == ReportTargetType.Order)
+                {
+                    <div class="details-section">
+                        <div class="details-section-title">Reported order</div>
+
+                        @if (_order is null)
+                        {
+                            <div class="details-note">Order was not found.</div>
+                        }
+                        else
+                        {
+                            <div class="object-card">
+                                <div class="object-title">Order #@_order.Id</div>
+                                <div class="object-subtitle">@(_order.ServiceOffer?.Title ?? "Service")</div>
+
+                                <div class="details-info-grid mt-4">
+                                    <div class="details-info-card">
+                                        <div class="details-info-label">Buyer</div>
+                                        <div class="details-info-value">@DisplayUser(_buyer)</div>
+                                    </div>
+
+                                    <div class="details-info-card">
+                                        <div class="details-info-label">Seller</div>
+                                        <div class="details-info-value">@DisplayUser(_seller)</div>
+                                    </div>
+
+                                    <div class="details-info-card">
+                                        <div class="details-info-label">Amount</div>
+                                        <div class="details-info-value">@_order.Amount.ToString("0.00") zł</div>
+                                    </div>
+
+                                    <div class="details-info-card">
+                                        <div class="details-info-label">Status</div>
+                                        <div class="details-info-value">@_order.Status</div>
+                                    </div>
+                                </div>
+
+                                <div class="object-actions">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => Nav.NavigateTo($"/orders/{_order.Id}"))">
+                                        Open order
+                                    </MudButton>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (_report.TargetType == ReportTargetType.Service)
+                {
+                    <div class="details-section">
+                        <div class="details-section-title">Reported service</div>
+
+                        @if (_service is null)
+                        {
+                            <div class="details-note">Service was not found or removed.</div>
+                        }
+                        else
+                        {
+                            <div class="object-card">
+                                <div class="object-title">@_service.Title</div>
+                                <div class="object-subtitle">@TrimText(_service.Description, 280)</div>
+
+                                <div class="details-info-grid mt-4">
+                                    <div class="details-info-card">
+                                        <div class="details-info-label">Owner</div>
+                                        <div class="details-info-value">@DisplayUser(_serviceOwner)</div>
+                                    </div>
+
+                                    <div class="details-info-card">
+                                        <div class="details-info-label">Price</div>
+                                        <div class="details-info-value">@_service.Price.ToString("0.00") zł</div>
+                                    </div>
+                                </div>
+
+                                <div class="object-actions">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => Nav.NavigateTo($"/services/{_service.Id}"))">
+                                        Open service
+                                    </MudButton>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (_report.TargetType == ReportTargetType.Profile)
+                {
+                    <div class="details-section">
+                        <div class="details-section-title">Reported profile</div>
+
+                        <div class="object-card">
+                            <div class="object-title">@DisplayUser(_report.TargetUser)</div>
+                            <div class="object-subtitle">@(_report.TargetUser?.UserName is null ? "-" : "@" + _report.TargetUser.UserName)</div>
+
+                            <div class="object-actions">
+                                @if (!string.IsNullOrWhiteSpace(_report.TargetUser?.UserName))
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => Nav.NavigateTo($"/profile/{_report.TargetUser!.UserName}"))">
+                                        Open profile
+                                    </MudButton>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </MudPaper>
+
+            <MudPaper Class="details-side" Elevation="0">
+                <div class="details-side-title">Quick actions</div>
+
+                <MudStack Spacing="2" Class="mt-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoBack">
+                        Back to reports
+                    </MudButton>
+
+                    @if (!string.IsNullOrWhiteSpace(_report.ReporterUser?.UserName))
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => Nav.NavigateTo($"/profile/{_report.ReporterUser!.UserName}"))">
+                            Open reporter
+                        </MudButton>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_report.TargetUser?.UserName))
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   OnClick="@(() => Nav.NavigateTo($"/profile/{_report.TargetUser!.UserName}"))">
+                            Open target
+                        </MudButton>
+                    }
+                </MudStack>
+
+                @if (_report.Status == ReportStatus.Open)
+                {
+                    <div class="details-side-title mt-6">Close report</div>
+
+                    <MudStack Spacing="2" Class="mt-4">
+                        <MudSelect T="string" @bind-Value="_resolutionResult">
+                            <MudSelectItem T="string" Value="@("Violation confirmed")">Violation confirmed</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("False report")">False report</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("No action required")">No action required</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("User warned")">User warned</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Content removed")">Content removed</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("User banned")">User banned</MudSelectItem>
+                        </MudSelect>
+
+                        <MudTextField @bind-Value="_resolutionNote"
+                                      Label="Admin note"
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      Immediate="true"
+                                      Counter="1000"
+                                      MaxLength="1000" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   Disabled="_moderating || string.IsNullOrWhiteSpace(_resolutionResult)"
+                                   OnClick="CloseAsResolvedAsync">
+                            @(_moderating ? "Saving..." : "Close report")
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
+                                   Disabled="_moderating"
+                                   OnClick="CloseAsRejectedAsync">
+                            @(_moderating ? "Saving..." : "Skip as false report")
+                        </MudButton>
+                    </MudStack>
+                }
+
+                <div class="details-side-title mt-6">User restriction</div>
+
+                @if (_activeBan is not null)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mt-3">
+                        Active ban until @(_activeBan.EndsAtUtc.HasValue ? _activeBan.EndsAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "Permanent")
+                    </MudAlert>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Success"
+                               Class="mt-4"
+                               Disabled="_moderating"
+                               OnClick="UnbanUserAsync">
+                        @(_moderating ? "Saving..." : "Unban user")
+                    </MudButton>
+                }
+                else
+                {
+                    <MudStack Spacing="2" Class="mt-4">
+                        <MudSelect T="string" @bind-Value="_banDuration">
+                            <MudSelectItem T="string" Value="@("1d")">1 day</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("7d")">7 days</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("30d")">30 days</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("perm")">Permanent</MudSelectItem>
+                        </MudSelect>
+
+                        <MudTextField @bind-Value="_banReason"
+                                      Label="Ban reason"
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      Immediate="true"
+                                      Counter="500"
+                                      MaxLength="500" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   Disabled="_moderating || string.IsNullOrWhiteSpace(_banReason)"
+                                   OnClick="BanUserAsync">
+                            @(_moderating ? "Saving..." : "Ban user")
+                        </MudButton>
+                    </MudStack>
+                }
+
+                @if (_report.TargetType == ReportTargetType.Message && _message is not null && !_message.IsDeleted)
+                {
+                    <div class="details-side-title mt-6">Message moderation</div>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Class="mt-4"
+                               Disabled="_moderating"
+                               OnClick="DeleteMessageAsync">
+                        Delete message
+                    </MudButton>
+                }
+
+                @if (_report.TargetType == ReportTargetType.Service && _service is not null)
+                {
+                    <div class="details-side-title mt-6">Service moderation</div>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Class="mt-4"
+                               Disabled="_moderating"
+                               OnClick="DeleteServiceAsync">
+                        Delete service
+                    </MudButton>
+                }
+            </MudPaper>
+        </div>
+    }
+</MudContainer>
+
+<style>
+    .details-loading,
+    .details-empty {
+        min-height: 320px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        border-radius: 24px;
+        background: rgba(255,255,255,.96);
+        border: 1px solid rgba(15,23,42,.06);
+        text-align: center;
+    }
+
+    .details-empty-title {
+        font-size: 1.08rem;
+        font-weight: 900;
+        color: #111827;
+    }
+
+    .details-hero {
+        border-radius: 26px;
+        padding: 28px;
+        background: linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%);
+        color: #fff;
+        box-shadow: 0 24px 56px rgba(15,23,42,.18);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .details-kicker {
+        color: rgba(255,255,255,.68);
+        font-size: .78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .16em;
+    }
+
+    .details-title {
+        margin-top: 8px;
+        font-size: 2rem;
+        font-weight: 950;
+        line-height: 1.04;
+    }
+
+    .details-subtitle {
+        margin-top: 8px;
+        color: rgba(255,255,255,.78);
+        font-weight: 700;
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 16px;
+        align-items: start;
+    }
+
+    .details-main,
+    .details-side {
+        border-radius: 24px;
+        background: rgba(255,255,255,.96);
+        border: 1px solid rgba(15,23,42,.06);
+        box-shadow: 0 18px 40px rgba(15,23,42,.05);
+    }
+
+    .details-main {
+        padding: 22px;
+    }
+
+    .details-side {
+        padding: 20px;
+        position: sticky;
+        top: 92px;
+    }
+
+    .details-side-title,
+    .details-section-title {
+        color: #111827;
+        font-size: 1.02rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }
+
+    .details-section + .details-section {
+        margin-top: 22px;
+        padding-top: 22px;
+        border-top: 1px solid rgba(15,23,42,.06);
+    }
+
+    .details-info-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .details-info-card {
+        padding: 14px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid rgba(15,23,42,.06);
+        min-width: 0;
+    }
+
+    .details-info-label {
+        color: rgba(17,24,39,.56);
+        font-size: .72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .details-info-value {
+        margin-top: 6px;
+        color: #111827;
+        font-weight: 900;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .details-reason {
+        margin-top: 14px;
+        padding: 16px;
+        border-radius: 18px;
+        background: #fff7ed;
+        border: 1px solid rgba(251,146,60,.18);
+        color: #111827;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    .details-note {
+        margin-top: 14px;
+        color: rgba(17,24,39,.62);
+        font-weight: 700;
+    }
+
+    .message-card,
+    .object-card {
+        margin-top: 14px;
+        padding: 18px;
+        border-radius: 20px;
+        background: #fff;
+        border: 1px solid rgba(15,23,42,.08);
+        box-shadow: 0 12px 30px rgba(15,23,42,.05);
+    }
+
+    .message-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .message-user,
+    .object-title {
+        color: #111827;
+        font-size: 1.05rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }
+
+    .message-time,
+    .object-subtitle {
+        margin-top: 6px;
+        color: rgba(17,24,39,.58);
+        font-weight: 700;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .message-body {
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 16px;
+        background: #f8fafc;
+        border: 1px solid rgba(15,23,42,.06);
+        color: #111827;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .attachments-list {
+        margin-top: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .attachment-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: fit-content;
+        padding: 10px 12px;
+        border-radius: 14px;
+        text-decoration: none;
+        color: #111827;
+        background: #f8fafc;
+        border: 1px solid rgba(15,23,42,.06);
+        font-weight: 800;
+    }
+
+    .object-actions {
+        margin-top: 16px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    @@media (max-width: 1080px) {
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .details-side {
+            position: static;
+        }
+    }
+
+    @@media (max-width: 760px) {
+        .details-title {
+            font-size: 1.6rem;
+        }
+
+        .details-info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private bool _loading = true;
+    private bool _moderating;
+    private Report? _report;
+    private Message? _message;
+    private ApplicationUser? _messageSender;
+    private Order? _order;
+    private ApplicationUser? _buyer;
+    private ApplicationUser? _seller;
+    private ServiceOffer? _service;
+    private ApplicationUser? _serviceOwner;
+    private UserBan? _activeBan;
+
+    private string _banDuration = "7d";
+    private string? _banReason;
+    private string _resolutionResult = "Violation confirmed";
+    private string? _resolutionNote;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _report = await db.Reports
+            .Include(x => x.ReporterUser)
+            .Include(x => x.TargetUser)
+            .Include(x => x.ServiceOffer)
+            .Include(x => x.ResolvedByUser)
+            .FirstOrDefaultAsync(x => x.Id == Id);
+
+        _message = null;
+        _messageSender = null;
+        _order = null;
+        _buyer = null;
+        _seller = null;
+        _service = null;
+        _serviceOwner = null;
+        _activeBan = null;
+
+        if (_report is not null)
+        {
+            if (_report.MessageId.HasValue)
+            {
+                _message = await db.Messages
+                    .Include(x => x.Attachments)
+                    .FirstOrDefaultAsync(x => x.Id == _report.MessageId.Value);
+
+                if (_message is not null)
+                    _messageSender = await db.Users.FirstOrDefaultAsync(x => x.Id == _message.SenderId);
+            }
+
+            if (_report.OrderId.HasValue)
+            {
+                _order = await db.Orders
+                    .Include(x => x.ServiceOffer)
+                    .FirstOrDefaultAsync(x => x.Id == _report.OrderId.Value);
+
+                if (_order is not null)
+                {
+                    _buyer = await db.Users.FirstOrDefaultAsync(x => x.Id == _order.BuyerId);
+                    _seller = await db.Users.FirstOrDefaultAsync(x => x.Id == _order.SellerId);
+                }
+            }
+
+            if (_report.ServiceOfferId.HasValue)
+            {
+                _service = await db.ServiceOffers
+                    .FirstOrDefaultAsync(x => x.Id == _report.ServiceOfferId.Value);
+
+                if (_service is not null)
+                    _serviceOwner = await db.Users.FirstOrDefaultAsync(x => x.Id == _service.OwnerUserId);
+            }
+
+            var now = DateTime.UtcNow;
+
+            _activeBan = await db.UserBans
+                .Include(x => x.CreatedByUser)
+                .Where(x => x.UserId == _report.TargetUserId && x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now))
+                .OrderByDescending(x => x.StartsAtUtc)
+                .FirstOrDefaultAsync();
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task CloseAsResolvedAsync()
+    {
+        if (_moderating || _report is null || _report.Status != ReportStatus.Open)
+            return;
+
+        var auth = await AuthenticationStateTask;
+        var adminId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(adminId))
+            return;
+
+        _moderating = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var report = await db.Reports.FirstOrDefaultAsync(x => x.Id == _report.Id);
+
+            if (report is null)
+            {
+                Snackbar.Add("Report not found", Severity.Error);
+                return;
+            }
+
+            if (report.Status != ReportStatus.Open)
+            {
+                Snackbar.Add("Report already closed", Severity.Warning);
+                return;
+            }
+
+            report.Status = ReportStatus.Resolved;
+            report.ResolvedByUserId = adminId;
+            report.ResolvedAtUtc = DateTime.UtcNow;
+            report.ResolutionResult = string.IsNullOrWhiteSpace(_resolutionResult) ? "Resolved" : _resolutionResult.Trim();
+            report.ResolutionNote = string.IsNullOrWhiteSpace(_resolutionNote) ? null : _resolutionNote.Trim();
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add("Report closed", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _moderating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CloseAsRejectedAsync()
+    {
+        if (_moderating || _report is null || _report.Status != ReportStatus.Open)
+            return;
+
+        var auth = await AuthenticationStateTask;
+        var adminId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(adminId))
+            return;
+
+        _moderating = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var report = await db.Reports.FirstOrDefaultAsync(x => x.Id == _report.Id);
+
+            if (report is null)
+            {
+                Snackbar.Add("Report not found", Severity.Error);
+                return;
+            }
+
+            if (report.Status != ReportStatus.Open)
+            {
+                Snackbar.Add("Report already closed", Severity.Warning);
+                return;
+            }
+
+            report.Status = ReportStatus.Rejected;
+            report.ResolvedByUserId = adminId;
+            report.ResolvedAtUtc = DateTime.UtcNow;
+            report.ResolutionResult = "False report";
+            report.ResolutionNote = string.IsNullOrWhiteSpace(_resolutionNote) ? "Closed without action" : _resolutionNote.Trim();
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add("Report skipped", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _moderating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task BanUserAsync()
+    {
+        if (_moderating || _report is null || string.IsNullOrWhiteSpace(_banReason))
+            return;
+
+        var auth = await AuthenticationStateTask;
+        var adminId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(adminId))
+            return;
+
+        _moderating = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var now = DateTime.UtcNow;
+            var endsAt = _banDuration switch
+            {
+                "1d" => now.AddDays(1),
+                "7d" => now.AddDays(7),
+                "30d" => now.AddDays(30),
+                "perm" => (DateTime?)null,
+                _ => now.AddDays(7)
+            };
+
+            var active = await db.UserBans
+                .Where(x => x.UserId == _report.TargetUserId && x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now))
+                .OrderByDescending(x => x.StartsAtUtc)
+                .FirstOrDefaultAsync();
+
+            if (active is not null)
+            {
+                active.Reason = _banReason.Trim();
+                active.EndsAtUtc = endsAt;
+                active.CreatedByUserId = adminId;
+            }
+            else
+            {
+                db.UserBans.Add(new UserBan
+                    {
+                        UserId = _report.TargetUserId,
+                        CreatedByUserId = adminId,
+                        Reason = _banReason.Trim(),
+                        StartsAtUtc = now,
+                        EndsAtUtc = endsAt
+                    });
+            }
+
+            await db.SaveChangesAsync();
+            Snackbar.Add("User restriction saved", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _moderating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UnbanUserAsync()
+    {
+        if (_moderating || _report is null)
+            return;
+
+        _moderating = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var now = DateTime.UtcNow;
+
+            var activeBans = await db.UserBans
+                .Where(x => x.UserId == _report.TargetUserId && x.StartsAtUtc <= now && (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now))
+                .ToListAsync();
+
+            if (activeBans.Count == 0)
+            {
+                Snackbar.Add("Active ban not found", Severity.Error);
+                return;
+            }
+
+            foreach (var ban in activeBans)
+                ban.EndsAtUtc = now;
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add("User unbanned", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _moderating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteMessageAsync()
+    {
+        if (_moderating || _report is null || !_report.MessageId.HasValue)
+            return;
+
+        _moderating = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var msg = await db.Messages
+                .Include(x => x.Attachments)
+                .FirstOrDefaultAsync(x => x.Id == _report.MessageId.Value);
+
+            if (msg is null)
+            {
+                Snackbar.Add("Message not found", Severity.Error);
+                return;
+            }
+
+            if (msg.Attachments.Any())
+                db.MessageAttachments.RemoveRange(msg.Attachments);
+
+            msg.Body = null;
+            msg.IsDeleted = true;
+            msg.DeletedAtUtc = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add("Message deleted", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _moderating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteServiceAsync()
+    {
+        if (_moderating || _service is null)
+            return;
+
+        _moderating = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var service = await db.ServiceOffers.FirstOrDefaultAsync(x => x.Id == _service.Id);
+
+            if (service is null)
+            {
+                Snackbar.Add("Service not found", Severity.Error);
+                return;
+            }
+
+            var hasOrders = await db.Orders.AnyAsync(x => x.ServiceOfferId == service.Id);
+
+            if (hasOrders)
+            {
+                Snackbar.Add("Service cannot be deleted because it is used in orders", Severity.Error);
+                return;
+            }
+
+            db.ServiceOffers.Remove(service);
+            await db.SaveChangesAsync();
+
+            Snackbar.Add("Service deleted", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _moderating = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Nav.NavigateTo("/admin/reports");
+    }
+
+    private static string DisplayUser(ApplicationUser? user)
+    {
+        if (user is null)
+            return "-";
+
+        if (!string.IsNullOrWhiteSpace(user.DisplayName))
+            return user.DisplayName;
+
+        return user.UserName ?? user.Email ?? user.Id;
+    }
+
+    private static string TrimText(string? text, int max)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "-";
+
+        return text.Length <= max ? text : text.Substring(0, max) + "...";
+    }
+
+    private static Color TargetTypeColor(ReportTargetType type)
+    {
+        return type switch
+        {
+            ReportTargetType.Profile => Color.Info,
+            ReportTargetType.Service => Color.Primary,
+            ReportTargetType.Order => Color.Warning,
+            ReportTargetType.Message => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private static Color StatusColor(ReportStatus status)
+    {
+        return status switch
+        {
+            ReportStatus.Open => Color.Warning,
+            ReportStatus.Resolved => Color.Success,
+            ReportStatus.Rejected => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+}

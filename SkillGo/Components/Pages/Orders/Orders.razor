@@ -39,17 +39,17 @@
         <div class="hero-stats">
             <div class="stat-chip">
                 <div class="stat-label">Total</div>
-                <div class="stat-value">@_orders.Count</div>
+                <div class="stat-value">@_totalItems</div>
             </div>
 
             <div class="stat-chip">
                 <div class="stat-label">In progress</div>
-                <div class="stat-value">@_orders.Count(x => x.Status == OrderStatus.InProgress)</div>
+                <div class="stat-value">@_allOrders.Count(x => x.Status == OrderStatus.InProgress)</div>
             </div>
 
             <div class="stat-chip">
                 <div class="stat-label">Completed</div>
-                <div class="stat-value">@_orders.Count(x => x.Status == OrderStatus.Completed)</div>
+                <div class="stat-value">@_allOrders.Count(x => x.Status == OrderStatus.Completed)</div>
             </div>
         </div>
     </div>
@@ -80,7 +80,9 @@
         <MudGrid Spacing="4" Class="mt-4">
             @foreach (var order in _orders)
             {
-                var user = GetUser(order.SellerId);
+                var otherUserId = order.BuyerId == _meId ? order.SellerId : order.BuyerId;
+                var user = GetUser(otherUserId);
+
                 <MudItem xs="12" md="6">
                     <div class="order-card">
                         <div class="order-top">
@@ -111,7 +113,7 @@
                             </div>
 
                             <div class="meta-box">
-                                <div class="meta-label">Freelancer</div>
+                                <div class="meta-label">User</div>
                                 <div class="meta-value ellipsis">
                                     @if (user != null && !string.IsNullOrWhiteSpace(user.UserName))
                                     {
@@ -121,14 +123,14 @@
                                     }
                                     else
                                     {
-                                        <span>@order.SellerId</span>
+                                        <span>@otherUserId</span>
                                     }
                                 </div>
                             </div>
 
                             <div class="meta-box">
                                 <div class="meta-label">Created</div>
-                                <div class="meta-value">@order.CreatedAtUtc.ToString("yyyy-MM-dd")</div>
+                                <div class="meta-value">@order.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")</div>
                             </div>
                         </div>
 
@@ -159,6 +161,14 @@
                 </MudItem>
             }
         </MudGrid>
+
+        <div class="orders-pagination">
+            <MudPagination Count="@_totalPages"
+                           Selected="@_page"
+                           SelectedChanged="OnPageChanged"
+                           Color="Color.Primary"
+                           Variant="Variant.Outlined" />
+        </div>
     }
 </MudContainer>
 
@@ -365,6 +375,12 @@
         margin-top: 8px;
     }
 
+    .orders-pagination {
+        margin-top: 22px;
+        display: flex;
+        justify-content: center;
+    }
+
     .skeleton {
         background: #fff;
         position: relative;
@@ -401,29 +417,44 @@
 @code {
     [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
-    bool _loading = true;
-    string _mode = "All";
+    private bool _loading = true;
+    private string _mode = "All";
+    private string? _meId;
 
-    List<Order> _orders = new();
-    Dictionary<string, ApplicationUser> _users = new();
+    private List<Order> _allOrders = new();
+    private List<Order> _orders = new();
+    private Dictionary<string, ApplicationUser> _users = new();
+
+    private int _page = 1;
+    private int _pageSize = 8;
+    private int _totalItems;
+    private int _totalPages = 1;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
     }
 
-    async Task OnModeChanged(string v)
+    private async Task OnModeChanged(string v)
     {
         _mode = v ?? "All";
+        _page = 1;
         await LoadAsync();
     }
 
-    async Task LoadAsync()
+    private async Task OnPageChanged(int page)
     {
-        if (_loading && _orders.Count == 0)
+        _page = page;
+        await ApplyPagingAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_loading && _allOrders.Count == 0)
             StateHasChanged();
 
         _loading = true;
+        _allOrders.Clear();
         _orders.Clear();
         _users.Clear();
 
@@ -445,6 +476,8 @@
             return;
         }
 
+        _meId = me.Id;
+
         var orders = await OrderRepo.GetForUserAsync(me.Id);
 
         if (_mode == "Buying")
@@ -453,9 +486,11 @@
         if (_mode == "Selling")
             orders = orders.Where(x => x.SellerId == me.Id).ToList();
 
-        _orders = orders;
+        _allOrders = orders
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToList();
 
-        var ids = _orders.SelectMany(o => new[] { o.BuyerId, o.SellerId }).Distinct().ToList();
+        var ids = _allOrders.SelectMany(o => new[] { o.BuyerId, o.SellerId }).Distinct().ToList();
 
         await using var db = await DbFactory.CreateDbContextAsync();
         var users = await db.Users
@@ -465,17 +500,35 @@
 
         _users = users.ToDictionary(x => x.Id, x => x);
 
+        await ApplyPagingAsync();
+
         _loading = false;
         StateHasChanged();
     }
 
-    ApplicationUser? GetUser(string id)
+    private Task ApplyPagingAsync()
+    {
+        _totalItems = _allOrders.Count;
+        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
+
+        if (_page > _totalPages)
+            _page = _totalPages;
+
+        _orders = _allOrders
+            .Skip((_page - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+
+        return Task.CompletedTask;
+    }
+
+    private ApplicationUser? GetUser(string id)
         => _users.TryGetValue(id, out var u) ? u : null;
 
-    static string DisplayName(ApplicationUser u)
+    private static string DisplayName(ApplicationUser u)
         => !string.IsNullOrWhiteSpace(u.DisplayName) ? u.DisplayName : (u.UserName ?? "User");
 
-    static Color StatusColor(OrderStatus status)
+    private static Color StatusColor(OrderStatus status)
         => status switch
         {
             OrderStatus.InProgress => Color.Warning,

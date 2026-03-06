@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -54,7 +55,6 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
-builder.Services.AddScoped<IFreelancerRepository, FreelancerRepository>();
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<WalletState>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -110,6 +110,43 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.UseAuthentication();
+
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+
+    if (context.User.Identity?.IsAuthenticated == true &&
+        !path.StartsWith("/banned", StringComparison.OrdinalIgnoreCase) &&
+        !path.StartsWith("/Account/Logout", StringComparison.OrdinalIgnoreCase) &&
+        !path.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase))
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            var dbFactory = context.RequestServices.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var db = await dbFactory.CreateDbContextAsync();
+
+            var now = DateTime.UtcNow;
+
+            var hasActiveBan = await db.UserBans
+                .AsNoTracking()
+                .AnyAsync(x =>
+                    x.UserId == userId &&
+                    x.StartsAtUtc <= now &&
+                    (!x.EndsAtUtc.HasValue || x.EndsAtUtc > now));
+
+            if (hasActiveBan)
+            {
+                context.Response.Redirect("/banned");
+                return;
+            }
+        }
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 
 app.MapRazorComponents<App>()

@@ -1,6 +1,7 @@
 ﻿@page "/chat/{ConversationId:int}"
 @rendermode InteractiveServer
 @using System.Security.Claims
+@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
@@ -13,6 +14,7 @@
 @using SkillGo.Data.Models.Chat
 @using SkillGo.Data.Models.Orders
 @using SkillGo.Data.Models.Presence
+@using SkillGo.Data.Models.Reports
 @using SkillGo.Services
 @using SkillGo.Components.Shared
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
@@ -146,140 +148,178 @@
                                                 <div style="max-width: min(760px, 78vw); width:fit-content;">
                                                     @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && !HasVisibleContent(m))
                                                     {
-                                                        <OrderMessageCard Order="m.Order"
-                                                                          CurrentUserId="@(_meId ?? "")"
-                                                                          OnChanged="ReloadAsync"
-                                                                          OnDeliver="OpenDeliveryForOrder" />
+                                                        <div style="display:flex; align-items:flex-start; gap:6px;">
+                                                            <OrderMessageCard Order="m.Order"
+                                                                              CurrentUserId="@(_meId ?? "")"
+                                                                              OnChanged="ReloadAsync"
+                                                                              OnDeliver="OpenDeliveryForOrder" />
+
+                                                            @if (!mine && !m.IsDeleted)
+                                                            {
+                                                                <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                                                    <ActivatorContent>
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
+                                                                                       Size="Size.Small"
+                                                                                       Color="Color.Default"
+                                                                                       Style="opacity:.78;" />
+                                                                    </ActivatorContent>
+
+                                                                    <ChildContent>
+                                                                        <MudMenuItem OnClick="@(() => OpenReportPopup(m))">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.ReportGmailerrorred" Class="me-2" /> Report
+                                                                        </MudMenuItem>
+                                                                    </ChildContent>
+                                                                </MudMenu>
+                                                            }
+                                                        </div>
+
                                                         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
                                                             <span>@local.ToString("HH:mm")</span>
                                                         </div>
                                                     }
                                                     else
                                                     {
-                                                        <div style="@BubbleShellStyle(mine)">
-                                                            @if (m.IsOrderDelivery)
-                                                            {
-                                                                <div class="sg-delivery-head">
-                                                                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
-                                                                    <span>Delivery for order #@m.OrderId</span>
+                                                        <div style="display:flex; align-items:flex-start; gap:6px;">
+                                                            <div style="@BubbleShellStyle(mine)">
+                                                                @if (m.IsOrderDelivery)
+                                                                {
+                                                                    <div class="sg-delivery-head">
+                                                                        <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
+                                                                        <span>Delivery for order #@m.OrderId</span>
+                                                                    </div>
+                                                                }
+
+                                                                @if (!m.IsDeleted)
+                                                                {
+                                                                    @if (!string.IsNullOrWhiteSpace(m.Body))
+                                                                    {
+                                                                        <div class="sg-message-body">
+                                                                            @m.Body
+                                                                        </div>
+                                                                    }
+
+                                                                    @if (m.Attachments.Any())
+                                                                    {
+                                                                        <div class="sg-attachments-grid">
+                                                                            @foreach (var att in m.Attachments)
+                                                                            {
+                                                                                @if (att.IsImage)
+                                                                                {
+                                                                                    <a href="@att.Url" target="_blank" class="sg-attachment-image-link">
+                                                                                        <img src="@att.Url" alt="@att.FileName" class="sg-attachment-image" />
+                                                                                    </a>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <a href="@att.Url" target="_blank" download="@att.FileName" class="sg-file-attachment">
+                                                                                        <div class="sg-file-attachment-icon">
+                                                                                            <MudIcon Icon="@Icons.Material.Filled.AttachFile" />
+                                                                                        </div>
+
+                                                                                        <div class="sg-file-attachment-copy">
+                                                                                            <div class="sg-file-attachment-name">@att.FileName</div>
+                                                                                            <div class="sg-file-attachment-meta">@FormatBytes(att.SizeBytes)</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                }
+                                                                            }
+                                                                        </div>
+                                                                    }
+
+                                                                    @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && HasVisibleContent(m))
+                                                                    {
+                                                                        <div style="margin-top:10px;">
+                                                                            <OrderMessageCard Order="m.Order"
+                                                                                              CurrentUserId="@(_meId ?? "")"
+                                                                                              OnChanged="ReloadAsync"
+                                                                                              OnDeliver="OpenDeliveryForOrder" />
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div style="font-style:italic; opacity:.70; font-size:0.98rem;">
+                                                                        message deleted
+                                                                    </div>
+                                                                }
+
+                                                                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
+                                                                    <span>@local.ToString("HH:mm")</span>
+                                                                    @if (m.EditedAtUtc.HasValue && !m.IsDeleted)
+                                                                    {
+                                                                        <span>• edited</span>
+                                                                    }
                                                                 </div>
-                                                            }
 
-                                                            @if (!m.IsDeleted)
-                                                            {
-                                                                @if (!string.IsNullOrWhiteSpace(m.Body))
-                                                                {
-                                                                    <div class="sg-message-body">
-                                                                        @m.Body
-                                                                    </div>
-                                                                }
-
-                                                                @if (m.Attachments.Any())
-                                                                {
-                                                                    <div class="sg-attachments-grid">
-                                                                        @foreach (var att in m.Attachments)
-                                                                        {
-                                                                            @if (att.IsImage)
-                                                                            {
-                                                                                <a href="@att.Url" target="_blank" class="sg-attachment-image-link">
-                                                                                    <img src="@att.Url" alt="@att.FileName" class="sg-attachment-image" />
-                                                                                </a>
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                <a href="@att.Url" target="_blank" download="@att.FileName" class="sg-file-attachment">
-                                                                                    <div class="sg-file-attachment-icon">
-                                                                                        <MudIcon Icon="@Icons.Material.Filled.AttachFile" />
-                                                                                    </div>
-
-                                                                                    <div class="sg-file-attachment-copy">
-                                                                                        <div class="sg-file-attachment-name">@att.FileName</div>
-                                                                                        <div class="sg-file-attachment-meta">@FormatBytes(att.SizeBytes)</div>
-                                                                                    </div>
-                                                                                </a>
-                                                                            }
-                                                                        }
-                                                                    </div>
-                                                                }
-
-                                                                @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && HasVisibleContent(m))
+                                                                @if (_editingId == m.Id)
                                                                 {
                                                                     <div style="margin-top:10px;">
-                                                                        <OrderMessageCard Order="m.Order"
-                                                                                          CurrentUserId="@(_meId ?? "")"
-                                                                                          OnChanged="ReloadAsync"
-                                                                                          OnDeliver="OpenDeliveryForOrder" />
-                                                                    </div>
-                                                                }
-                                                            }
-                                                            else
-                                                            {
-                                                                <div style="font-style:italic; opacity:.70; font-size:0.98rem;">
-                                                                    message deleted
-                                                                </div>
-                                                            }
+                                                                        <MudTextField @bind-Value="_editingText"
+                                                                                      Variant="Variant.Outlined"
+                                                                                      Margin="Margin.Dense"
+                                                                                      Lines="3"
+                                                                                      Immediate="true"
+                                                                                      FullWidth="true"
+                                                                                      Disabled="_savingEdit"
+                                                                                      Style="border-radius:12px; background: rgba(255,255,255,.75);" />
 
-                                                            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
-                                                                <span>@local.ToString("HH:mm")</span>
-                                                                @if (m.EditedAtUtc.HasValue && !m.IsDeleted)
-                                                                {
-                                                                    <span>• edited</span>
+                                                                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+                                                                            <MudButton Variant="Variant.Text"
+                                                                                       Color="Color.Default"
+                                                                                       Disabled="_savingEdit"
+                                                                                       OnClick="@CancelEdit">
+                                                                                Cancel
+                                                                            </MudButton>
+
+                                                                            <MudButton Variant="Variant.Filled"
+                                                                                       Color="Color.Primary"
+                                                                                       Disabled="_savingEdit || string.IsNullOrWhiteSpace(_editingText)"
+                                                                                       OnClick="@(() => SaveEditAsync(m.Id))"
+                                                                                       Style="border-radius:12px;">
+                                                                                Save
+                                                                            </MudButton>
+                                                                        </div>
+                                                                    </div>
                                                                 }
                                                             </div>
 
                                                             @if (mine && _editingId != m.Id && !m.IsDeleted && !m.IsOrderDelivery && m.OrderId == null && !m.Attachments.Any())
                                                             {
-                                                                <div style="display:flex; justify-content:flex-end; margin-top:6px;">
-                                                                    <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                                                                        <ActivatorContent>
-                                                                            <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
-                                                                                           Size="Size.Small"
-                                                                                           Color="Color.Default"
-                                                                                           Style="opacity:.78;" />
-                                                                        </ActivatorContent>
+                                                                <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                                                    <ActivatorContent>
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
+                                                                                       Size="Size.Small"
+                                                                                       Color="Color.Default"
+                                                                                       Style="opacity:.78;" />
+                                                                    </ActivatorContent>
 
-                                                                        <ChildContent>
-                                                                            <MudMenuItem OnClick="@(() => BeginEdit(m))">
-                                                                                <MudIcon Icon="@Icons.Material.Filled.Edit" Class="me-2" /> Edit
-                                                                            </MudMenuItem>
+                                                                    <ChildContent>
+                                                                        <MudMenuItem OnClick="@(() => BeginEdit(m))">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="me-2" /> Edit
+                                                                        </MudMenuItem>
 
-                                                                            <MudMenuItem OnClick="@(() => DeleteAsync(m.Id))">
-                                                                                <MudIcon Icon="@Icons.Material.Filled.Delete" Class="me-2" /> Delete
-                                                                            </MudMenuItem>
-                                                                        </ChildContent>
-                                                                    </MudMenu>
-                                                                </div>
+                                                                        <MudMenuItem OnClick="@(() => DeleteAsync(m.Id))">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="me-2" /> Delete
+                                                                        </MudMenuItem>
+                                                                    </ChildContent>
+                                                                </MudMenu>
                                                             }
-
-                                                            @if (_editingId == m.Id)
+                                                            else if (!mine && !m.IsDeleted)
                                                             {
-                                                                <div style="margin-top:10px;">
-                                                                    <MudTextField @bind-Value="_editingText"
-                                                                                  Variant="Variant.Outlined"
-                                                                                  Margin="Margin.Dense"
-                                                                                  Lines="3"
-                                                                                  Immediate="true"
-                                                                                  FullWidth="true"
-                                                                                  Disabled="_savingEdit"
-                                                                                  Style="border-radius:12px; background: rgba(255,255,255,.75);" />
+                                                                <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                                                    <ActivatorContent>
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
+                                                                                       Size="Size.Small"
+                                                                                       Color="Color.Default"
+                                                                                       Style="opacity:.78;" />
+                                                                    </ActivatorContent>
 
-                                                                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
-                                                                        <MudButton Variant="Variant.Text"
-                                                                                   Color="Color.Default"
-                                                                                   Disabled="_savingEdit"
-                                                                                   OnClick="@CancelEdit">
-                                                                            Cancel
-                                                                        </MudButton>
-
-                                                                        <MudButton Variant="Variant.Filled"
-                                                                                   Color="Color.Primary"
-                                                                                   Disabled="_savingEdit || string.IsNullOrWhiteSpace(_editingText)"
-                                                                                   OnClick="@(() => SaveEditAsync(m.Id))"
-                                                                                   Style="border-radius:12px;">
-                                                                            Save
-                                                                        </MudButton>
-                                                                    </div>
-                                                                </div>
+                                                                    <ChildContent>
+                                                                        <MudMenuItem OnClick="@(() => OpenReportPopup(m))">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.ReportGmailerrorred" Class="me-2" /> Report
+                                                                        </MudMenuItem>
+                                                                    </ChildContent>
+                                                                </MudMenu>
                                                             }
                                                         </div>
                                                     }
@@ -376,6 +416,64 @@
         </MudContainer>
     </div>
 </div>
+
+@if (_reportPopupOpen)
+{
+    <div class="sg-report-overlay" @onclick="CloseReportPopup">
+        <div class="sg-report-modal" @onclick:stopPropagation="true">
+            <div class="sg-report-head">
+                <div>
+                    <div class="sg-report-kicker">Safety</div>
+                    <div class="sg-report-title">Report message</div>
+                </div>
+
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Color="Color.Default"
+                               OnClick="CloseReportPopup" />
+            </div>
+
+            @if (_reportTargetMessage is not null)
+            {
+                <div class="sg-report-preview">
+                    <div class="sg-report-preview-label">Selected message</div>
+                    <div class="sg-report-preview-text">@PreviewMessage(_reportTargetMessage)</div>
+                </div>
+            }
+
+            <MudTextField @bind-Value="_reportReason"
+                          Label="Reason"
+                          Variant="Variant.Outlined"
+                          Lines="5"
+                          Immediate="true"
+                          Counter="500"
+                          MaxLength="500"
+                          Class="mt-4" />
+
+            @if (!string.IsNullOrWhiteSpace(_reportError))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined" Class="mt-3">
+                    @_reportError
+                </MudAlert>
+            }
+
+            <div class="sg-report-actions">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           Disabled="_reportSubmitting"
+                           OnClick="CloseReportPopup">
+                    Cancel
+                </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           Disabled="_reportSubmitting || string.IsNullOrWhiteSpace(_reportReason)"
+                           OnClick="SubmitReportAsync">
+                    @(_reportSubmitting ? "Sending..." : "Send report")
+                </MudButton>
+            </div>
+        </div>
+    </div>
+}
 
 <script>
     window.sgChat = {
@@ -596,6 +694,81 @@
         font-weight: 700;
     }
 
+    .sg-report-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15,23,42,.48);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 1600;
+    }
+
+    .sg-report-modal {
+        width: min(100%, 520px);
+        border-radius: 24px;
+        background: #ffffff;
+        border: 1px solid rgba(15,23,42,.08);
+        box-shadow: 0 30px 80px rgba(15,23,42,.24);
+        padding: 20px;
+    }
+
+    .sg-report-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .sg-report-kicker {
+        color: rgba(17,24,39,.46);
+        font-size: .75rem;
+        font-weight: 900;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+
+    .sg-report-title {
+        margin-top: 4px;
+        color: #111827;
+        font-size: 1.25rem;
+        font-weight: 950;
+        line-height: 1.1;
+    }
+
+    .sg-report-preview {
+        margin-top: 10px;
+        padding: 14px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid rgba(15,23,42,.06);
+    }
+
+    .sg-report-preview-label {
+        color: rgba(17,24,39,.56);
+        font-size: .75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .sg-report-preview-text {
+        margin-top: 8px;
+        color: #111827;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .sg-report-actions {
+        margin-top: 18px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
     @@media (max-width: 900px) {
         .sg-chat-composer-row {
             grid-template-columns: 1fr;
@@ -610,6 +783,11 @@
     @@media (max-width: 760px) {
         .sg-chat-page {
             margin: -22px -14px -20px -14px;
+        }
+
+        .sg-report-modal {
+            padding: 16px;
+            border-radius: 20px;
         }
     }
 </style>
@@ -647,6 +825,12 @@
     private bool _savingEdit;
     private int? _deliveryOrderId;
 
+    private bool _reportPopupOpen;
+    private bool _reportSubmitting;
+    private string? _reportReason;
+    private string? _reportError;
+    private MessageDto? _reportTargetMessage;
+
     private bool IsSendDisabled =>
         _sending ||
         _editingId.HasValue ||
@@ -665,6 +849,11 @@
         _pendingScrollToBottom = false;
         _deliveryOrderId = null;
         _pendingFiles.Clear();
+        _reportPopupOpen = false;
+        _reportSubmitting = false;
+        _reportReason = null;
+        _reportError = null;
+        _reportTargetMessage = null;
         StateHasChanged();
 
         try
@@ -1302,6 +1491,97 @@
         {
             StateHasChanged();
         }
+    }
+
+    private void OpenReportPopup(MessageDto message)
+    {
+        _reportTargetMessage = message;
+        _reportReason = null;
+        _reportError = null;
+        _reportSubmitting = false;
+        _reportPopupOpen = true;
+        StateHasChanged();
+    }
+
+    private void CloseReportPopup()
+    {
+        _reportPopupOpen = false;
+        _reportSubmitting = false;
+        _reportReason = null;
+        _reportError = null;
+        _reportTargetMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task SubmitReportAsync()
+    {
+        if (_reportSubmitting) return;
+        if (_reportTargetMessage is null) return;
+        if (string.IsNullOrWhiteSpace(_reportReason)) return;
+        if (string.IsNullOrWhiteSpace(_meId)) return;
+
+        _reportSubmitting = true;
+        _reportError = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var msg = await db.Messages.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == _reportTargetMessage.Id && x.ConversationId == ConversationId);
+
+            if (msg == null)
+            {
+                _reportError = "Message not found.";
+                return;
+            }
+
+            if (msg.SenderId == _meId)
+            {
+                _reportError = "You cannot report your own message.";
+                return;
+            }
+
+            var report = new Report
+            {
+                ReporterUserId = _meId,
+                TargetUserId = msg.SenderId,
+                TargetType = ReportTargetType.Message,
+                MessageId = msg.Id,
+                Reason = _reportReason.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            db.Reports.Add(report);
+            await db.SaveChangesAsync();
+
+            Snackbar.Add("Report submitted successfully", Severity.Success);
+            CloseReportPopup();
+        }
+        catch (Exception ex)
+        {
+            _reportError = ex.Message;
+        }
+        finally
+        {
+            _reportSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private string PreviewMessage(MessageDto m)
+    {
+        if (!string.IsNullOrWhiteSpace(m.Body))
+            return m.Body.Length <= 220 ? m.Body : m.Body.Substring(0, 220) + "...";
+
+        if (m.Attachments.Any())
+            return $"Message contains {m.Attachments.Count} attachment(s).";
+
+        if (m.IsDeleted)
+            return "Deleted message.";
+
+        return "Empty message.";
     }
 
     private async Task OnComposerKeyDownRaw(KeyboardEventArgs e)

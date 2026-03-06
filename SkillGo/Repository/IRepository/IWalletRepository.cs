@@ -7,5 +7,6 @@ namespace SkillGo.Repository.IRepository
         Task<decimal> GetBalanceAsync(string userId);
         Task<List<WalletTransaction>> GetTransactionsAsync(string userId, int take = 30);
         Task TopUpAsync(string userId, decimal amount, string? note);
+        Task WithdrawAsync(string userId, decimal amount, string? note);
     }
 }

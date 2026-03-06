@@ -50,8 +50,8 @@
                 <MudDivider Class="my-4" />
 
                 <MudStack Spacing="2">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
-                        Withdraw (soon)
+                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" OnClick="OpenWithdrawAsync" Disabled="_loading || _balance <= 0">
+                        Withdraw to card
                     </MudButton>
 
                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="true">
@@ -83,7 +83,7 @@
                         <MudTd DataLabel="Date">@context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudTd>
                         <MudTd DataLabel="Type">
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetTypeColor(context.Type)">
-                                @context.Type.ToString()
+                                @FormatType(context.Type)
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Amount" Align="Align.Right" Class="fw-bold">
@@ -191,6 +191,58 @@
         }
     }
 
+    private async Task OpenWithdrawAsync()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+            {
+                ["MaxAmount"] = _balance
+            };
+
+        var dialog = DialogService.Show<WithdrawDialog>("Withdraw to card", parameters, options);
+        var result = await dialog.Result;
+
+        if (result.Canceled) return;
+        if (result.Data is not WithdrawDialogResult data) return;
+
+        var userId = await GetUserIdAsync();
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        _loading = true;
+
+        try
+        {
+            var note = $"Withdrawal to card **** {data.Last4}";
+            await WalletRepo.WithdrawAsync(userId, data.Amount, note);
+
+            await WalletState.RefreshAsync();
+            await RefreshAsync();
+
+            Snackbar.Add($"Withdrawal requested: {data.Amount:0.##} zł", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string FormatType(WalletTransactionType type)
+    {
+        return type switch
+        {
+            WalletTransactionType.TopUp => "Top up",
+            WalletTransactionType.Debit => "Payment",
+            WalletTransactionType.Refund => "Refund",
+            WalletTransactionType.OrderIncome => "Order income",
+            WalletTransactionType.Withdrawal => "Withdrawal",
+            _ => type.ToString()
+        };
+    }
+
     private static Color GetTypeColor(WalletTransactionType type)
     {
         return type switch
@@ -198,6 +250,8 @@
             WalletTransactionType.TopUp => Color.Success,
             WalletTransactionType.Debit => Color.Error,
             WalletTransactionType.Refund => Color.Warning,
+            WalletTransactionType.OrderIncome => Color.Info,
+            WalletTransactionType.Withdrawal => Color.Secondary,
             _ => Color.Default
         };
     }

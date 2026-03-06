@@ -39,13 +39,15 @@ namespace SkillGo.Repository
 
         public async Task TopUpAsync(string userId, decimal amount, string? note)
         {
-            if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(amount));
 
             await using var db = await _dbFactory.CreateDbContextAsync();
             await using var tx = await db.Database.BeginTransactionAsync();
 
             var user = await db.Users.FirstOrDefaultAsync(x => x.Id == userId);
-            if (user == null) throw new InvalidOperationException("User not found.");
+            if (user == null)
+                throw new InvalidOperationException("User not found.");
 
             user.Balance += amount;
 
@@ -54,6 +56,36 @@ namespace SkillGo.Repository
                 UserId = userId,
                 Amount = amount,
                 Type = WalletTransactionType.TopUp,
+                Note = string.IsNullOrWhiteSpace(note) ? null : note,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+
+        public async Task WithdrawAsync(string userId, decimal amount, string? note)
+        {
+            if (amount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(amount));
+
+            await using var db = await _dbFactory.CreateDbContextAsync();
+            await using var tx = await db.Database.BeginTransactionAsync();
+
+            var user = await db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null)
+                throw new InvalidOperationException("User not found.");
+
+            if (user.Balance < amount)
+                throw new InvalidOperationException("Insufficient balance.");
+
+            user.Balance -= amount;
+
+            db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = userId,
+                Amount = amount,
+                Type = WalletTransactionType.Withdrawal,
                 Note = string.IsNullOrWhiteSpace(note) ? null : note,
                 CreatedAt = DateTime.UtcNow
             });

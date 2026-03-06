@@ -8,7 +8,8 @@ namespace SkillGo.Data.Models
         TopUp = 1,
         Debit = 2,
         Refund = 3,
-        OrderIncome = 4
+        OrderIncome = 4,
+        Withdrawal = 5
     }
 
     public class WalletTransaction

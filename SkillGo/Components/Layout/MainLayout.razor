@@ -40,11 +40,17 @@
                         <a href="/orders" class="sg-top-link">Orders</a>
                     </Authorized>
                 </AuthorizeView>
+
+                <AuthorizeView Roles="Admin">
+                    <Authorized Context="adminContext">
+                        <a href="/admin" class="sg-top-link sg-top-link-admin">Admin</a>
+                    </Authorized>
+                </AuthorizeView>
             </div>
 
             <div class="sg-appbar-right">
                 <AuthorizeView>
-                    <Authorized>
+                    <Authorized Context="authContext">
                         <a href="/wallet" class="sg-balance-pill">
                             <span class="sg-balance-label">Balance</span>
                             <span class="sg-balance-value">@BalanceText</span>
@@ -53,10 +59,10 @@
                         <details class="sg-user-dropdown">
                             <summary class="sg-user-summary">
                                 <div class="sg-user-summary-left">
-                                    <div class="sg-user-avatar">@UserInitial(context.User.Identity?.Name)</div>
+                                    <div class="sg-user-avatar">@UserInitial(authContext.User.Identity?.Name)</div>
 
                                     <div class="sg-user-copy">
-                                        <div class="sg-user-name">@context.User.Identity?.Name</div>
+                                        <div class="sg-user-name">@authContext.User.Identity?.Name</div>
                                         <div class="sg-user-sub">Account</div>
                                     </div>
                                 </div>
@@ -66,10 +72,10 @@
 
                             <div class="sg-user-menu">
                                 <div class="sg-user-menu-head">
-                                    <div class="sg-user-menu-avatar">@UserInitial(context.User.Identity?.Name)</div>
+                                    <div class="sg-user-menu-avatar">@UserInitial(authContext.User.Identity?.Name)</div>
 
                                     <div class="sg-user-menu-copy">
-                                        <div class="sg-user-menu-name">@context.User.Identity?.Name</div>
+                                        <div class="sg-user-menu-name">@authContext.User.Identity?.Name</div>
                                         <div class="sg-user-menu-sub">Manage your workspace</div>
                                     </div>
                                 </div>
@@ -80,6 +86,13 @@
                                 <a href="/wallet" class="sg-user-menu-item">Wallet</a>
                                 <a href="/orders" class="sg-user-menu-item">Orders</a>
                                 <a href="/chats" class="sg-user-menu-item">Chats</a>
+
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized Context="adminContext">
+                                        <a href="/admin" class="sg-user-menu-item sg-user-menu-item-admin">Admin dashboard</a>
+                                        <a href="/admin/users" class="sg-user-menu-item sg-user-menu-item-admin">Manage users</a>
+                                    </Authorized>
+                                </AuthorizeView>
 
                                 <div class="sg-user-menu-divider"></div>
 
@@ -229,6 +242,11 @@
             color: #ffffff;
             transform: translateY(-1px);
         }
+
+    .sg-top-link-admin {
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+    }
 
     .sg-balance-pill {
         min-height: 44px;
@@ -437,6 +455,11 @@
             color: #3730a3;
             transform: translateX(1px);
         }
+
+    .sg-user-menu-item-admin {
+        color: #312e81;
+        font-weight: 850;
+    }
 
     .sg-user-menu-item-danger {
         color: #b91c1c;

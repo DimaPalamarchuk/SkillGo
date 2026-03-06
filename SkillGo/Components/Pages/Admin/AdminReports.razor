@@ -1,0 +1,186 @@
+﻿@page "/admin/reports"
+@attribute [Authorize(Roles = "Admin")]
+@layout SkillGo.Components.Layout.AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject ISnackbar Snackbar
+
+<PageTitle>Admin Reports</PageTitle>
+
+<MudPaper Class="admin-reports-panel" Elevation="0">
+    <MudStack Spacing="2">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h6" Class="fw-bold">Reports</MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadReports">
+                Refresh
+            </MudButton>
+        </MudStack>
+
+        <MudTextField T="string"
+                      Variant="Variant.Outlined"
+                      Placeholder="Search by reporter, target, service or reason"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Value="@_search"
+                      ValueChanged="OnSearchChanged" />
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (!FilteredReports.Any())
+        {
+            <div class="admin-reports-empty">
+                <MudIcon Icon="@Icons.Material.Filled.Verified" Size="Size.Large" />
+                <MudText Typo="Typo.h6">No reports found</MudText>
+                <MudText Color="Color.Secondary">Everything looks clean right now.</MudText>
+            </div>
+        }
+        else
+        {
+            <MudTable Items="FilteredReports" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh>ID</MudTh>
+                    <MudTh>Reporter</MudTh>
+                    <MudTh>Target user</MudTh>
+                    <MudTh>Service</MudTh>
+                    <MudTh>Reason</MudTh>
+                    <MudTh>Created</MudTh>
+                    <MudTh Align="Align.Right">Actions</MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd DataLabel="ID">@context.Id</MudTd>
+                    <MudTd DataLabel="Reporter">@context.ReporterUserName</MudTd>
+                    <MudTd DataLabel="Target user">@context.TargetUserName</MudTd>
+                    <MudTd DataLabel="Service">@context.ServiceTitle</MudTd>
+                    <MudTd DataLabel="Reason">
+                        <div class="admin-report-reason">@context.Reason</div>
+                    </MudTd>
+                    <MudTd DataLabel="Created">@context.CreatedAtText</MudTd>
+                    <MudTd DataLabel="Actions" Align="Align.Right">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   OnClick="() => DeleteReport(context.Id)">
+                            Delete
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudStack>
+</MudPaper>
+
+<style>
+    .admin-reports-panel {
+        padding: 22px;
+        border-radius: 24px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(15,23,42,.06);
+        box-shadow: 0 18px 36px rgba(15,23,42,.05);
+    }
+
+    .admin-reports-empty {
+        min-height: 280px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-align: center;
+        color: #6b7280;
+    }
+
+    .admin-report-reason {
+        max-width: 340px;
+        white-space: normal;
+        line-height: 1.35;
+    }
+</style>
+
+@code {
+    private bool _loading = true;
+    private string? _search;
+    private List<AdminReportRow> _reports = new();
+
+    private IEnumerable<AdminReportRow> FilteredReports =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _reports
+            : _reports.Where(x =>
+                x.ReporterUserName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                x.TargetUserName.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                x.ServiceTitle.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                x.Reason.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReports();
+    }
+
+    private async Task LoadReports()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _reports = await db.Reports
+            .Include(x => x.ReporterUser)
+            .Include(x => x.TargetUser)
+            .Include(x => x.ServiceOffer)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new AdminReportRow
+                {
+                    Id = x.Id,
+                    ReporterUserName = x.ReporterUser != null ? x.ReporterUser.UserName ?? "-" : "-",
+                    TargetUserName = x.TargetUser != null ? x.TargetUser.UserName ?? "-" : "-",
+                    ServiceTitle = x.ServiceOffer != null ? x.ServiceOffer.Title ?? $"Service #{x.ServiceOfferId}" : "-",
+                    Reason = x.Reason,
+                    CreatedAtText = x.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                })
+            .ToListAsync();
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private Task OnSearchChanged(string value)
+    {
+        _search = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task DeleteReport(int id)
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var entity = await db.Reports.FirstOrDefaultAsync(x => x.Id == id);
+
+        if (entity == null)
+            return;
+
+        db.Reports.Remove(entity);
+        await db.SaveChangesAsync();
+
+        Snackbar.Add("Report deleted", Severity.Success);
+        await LoadReports();
+    }
+
+    private sealed class AdminReportRow
+    {
+        public int Id { get; set; }
+        public string ReporterUserName { get; set; } = "-";
+        public string TargetUserName { get; set; } = "-";
+        public string ServiceTitle { get; set; } = "-";
+        public string Reason { get; set; } = "-";
+        public string CreatedAtText { get; set; } = "-";
+    }
+}

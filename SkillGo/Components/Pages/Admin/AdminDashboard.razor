@@ -1,0 +1,231 @@
+﻿@page "/admin"
+@attribute [Authorize(Roles = "Admin")]
+@layout SkillGo.Components.Layout.AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+<MudGrid Spacing="3">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="admin-stat-card admin-stat-card-indigo" Elevation="0">
+            <div class="admin-stat-label">Users</div>
+            <div class="admin-stat-value">@_usersCount</div>
+            <div class="admin-stat-sub">Registered accounts</div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="admin-stat-card admin-stat-card-violet" Elevation="0">
+            <div class="admin-stat-label">Freelancers</div>
+            <div class="admin-stat-value">@_freelancersCount</div>
+            <div class="admin-stat-sub">Users with freelancer role</div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="admin-stat-card admin-stat-card-slate" Elevation="0">
+            <div class="admin-stat-label">Services</div>
+            <div class="admin-stat-value">@_servicesCount</div>
+            <div class="admin-stat-sub">Published offers</div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="admin-stat-card admin-stat-card-rose" Elevation="0">
+            <div class="admin-stat-label">Reports</div>
+            <div class="admin-stat-value">@_reportsCount</div>
+            <div class="admin-stat-sub">Pending moderation items</div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="7">
+        <MudPaper Class="admin-panel" Elevation="0">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6" Class="fw-bold">Quick overview</MudText>
+
+                <div class="admin-overview-grid">
+                    <div class="admin-overview-item">
+                        <div class="admin-overview-title">Orders</div>
+                        <div class="admin-overview-value">@_ordersCount</div>
+                    </div>
+
+                    <div class="admin-overview-item">
+                        <div class="admin-overview-title">Disputes</div>
+                        <div class="admin-overview-value">@_disputesCount</div>
+                    </div>
+
+                    <div class="admin-overview-item">
+                        <div class="admin-overview-title">Total balance</div>
+                        <div class="admin-overview-value">@($"{_totalBalance:0.##} zł")</div>
+                    </div>
+
+                    <div class="admin-overview-item">
+                        <div class="admin-overview-title">Categories</div>
+                        <div class="admin-overview-value">@_categoriesCount</div>
+                    </div>
+                </div>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="5">
+        <MudPaper Class="admin-panel" Elevation="0">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6" Class="fw-bold">Quick actions</MudText>
+
+                <MudButton Href="/admin/users"
+                           FullWidth="true"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PeopleAlt">
+                    Manage users
+                </MudButton>
+
+                <MudButton Href="/admin/reports"
+                           FullWidth="true"
+                           Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.ReportGmailerrorred">
+                    Open reports
+                </MudButton>
+
+                <MudButton Href="/category"
+                           FullWidth="true"
+                           Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Category">
+                    Manage categories
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<style>
+    .admin-stat-card {
+        padding: 22px;
+        border-radius: 24px;
+        color: #fff;
+        box-shadow: 0 18px 36px rgba(15,23,42,.10);
+    }
+
+    .admin-stat-card-indigo {
+        background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+    }
+
+    .admin-stat-card-violet {
+        background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+    }
+
+    .admin-stat-card-slate {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+
+    .admin-stat-card-rose {
+        background: linear-gradient(135deg, #be123c 0%, #e11d48 100%);
+    }
+
+    .admin-stat-label {
+        color: rgba(255,255,255,.72);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-size: .74rem;
+    }
+
+    .admin-stat-value {
+        margin-top: 10px;
+        font-size: 2rem;
+        line-height: 1;
+        font-weight: 950;
+    }
+
+    .admin-stat-sub {
+        margin-top: 8px;
+        color: rgba(255,255,255,.78);
+        font-weight: 700;
+    }
+
+    .admin-panel {
+        padding: 22px;
+        border-radius: 24px;
+        background: rgba(255,255,255,.92);
+        border: 1px solid rgba(15,23,42,.06);
+        box-shadow: 0 18px 36px rgba(15,23,42,.05);
+    }
+
+    .admin-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .admin-overview-item {
+        padding: 16px;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid rgba(15,23,42,.06);
+    }
+
+    .admin-overview-title {
+        color: rgba(17,24,39,.56);
+        font-size: .78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .admin-overview-value {
+        margin-top: 8px;
+        color: #111827;
+        font-size: 1.25rem;
+        font-weight: 900;
+    }
+
+    @@media (max-width: 760px) {
+        .admin-overview-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private int _usersCount;
+    private int _freelancersCount;
+    private int _servicesCount;
+    private int _ordersCount;
+    private int _reportsCount;
+    private int _disputesCount;
+    private int _categoriesCount;
+    private decimal _totalBalance;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _usersCount = await db.Users.CountAsync();
+        _servicesCount = await db.ServiceOffers.CountAsync();
+        _ordersCount = await db.Orders.CountAsync();
+        _reportsCount = await db.Reports.CountAsync();
+        _disputesCount = await db.OrderDisputes.CountAsync();
+        _categoriesCount = await db.Categories.CountAsync();
+        _totalBalance = await db.Users.SumAsync(x => x.Balance);
+
+        var users = await db.Users.ToListAsync();
+        var freelancers = 0;
+
+        foreach (var user in users)
+        {
+            if (await UserManager.IsInRoleAsync(user, "Freelancer"))
+                freelancers++;
+        }
+
+        _freelancersCount = freelancers;
+    }
+}

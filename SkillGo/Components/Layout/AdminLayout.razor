@@ -1,0 +1,99 @@
+﻿@inherits LayoutComponentBase
+@layout MainLayout
+@using MudBlazor
+
+<div class="admin-shell">
+    <div class="admin-head">
+        <div class="admin-head-copy">
+            <div class="admin-kicker">Administration</div>
+            <div class="admin-title">Control panel</div>
+            <div class="admin-sub">Manage users and platform activity</div>
+        </div>
+
+        <div class="admin-head-actions">
+            <MudButton Href="/admin"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.SpaceDashboard">
+                Dashboard
+            </MudButton>
+
+            <MudButton Href="/admin/users"
+                       Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.PeopleAlt">
+                Users
+            </MudButton>
+        </div>
+    </div>
+
+    <div class="admin-body">
+        @Body
+    </div>
+</div>
+
+<style>
+    .admin-shell {
+        width: 100%;
+    }
+
+    .admin-head {
+        margin-bottom: 22px;
+        padding: 24px;
+        border-radius: 28px;
+        background: linear-gradient(135deg, #111827 0%, #1f2937 40%, #312e81 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        box-shadow: 0 22px 44px rgba(15,23,42,.16);
+    }
+
+    .admin-head-copy {
+        min-width: 0;
+    }
+
+    .admin-kicker {
+        font-size: .76rem;
+        font-weight: 900;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,.65);
+    }
+
+    .admin-title {
+        margin-top: 8px;
+        font-size: 2rem;
+        line-height: 1.05;
+        font-weight: 950;
+    }
+
+    .admin-sub {
+        margin-top: 8px;
+        color: rgba(255,255,255,.72);
+        font-weight: 700;
+    }
+
+    .admin-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .admin-body {
+        width: 100%;
+    }
+
+    @@media (max-width: 820px) {
+        .admin-head {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .admin-title {
+            font-size: 1.6rem;
+        }
+    }
+</style>

@@ -1,0 +1,417 @@
+﻿@page "/admin/users"
+@attribute [Authorize(Roles = "Admin")]
+@layout SkillGo.Components.Layout.AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using SkillGo.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Admin Users</PageTitle>
+
+<MudPaper Class="admin-users-panel" Elevation="0">
+    <MudStack Spacing="2">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="admin-users-head">
+            <MudText Typo="Typo.h6" Class="fw-bold">Users management</MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadUsers">
+                Refresh
+            </MudButton>
+        </MudStack>
+
+        <MudTextField T="string"
+                      Variant="Variant.Outlined"
+                      Placeholder="Search by username or email"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Value="@_search"
+                      ValueChanged="OnSearchChanged" />
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable Items="@FilteredUsers"
+                      Hover="true"
+                      Dense="true"
+                      Bordered="false"
+                      Striped="false"
+                      Class="admin-users-table">
+                <HeaderContent>
+                    <MudTh>User</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Balance</MudTh>
+                    <MudTh>Roles</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Align="Align.Right">Actions</MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd DataLabel="User">
+                        <div class="admin-user-cell">
+                            <div class="admin-user-avatar">@GetInitial(context.UserName)</div>
+                            <div class="admin-user-copy">
+                                <div class="admin-user-name">@context.UserName</div>
+                                <div class="admin-user-id">@context.Id</div>
+                            </div>
+                        </div>
+                    </MudTd>
+
+                    <MudTd DataLabel="Email">
+                        @context.Email
+                    </MudTd>
+
+                    <MudTd DataLabel="Balance">
+                        @($"{context.Balance:0.##} zł")
+                    </MudTd>
+
+                    <MudTd DataLabel="Roles">
+                        <div class="admin-role-list">
+                            @foreach (var role in context.Roles)
+                            {
+                                <span class="admin-role-badge">@role</span>
+                            }
+                        </div>
+                    </MudTd>
+
+                    <MudTd DataLabel="Status">
+                        @if (context.IsBlocked)
+                        {
+                            <span class="admin-status-badge admin-status-badge-blocked">Blocked</span>
+                        }
+                        else
+                        {
+                            <span class="admin-status-badge admin-status-badge-active">Active</span>
+                        }
+                    </MudTd>
+
+                    <MudTd DataLabel="Actions" Align="Align.Right">
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true">
+                            @if (context.HasAdminRole)
+                            {
+                                <MudMenuItem OnClick="() => RemoveAdmin(context)">Remove admin</MudMenuItem>
+                            }
+                            else
+                            {
+                                <MudMenuItem OnClick="() => MakeAdmin(context)">Make admin</MudMenuItem>
+                            }
+
+                            @if (context.HasFreelancerRole)
+                            {
+                                <MudMenuItem OnClick="() => RemoveFreelancer(context)">Remove freelancer</MudMenuItem>
+                            }
+                            else
+                            {
+                                <MudMenuItem OnClick="() => MakeFreelancer(context)">Make freelancer</MudMenuItem>
+                            }
+
+                            @if (context.IsBlocked)
+                            {
+                                <MudMenuItem OnClick="() => UnblockUser(context)">Unblock</MudMenuItem>
+                            }
+                            else
+                            {
+                                <MudMenuItem OnClick="() => BlockUser(context)">Block</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudStack>
+</MudPaper>
+
+<style>
+    .admin-users-panel {
+        padding: 22px;
+        border-radius: 24px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(15,23,42,.06);
+        box-shadow: 0 18px 36px rgba(15,23,42,.05);
+    }
+
+    .admin-users-head {
+        gap: 12px;
+    }
+
+    .admin-user-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .admin-user-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #4338ca;
+        font-weight: 950;
+        flex: 0 0 auto;
+    }
+
+    .admin-user-copy {
+        min-width: 0;
+    }
+
+    .admin-user-name {
+        color: #111827;
+        font-weight: 900;
+        line-height: 1.05;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .admin-user-id {
+        margin-top: 4px;
+        color: rgba(17,24,39,.46);
+        font-size: .75rem;
+        font-weight: 700;
+    }
+
+    .admin-role-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .admin-role-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(79,70,229,.08);
+        color: #4338ca;
+        font-size: .76rem;
+        font-weight: 850;
+        border: 1px solid rgba(79,70,229,.10);
+    }
+
+    .admin-status-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: .76rem;
+        font-weight: 850;
+    }
+
+    .admin-status-badge-active {
+        background: rgba(5,150,105,.10);
+        color: #047857;
+        border: 1px solid rgba(5,150,105,.12);
+    }
+
+    .admin-status-badge-blocked {
+        background: rgba(220,38,38,.10);
+        color: #b91c1c;
+        border: 1px solid rgba(220,38,38,.12);
+    }
+</style>
+
+@code {
+    private bool _loading = true;
+    private string? _search;
+    private List<AdminUserRow> _users = new();
+
+    private IEnumerable<AdminUserRow> FilteredUsers =>
+        string.IsNullOrWhiteSpace(_search)
+            ? _users
+            : _users.Where(x =>
+                (!string.IsNullOrWhiteSpace(x.UserName) && x.UserName.Contains(_search, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(x.Email) && x.Email.Contains(_search, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await EnsureRolesAsync();
+        await LoadUsers();
+    }
+
+    private async Task EnsureRolesAsync()
+    {
+        if (!await RoleManager.RoleExistsAsync("Admin"))
+            await RoleManager.CreateAsync(new IdentityRole("Admin"));
+
+        if (!await RoleManager.RoleExistsAsync("Freelancer"))
+            await RoleManager.CreateAsync(new IdentityRole("Freelancer"));
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        var users = await db.Users.OrderBy(x => x.UserName).ToListAsync();
+
+        var list = new List<AdminUserRow>();
+
+        foreach (var user in users)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            list.Add(new AdminUserRow
+                {
+                    Id = user.Id,
+                    UserName = user.UserName ?? "-",
+                    Email = user.Email ?? "-",
+                    Balance = user.Balance,
+                    Roles = roles.ToList(),
+                    HasAdminRole = roles.Contains("Admin"),
+                    HasFreelancerRole = roles.Contains("Freelancer"),
+                    IsBlocked = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow
+                });
+        }
+
+        _users = list;
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private Task OnSearchChanged(string value)
+    {
+        _search = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task MakeAdmin(AdminUserRow row)
+    {
+        var user = await UserManager.FindByIdAsync(row.Id);
+        if (user == null)
+            return;
+
+        var result = await UserManager.AddToRoleAsync(user, "Admin");
+        if (result.Succeeded)
+        {
+            Snackbar.Add("Admin role added", Severity.Success);
+            await LoadUsers();
+        }
+        else
+        {
+            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
+        }
+    }
+
+    private async Task RemoveAdmin(AdminUserRow row)
+    {
+        var user = await UserManager.FindByIdAsync(row.Id);
+        if (user == null)
+            return;
+
+        var result = await UserManager.RemoveFromRoleAsync(user, "Admin");
+        if (result.Succeeded)
+        {
+            Snackbar.Add("Admin role removed", Severity.Success);
+            await LoadUsers();
+        }
+        else
+        {
+            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
+        }
+    }
+
+    private async Task MakeFreelancer(AdminUserRow row)
+    {
+        var user = await UserManager.FindByIdAsync(row.Id);
+        if (user == null)
+            return;
+
+        var result = await UserManager.AddToRoleAsync(user, "Freelancer");
+        if (result.Succeeded)
+        {
+            Snackbar.Add("Freelancer role added", Severity.Success);
+            await LoadUsers();
+        }
+        else
+        {
+            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
+        }
+    }
+
+    private async Task RemoveFreelancer(AdminUserRow row)
+    {
+        var user = await UserManager.FindByIdAsync(row.Id);
+        if (user == null)
+            return;
+
+        var result = await UserManager.RemoveFromRoleAsync(user, "Freelancer");
+        if (result.Succeeded)
+        {
+            Snackbar.Add("Freelancer role removed", Severity.Success);
+            await LoadUsers();
+        }
+        else
+        {
+            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
+        }
+    }
+
+    private async Task BlockUser(AdminUserRow row)
+    {
+        var user = await UserManager.FindByIdAsync(row.Id);
+        if (user == null)
+            return;
+
+        var result = await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+        if (result.Succeeded)
+        {
+            Snackbar.Add("User blocked", Severity.Warning);
+            await LoadUsers();
+        }
+        else
+        {
+            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
+        }
+    }
+
+    private async Task UnblockUser(AdminUserRow row)
+    {
+        var user = await UserManager.FindByIdAsync(row.Id);
+        if (user == null)
+            return;
+
+        var result = await UserManager.SetLockoutEndDateAsync(user, null);
+        if (result.Succeeded)
+        {
+            Snackbar.Add("User unblocked", Severity.Success);
+            await LoadUsers();
+        }
+        else
+        {
+            Snackbar.Add(string.Join(" | ", result.Errors.Select(x => x.Description)), Severity.Error);
+        }
+    }
+
+    private static string GetInitial(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "U" : value.Substring(0, 1).ToUpperInvariant();
+    }
+
+    private sealed class AdminUserRow
+    {
+        public string Id { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public decimal Balance { get; set; }
+        public List<string> Roles { get; set; } = new();
+        public bool HasAdminRole { get; set; }
+        public bool HasFreelancerRole { get; set; }
+        public bool IsBlocked { get; set; }
+    }
+}

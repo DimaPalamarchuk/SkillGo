@@ -24,14 +24,14 @@ var connectionString =
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
     {
-        options.SignIn.RequireConfirmedAccount = true;
+        options.SignIn.RequireConfirmedAccount = false;
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -45,6 +45,8 @@ builder.Services
         options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
     })
     .AddIdentityCookies();
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddMudServices();
 
@@ -68,8 +70,29 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
     if (!await roleManager.RoleExistsAsync("Freelancer"))
         await roleManager.CreateAsync(new IdentityRole("Freelancer"));
+
+    if (!await roleManager.RoleExistsAsync("Admin"))
+        await roleManager.CreateAsync(new IdentityRole("Admin"));
+
+    var adminEmail = "admin@admin.com";
+
+    if (!string.IsNullOrWhiteSpace(adminEmail))
+    {
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+        if (adminUser != null)
+        {
+            if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+
+            adminUser.EmailConfirmed = true;
+            await userManager.UpdateAsync(adminUser);
+        }
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -85,6 +108,10 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

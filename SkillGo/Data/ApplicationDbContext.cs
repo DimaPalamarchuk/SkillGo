@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SkillGo.Data.Models;
 using SkillGo.Data.Models.Chat;
 using SkillGo.Data.Models.Orders;
+using SkillGo.Data.Models.Reports;
 
 namespace SkillGo.Data;
 
@@ -166,5 +167,41 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<OrderDispute>()
             .HasIndex(x => x.ReporterId);
+
+        builder.Entity<Report>()
+            .HasOne(x => x.TargetUser)
+            .WithMany()
+            .HasForeignKey(x => x.TargetUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Report>()
+            .HasOne(x => x.ReporterUser)
+            .WithMany()
+            .HasForeignKey(x => x.ReporterUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Report>()
+            .HasOne(x => x.ServiceOffer)
+            .WithMany()
+            .HasForeignKey(x => x.ServiceOfferId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Report>()
+            .HasOne(x => x.Order)
+            .WithMany()
+            .HasForeignKey(x => x.OrderId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Report>()
+            .HasOne(x => x.Message)
+            .WithMany()
+            .HasForeignKey(x => x.MessageId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Report>()
+            .HasIndex(x => x.TargetType);
+
+        builder.Entity<Report>()
+            .HasIndex(x => x.CreatedAt);
     }
 }

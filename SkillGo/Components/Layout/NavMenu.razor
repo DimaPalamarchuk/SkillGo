@@ -78,6 +78,18 @@
         <AuthorizeView Roles="Admin">
             <div class="sg-nav-section-title sg-nav-section-gap">Administration</div>
 
+            <MudNavLink Href="/admin" Match="NavLinkMatch.All" Class="sg-nav-link" Icon="@Icons.Material.Filled.AdminPanelSettings">
+                Admin dashboard
+            </MudNavLink>
+
+            <MudNavLink Href="/admin/users" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.PeopleAlt">
+                Users
+            </MudNavLink>
+
+            <MudNavLink Href="/admin/reports" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.ReportGmailerrorred">
+                Reports
+            </MudNavLink>
+
             <MudNavLink Href="/category" Match="NavLinkMatch.Prefix" Class="sg-nav-link" Icon="@Icons.Material.Filled.Category">
                 Category
             </MudNavLink>

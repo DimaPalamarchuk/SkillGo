@@ -1,9 +1,15 @@
-﻿@if (!string.IsNullOrEmpty(DisplayMessage))
+﻿@if (!string.IsNullOrWhiteSpace(DisplayMessage))
 {
-    var statusMessageClass = DisplayMessage.StartsWith("Error") ? "danger" : "success";
-    <div class="alert alert-@statusMessageClass" role="alert">
+    var statusMessageClass = DisplayMessage.StartsWith("Error", StringComparison.OrdinalIgnoreCase)
+        ? "danger"
+        : "success";
+
+    <MudAlert Severity="@(statusMessageClass == "danger" ? Severity.Error : Severity.Success)"
+              Variant="Variant.Outlined"
+              Dense="true"
+              Class="mb-4">
         @DisplayMessage
-    </div>
+    </MudAlert>
 }
 
 @code {
@@ -13,17 +19,21 @@
     public string? Message { get; set; }
 
     [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
+    private HttpContext? HttpContext { get; set; }
 
     private string? DisplayMessage => Message ?? messageFromCookie;
 
     protected override void OnInitialized()
     {
-        messageFromCookie = HttpContext.Request.Cookies[IdentityRedirectManager.StatusCookieName];
+        if (HttpContext is null)
+            return;
 
-        if (messageFromCookie is not null)
+        if (HttpContext.Request.Cookies.TryGetValue(IdentityRedirectManager.StatusCookieName, out var value))
         {
-            HttpContext.Response.Cookies.Delete(IdentityRedirectManager.StatusCookieName);
+            messageFromCookie = value;
+
+            if (!HttpContext.Response.HasStarted)
+                HttpContext.Response.Cookies.Delete(IdentityRedirectManager.StatusCookieName);
         }
     }
 }

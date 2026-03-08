@@ -10,58 +10,202 @@
 
 <PageTitle>Banned</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-    <MudPaper Class="pa-6" Elevation="0" Style="border-radius:24px;border:1px solid rgba(0,0,0,.08);">
-        @if (_loading)
-        {
-            <MudStack Spacing="2">
-                <MudSkeleton Height="28px" Width="40%" />
-                <MudSkeleton Height="20px" Width="100%" />
-                <MudSkeleton Height="20px" Width="80%" />
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    @if (_loading)
+    {
+        <MudPaper Class="ban-state-card" Elevation="0">
+            <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                <MudProgressCircular Indeterminate="true" Color="Color.Error" Size="Size.Large" />
+                <MudText Typo="Typo.h6" Class="ban-state-title">Checking restriction...</MudText>
             </MudStack>
-        }
-        else if (_ban is null)
-        {
-            <MudStack Spacing="2">
-                <MudText Typo="Typo.h5" Class="fw-bold">Access restored</MudText>
-                <MudText Color="Color.Secondary">No active restriction was found.</MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Nav.NavigateTo("/"))">
+        </MudPaper>
+    }
+    else if (_ban is null)
+    {
+        <MudPaper Class="ban-state-card" Elevation="0">
+            <MudStack Spacing="3" AlignItems="AlignItems.Center">
+                <MudAvatar Size="Size.Large" Class="ban-ok-avatar">
+                    <MudIcon Icon="@Icons.Material.Filled.Verified" />
+                </MudAvatar>
+
+                <div class="text-center">
+                    <MudText Typo="Typo.h4" Class="ban-state-title">Access restored</MudText>
+                    <MudText Class="ban-state-sub">No active restriction was found for your account.</MudText>
+                </div>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Class="ban-btn"
+                           OnClick="@(() => Nav.NavigateTo("/"))">
                     Go home
                 </MudButton>
             </MudStack>
-        }
-        else
-        {
-            <MudStack Spacing="3">
-                <div>
-                    <MudText Typo="Typo.h4" Class="fw-bold">Account restricted</MudText>
-                    <MudText Color="Color.Secondary">Your account is temporarily unavailable.</MudText>
-                </div>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="ban-shell" Elevation="0">
+            <div class="ban-hero">
+                <div class="ban-kicker">Account restriction</div>
+                <div class="ban-title">Your account is restricted</div>
+                <div class="ban-subtitle">You currently cannot use the platform until the restriction ends or is removed by an administrator.</div>
+            </div>
 
-                <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);background:#fff7ed;">
-                    <MudText Typo="Typo.subtitle2" Class="fw-bold">Reason</MudText>
-                    <MudText Class="mt-2">@_ban.Reason</MudText>
+            <div class="ban-content">
+                <MudPaper Class="ban-reason-card" Elevation="0">
+                    <div class="ban-section-label">Reason</div>
+                    <div class="ban-reason-text">@_ban.Reason</div>
                 </MudPaper>
 
-                <MudGrid Spacing="2">
-                    <MudItem xs="12" sm="6">
-                        <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);">
-                            <MudText Typo="Typo.caption" Class="fw-bold">Started</MudText>
-                            <MudText Typo="Typo.body1" Class="mt-1">@_ban.StartsAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudText>
-                        </MudPaper>
-                    </MudItem>
+                <div class="ban-grid">
+                    <MudPaper Class="ban-info-card" Elevation="0">
+                        <div class="ban-section-label">Started</div>
+                        <div class="ban-info-value">@_ban.StartsAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                    </MudPaper>
 
-                    <MudItem xs="12" sm="6">
-                        <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);">
-                            <MudText Typo="Typo.caption" Class="fw-bold">Ends</MudText>
-                            <MudText Typo="Typo.body1" Class="mt-1">@(_ban.EndsAtUtc.HasValue ? _ban.EndsAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "Permanent")</MudText>
-                        </MudPaper>
-                    </MudItem>
-                </MudGrid>
-            </MudStack>
-        }
-    </MudPaper>
+                    <MudPaper Class="ban-info-card" Elevation="0">
+                        <div class="ban-section-label">Ends</div>
+                        <div class="ban-info-value">@(_ban.EndsAtUtc.HasValue ? _ban.EndsAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "Permanent")</div>
+                    </MudPaper>
+                </div>
+
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+                    If you believe this restriction was applied by mistake, contact platform administration.
+                </MudAlert>
+            </div>
+        </MudPaper>
+    }
 </MudContainer>
+
+<style>
+    .ban-shell,
+    .ban-state-card {
+        border-radius: 30px;
+        background: rgba(255,255,255,.96);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 18px 38px rgba(88,28,135,.06);
+        overflow: hidden;
+    }
+
+    .ban-state-card {
+        min-height: 340px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 28px;
+        text-align: center;
+    }
+
+    .ban-ok-avatar {
+        background: linear-gradient(135deg, rgba(16,185,129,.14), rgba(5,150,105,.10));
+        color: #047857;
+    }
+
+    .ban-state-title {
+        color: #1f1147;
+        font-weight: 950;
+    }
+
+    .ban-state-sub {
+        color: #6b5f8d;
+        margin-top: 8px;
+    }
+
+    .ban-btn {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 16px;
+    }
+
+    .ban-hero {
+        padding: 28px;
+        background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 45%, #dc2626 100%);
+        color: #fff;
+    }
+
+    .ban-kicker {
+        color: rgba(255,255,255,.72);
+        font-size: .78rem;
+        font-weight: 900;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+    }
+
+    .ban-title {
+        margin-top: 8px;
+        font-size: 2rem;
+        line-height: 1.04;
+        font-weight: 950;
+    }
+
+    .ban-subtitle {
+        margin-top: 10px;
+        color: rgba(255,255,255,.82);
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .ban-content {
+        padding: 24px;
+    }
+
+    .ban-reason-card,
+    .ban-info-card {
+        border-radius: 22px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 12px 28px rgba(88,28,135,.05);
+    }
+
+    .ban-reason-card {
+        padding: 18px;
+    }
+
+    .ban-grid {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .ban-info-card {
+        padding: 18px;
+    }
+
+    .ban-section-label {
+        color: rgba(17,24,39,.56);
+        font-size: .72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .ban-reason-text,
+    .ban-info-value {
+        margin-top: 8px;
+        color: #111827;
+        font-weight: 900;
+        line-height: 1.45;
+        word-break: break-word;
+        white-space: pre-wrap;
+    }
+
+    @@media (max-width: 760px) {
+        .ban-title {
+            font-size: 1.6rem;
+        }
+
+        .ban-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .ban-shell,
+        .ban-state-card {
+            border-radius: 24px;
+        }
+    }
+</style>
 
 @code {
     [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;

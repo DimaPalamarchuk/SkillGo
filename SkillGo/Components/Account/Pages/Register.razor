@@ -1,4 +1,5 @@
 ﻿@page "/Account/Register"
+@rendermode InteractiveServer
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -6,6 +7,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using SkillGo.Data
+@using SkillGo.Components.Account
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
@@ -17,36 +19,60 @@
 
 <PageTitle>Register</PageTitle>
 
-<div class="sg-auth">
-    <div class="sg-auth-shell">
+<div class="sg-auth-page">
+    <div class="sg-auth-bg"></div>
 
-        <div class="sg-auth-card">
-            <div class="sg-auth-head">
-                <div class="sg-auth-badge">SG</div>
-                <div>
-                    <h1 class="sg-auth-title">Create account</h1>
-                    <div class="sg-auth-sub">Join SkillGo in a minute</div>
-                </div>
+    <div class="sg-auth-shell">
+        <div class="sg-auth-side">
+            <div class="sg-auth-side-badge">SkillGo</div>
+            <div class="sg-auth-side-title">Create account</div>
+            <div class="sg-auth-side-sub">
+                Join SkillGo to manage orders, messages, wallet and your freelancer profile in one place.
             </div>
 
-            <StatusMessage Message="@Message" />
+            <div class="sg-auth-side-points">
+                <div class="sg-auth-side-point">
+                    <span class="sg-auth-side-dot"></span>
+                    <span>Quick access to chats and orders</span>
+                </div>
 
-            <EditForm Model="Input"
-                      asp-route-returnUrl="@ReturnUrl"
-                      method="post"
+                <div class="sg-auth-side-point">
+                    <span class="sg-auth-side-dot"></span>
+                    <span>Secure account and balance management</span>
+                </div>
+
+                <div class="sg-auth-side-point">
+                    <span class="sg-auth-side-dot"></span>
+                    <span>Freelance marketplace in one workspace</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sg-auth-card">
+            <div class="sg-auth-card-head">
+                <div class="sg-auth-kicker">Account</div>
+                <h1 class="sg-auth-title">Register</h1>
+                <div class="sg-auth-subtitle">Create your account to continue.</div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="sg-validation-summary">@_errorMessage</div>
+            }
+
+            <EditForm Model="@Input"
                       OnValidSubmit="RegisterUser"
-                      FormName="register">
+                      FormName="register-form">
                 <DataAnnotationsValidator />
-                <ValidationSummary class="sg-valsum" />
+                <ValidationSummary class="sg-validation-summary" />
 
                 <div class="sg-field">
                     <label class="sg-label">Username</label>
                     <InputText @bind-Value="Input.UserName"
                                class="sg-input"
                                autocomplete="username"
-                               aria-required="true"
-                               placeholder="username" />
-                    <ValidationMessage For="() => Input.UserName" class="sg-val" />
+                               placeholder="Enter your username" />
+                    <ValidationMessage For="@(() => Input.UserName)" class="sg-validation" />
                 </div>
 
                 <div class="sg-field">
@@ -54,318 +80,422 @@
                     <InputText @bind-Value="Input.Email"
                                class="sg-input"
                                autocomplete="email"
-                               aria-required="true"
-                               placeholder="name@example.com" />
-                    <ValidationMessage For="() => Input.Email" class="sg-val" />
+                               placeholder="Enter your email" />
+                    <ValidationMessage For="@(() => Input.Email)" class="sg-validation" />
                 </div>
 
                 <div class="sg-field">
                     <label class="sg-label">Password</label>
-                    <InputText type="password"
-                               @bind-Value="Input.Password"
+                    <InputText @bind-Value="Input.Password"
+                               type="password"
                                class="sg-input"
                                autocomplete="new-password"
-                               aria-required="true"
-                               placeholder="Create a password" />
-                    <ValidationMessage For="() => Input.Password" class="sg-val" />
+                               placeholder="Create your password" />
+                    <ValidationMessage For="@(() => Input.Password)" class="sg-validation" />
                 </div>
 
                 <div class="sg-field">
                     <label class="sg-label">Confirm password</label>
-                    <InputText type="password"
-                               @bind-Value="Input.ConfirmPassword"
+                    <InputText @bind-Value="Input.ConfirmPassword"
+                               type="password"
                                class="sg-input"
                                autocomplete="new-password"
-                               aria-required="true"
-                               placeholder="Repeat the password" />
-                    <ValidationMessage For="() => Input.ConfirmPassword" class="sg-val" />
+                               placeholder="Repeat your password" />
+                    <ValidationMessage For="@(() => Input.ConfirmPassword)" class="sg-validation" />
                 </div>
 
-                <button type="submit" class="sg-btn-primary">
-                    Register
+                <button type="submit" class="sg-primary-btn">
+                    Create account
                 </button>
-
-                <div class="sg-divider"><span>or</span></div>
-
-                <div class="sg-external">
-                    <ExternalLoginPicker />
-                </div>
-
-                <div class="sg-foot">
-                    <a class="sg-link"
-                       href="@(NavigationManager.GetUriWithQueryParameters(
-                            "Account/Login",
-                            new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
-                        Already have an account? Log in
-                    </a>
-                </div>
             </EditForm>
-        </div>
 
-        <div class="sg-auth-side">
-            <h2>Start hiring or freelancing</h2>
-            <p>Create an account to browse categories, save freelancers, and start projects.</p>
-            <ul>
-                <li>Fast sign up</li>
-                <li>Email confirmation</li>
-                <li>Secure by design</li>
-            </ul>
-        </div>
+            <div class="sg-auth-divider">
+                <span>or</span>
+            </div>
 
+            <div class="sg-auth-external">
+                <ExternalLoginPicker />
+            </div>
+
+            <div class="sg-auth-footer">
+                Already have an account?
+                <a class="sg-auth-link"
+                   href="@NavigationManager.GetUriWithQueryParameters("/Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl })">
+                    Log in
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
-    .sg-auth {
-        min-height: calc(100vh - 92px);
+    .sg-auth-page {
+        min-height: calc(100vh - 78px);
+        position: relative;
+        overflow: hidden;
+        padding: 34px 20px;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 32px;
-        background: #f5f7fb;
-        color: #1f2937;
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.12), transparent 24%),
+            radial-gradient(circle at top right, rgba(99,102,241,.09), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 46%, #ffffff 100%);
+    }
+
+    .sg-auth-bg {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+            radial-gradient(700px 260px at 12% 10%, rgba(124,58,237,.10), transparent 60%),
+            radial-gradient(620px 240px at 88% 16%, rgba(99,102,241,.08), transparent 58%);
     }
 
     .sg-auth-shell {
+        position: relative;
+        z-index: 1;
         width: 100%;
-        max-width: 980px;
+        max-width: 1120px;
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        grid-template-columns: 1.02fr .98fr;
+        gap: 22px;
+        align-items: stretch;
+    }
+
+    .sg-auth-side {
+        border-radius: 32px;
+        padding: 34px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 26px 60px rgba(76,29,149,.20);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 640px;
+    }
+
+    .sg-auth-side-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        min-height: 34px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+        font-size: .8rem;
+        font-weight: 900;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .sg-auth-side-title {
+        margin-top: 18px;
+        font-size: 2.6rem;
+        line-height: 1.02;
+        font-weight: 950;
+        letter-spacing: -.03em;
+        max-width: 520px;
+    }
+
+    .sg-auth-side-sub {
+        margin-top: 14px;
+        color: rgba(255,255,255,.78);
+        font-size: 1rem;
+        line-height: 1.7;
+        max-width: 520px;
+    }
+
+    .sg-auth-side-points {
+        margin-top: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .sg-auth-side-point {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: rgba(255,255,255,.88);
+        font-weight: 700;
+    }
+
+    .sg-auth-side-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #c4b5fd;
+        flex: 0 0 auto;
     }
 
     .sg-auth-card {
-        background: #ffffff;
-        border-radius: 18px;
-        padding: 24px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 20px 50px rgba(0,0,0,.08);
-    }
-
-    .sg-auth-head {
+        border-radius: 32px;
+        padding: 30px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 26px 60px rgba(31,17,71,.10);
+        backdrop-filter: blur(12px);
         display: flex;
-        gap: 14px;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-
-    .sg-auth-badge {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
+        flex-direction: column;
         justify-content: center;
-        font-weight: 800;
-        color: #fff;
-        background: linear-gradient(135deg,#7c3aed,#22c55e);
+        min-height: 640px;
+    }
+
+    .sg-auth-card-head {
+        margin-bottom: 18px;
+    }
+
+    .sg-auth-kicker {
+        color: rgba(31,17,71,.46);
+        font-size: .76rem;
+        font-weight: 900;
+        letter-spacing: .14em;
+        text-transform: uppercase;
     }
 
     .sg-auth-title {
-        margin: 0;
-        font-size: 26px;
+        margin: 10px 0 0 0;
+        color: #1f1147;
+        font-size: 2rem;
+        line-height: 1.05;
+        font-weight: 950;
     }
 
-    .sg-auth-sub {
-        font-size: 14px;
-        color: #6b7280;
+    .sg-auth-subtitle {
+        margin-top: 8px;
+        color: #6b5f8d;
+        line-height: 1.45;
+        font-weight: 700;
     }
 
     .sg-field {
-        margin-bottom: 14px;
+        margin-top: 14px;
     }
 
     .sg-label {
         display: block;
-        margin-bottom: 6px;
-        font-size: 13px;
-        color: #374151;
+        margin-bottom: 8px;
+        color: #1f1147;
+        font-size: .92rem;
+        font-weight: 850;
     }
 
     .sg-input {
         width: 100%;
-        padding: 12px;
-        border-radius: 14px;
-        background: #f9fafb;
-        border: 1px solid #d1d5db;
-        color: #111827;
+        min-height: 54px;
+        padding: 0 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(109,40,217,.14);
+        background: #ffffff;
+        color: #1f1147;
+        outline: none;
+        font-size: .98rem;
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
     }
 
-        .sg-input::placeholder {
-            color: #9ca3af;
-        }
+    .sg-input::placeholder {
+        color: rgba(31,17,71,.40);
+    }
 
-        .sg-input:focus {
-            outline: none;
-            border-color: #7c3aed;
-            box-shadow: 0 0 0 3px rgba(124,58,237,.2);
-        }
+    .sg-input:focus {
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 4px rgba(124,58,237,.12);
+    }
 
-    .sg-btn-primary {
+    .sg-primary-btn {
         width: 100%;
-        padding: 12px;
+        margin-top: 18px;
+        min-height: 54px;
         border: none;
-        border-radius: 14px;
-        font-weight: 700;
-        color: #fff;
-        background: linear-gradient(135deg,#7c3aed,#22c55e);
+        border-radius: 18px;
+        background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+        color: #ffffff;
+        font-weight: 900;
+        font-size: 1rem;
+        letter-spacing: .02em;
+        box-shadow: 0 18px 34px rgba(109,40,217,.20);
         cursor: pointer;
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .sg-primary-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 22px 42px rgba(109,40,217,.24);
+    }
+
+    .sg-auth-divider {
+        margin: 22px 0 16px 0;
+        position: relative;
+        text-align: center;
+        color: rgba(31,17,71,.42);
+        font-size: .84rem;
+        font-weight: 800;
+    }
+
+    .sg-auth-divider::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: rgba(109,40,217,.10);
+        transform: translateY(-50%);
+    }
+
+    .sg-auth-divider span {
+        position: relative;
+        z-index: 1;
+        padding: 0 12px;
+        background: rgba(255,255,255,.94);
+    }
+
+    .sg-auth-external {
+        border-radius: 18px;
+        padding: 12px;
+        background: #faf7ff;
+        border: 1px solid rgba(109,40,217,.10);
+    }
+
+    .sg-auth-footer {
+        margin-top: 18px;
+        text-align: center;
+        color: #6b5f8d;
+        font-weight: 700;
+    }
+
+    .sg-auth-link {
+        color: #6d28d9;
+        text-decoration: none;
+        font-weight: 900;
+    }
+
+    .sg-auth-link:hover {
+        text-decoration: underline;
+    }
+
+    .sg-validation,
+    .sg-validation-summary {
+        color: #dc2626;
+        font-size: .84rem;
         margin-top: 6px;
     }
 
-    .sg-divider {
-        text-align: center;
-        margin: 16px 0;
-        color: #9ca3af;
-    }
-
-    .sg-external {
-        padding: 10px;
-        border-radius: 14px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-    }
-
-    .sg-link {
-        color: #7c3aed;
-        text-decoration: none;
-    }
-
-        .sg-link:hover {
-            text-decoration: underline;
-        }
-
-    .sg-foot {
-        margin-top: 14px;
-        text-align: center;
-    }
-
-    .sg-val {
-        color: #dc2626;
-        font-size: 12px;
-    }
-
-    .sg-valsum {
-        color: #dc2626;
-        margin-bottom: 10px;
-    }
-
-    .sg-auth-side {
-        background: #ffffff;
-        border-radius: 18px;
-        padding: 24px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 20px 50px rgba(0,0,0,.06);
-    }
-
-        .sg-auth-side h2 {
-            margin-top: 0;
-        }
-
-        .sg-auth-side p {
-            color: #6b7280;
-        }
-
-        .sg-auth-side ul {
-            padding-left: 18px;
-            color: #374151;
-        }
-
-    @@media(max-width:900px) {
+    @@media (max-width: 980px) {
         .sg-auth-shell {
             grid-template-columns: 1fr;
+            max-width: 640px;
         }
 
         .sg-auth-side {
-            display: none;
+            min-height: auto;
+            padding: 28px;
+        }
+
+        .sg-auth-card {
+            min-height: auto;
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .sg-auth-page {
+            padding: 18px 10px;
+        }
+
+        .sg-auth-side,
+        .sg-auth-card {
+            border-radius: 24px;
+            padding: 20px;
+        }
+
+        .sg-auth-side-title {
+            font-size: 2rem;
+        }
+
+        .sg-auth-title {
+            font-size: 1.7rem;
         }
     }
 </style>
 
 @code {
-    private IEnumerable<IdentityError>? identityErrors;
-
-    [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
-
-    [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
+    private string? _errorMessage;
 
-    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(e => e.Description))}";
-
-    public async Task RegisterUser(EditContext editContext)
+    protected override void OnInitialized()
     {
-        identityErrors = null;
+        Input ??= new InputModel();
 
-        var existingByEmail = await UserManager.FindByEmailAsync(Input.Email);
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("ReturnUrl", out var returnUrl))
+            ReturnUrl = returnUrl;
+    }
+
+    private async Task RegisterUser()
+    {
+        _errorMessage = null;
+
+        var existingByEmail = await UserManager.FindByEmailAsync(Input.Email.Trim());
         if (existingByEmail is not null)
         {
-            identityErrors = new[] { new IdentityError { Description = "Email is already in use." } };
+            _errorMessage = "Email is already in use.";
             return;
         }
 
-        var existingByName = await UserManager.FindByNameAsync(Input.UserName);
+        var existingByName = await UserManager.FindByNameAsync(Input.UserName.Trim());
         if (existingByName is not null)
         {
-            identityErrors = new[] { new IdentityError { Description = "Username is already in use." } };
+            _errorMessage = "Username is already in use.";
             return;
         }
 
-        var user = Activator.CreateInstance<ApplicationUser>();
+        var user = new ApplicationUser
+        {
+            EmailConfirmed = true
+        };
 
-        await UserStore.SetUserNameAsync(user, Input.UserName, CancellationToken.None);
-        var emailStore = (IUserEmailStore<ApplicationUser>)UserStore;
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+        await UserStore.SetUserNameAsync(user, Input.UserName.Trim(), CancellationToken.None);
+
+        if (UserStore is IUserEmailStore<ApplicationUser> emailStore)
+            await emailStore.SetEmailAsync(user, Input.Email.Trim(), CancellationToken.None);
 
         var result = await UserManager.CreateAsync(user, Input.Password);
 
         if (!result.Succeeded)
         {
-            identityErrors = result.Errors;
+            _errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
             return;
         }
 
         Logger.LogInformation("User created a new account with password.");
 
-        var userId = await UserManager.GetUserIdAsync(user);
-        var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-
-        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-            new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
-
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new() { ["userId"] = userId, ["returnUrl"] = ReturnUrl });
-            return;
-        }
-
-        await SignInManager.SignInAsync(user, false);
-        RedirectManager.RedirectTo(ReturnUrl);
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        NavigationManager.NavigateTo(ReturnUrl ?? "/", true);
     }
 
     private sealed class InputModel
     {
-        [Required]
-        [StringLength(32, MinimumLength = 3)]
+        [Required(ErrorMessage = "Username is required.")]
+        [StringLength(32, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 32 characters.")]
         public string UserName { get; set; } = "";
 
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email.")]
         public string Email { get; set; } = "";
 
-        [Required]
-        [StringLength(100, MinimumLength = 6)]
+        [Required(ErrorMessage = "Password is required.")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters.")]
         [DataType(DataType.Password)]
         public string Password { get; set; } = "";
 
+        [Required(ErrorMessage = "Confirm password is required.")]
         [DataType(DataType.Password)]
-        [Compare("Password")]
+        [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; set; } = "";
     }
 }

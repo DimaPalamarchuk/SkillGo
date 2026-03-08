@@ -1,27 +1,113 @@
 ﻿@page "/Account/Manage/PersonalData"
 
+@using MudBlazor
+
 @inject IdentityUserAccessor UserAccessor
 
 <PageTitle>Personal Data</PageTitle>
 
 <StatusMessage />
-<h3>Personal Data</h3>
 
-<div class="row">
-    <div class="col-md-6">
-        <p>Your account contains personal data that you have given us. This page allows you to download or delete that data.</p>
-        <p>
-            <strong>Deleting this data will permanently remove your account, and this cannot be recovered.</strong>
-        </p>
-        <form action="Account/Manage/DownloadPersonalData" method="post">
-            <AntiforgeryToken />
-            <button class="btn btn-primary" type="submit">Download</button>
-        </form>
-        <p>
-            <a href="Account/Manage/DeletePersonalData" class="btn btn-danger">Delete</a>
-        </p>
-    </div>
-</div>
+<MudPaper Class="personal-hero" Elevation="0">
+    <MudText Class="personal-kicker">Account</MudText>
+    <MudText Typo="Typo.h4" Class="personal-title">Personal data</MudText>
+    <MudText Typo="Typo.body1" Class="personal-sub">
+        Download your data or permanently delete your account.
+    </MudText>
+</MudPaper>
+
+<MudPaper Class="personal-card mt-4" Elevation="0">
+    <MudStack Spacing="3">
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+            Deleting your account is permanent and cannot be undone.
+        </MudAlert>
+
+        <MudText Typo="Typo.body1" Class="personal-text">
+            This page lets you download the personal data linked to your account or remove the account completely.
+        </MudText>
+
+        <MudStack Row="true" Spacing="2" Class="personal-actions">
+            <form action="Account/Manage/DownloadPersonalData" method="post">
+                <AntiforgeryToken />
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Class="btn-strong">
+                    Download data
+                </MudButton>
+            </form>
+
+            <MudButton Href="Account/Manage/DeletePersonalData"
+                       Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       Class="btn-strong">
+                Delete account
+            </MudButton>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
+<style>
+    .personal-hero {
+        border-radius: 28px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 22px 60px rgba(76,29,149,.18);
+        padding: 24px;
+    }
+
+    .personal-kicker {
+        font-size: .76rem;
+        font-weight: 900;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,.68);
+    }
+
+    .personal-title {
+        margin-top: 8px;
+        font-weight: 950;
+    }
+
+    .personal-sub {
+        margin-top: 8px;
+        color: rgba(255,255,255,.80);
+        line-height: 1.55;
+    }
+
+    .personal-card {
+        border-radius: 24px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
+        padding: 22px;
+    }
+
+    .personal-text {
+        color: #6b5f8d;
+        line-height: 1.6;
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        text-transform: none;
+    }
+
+    @@media (max-width: 700px) {
+        .personal-hero,
+        .personal-card {
+            border-radius: 22px;
+        }
+
+        .personal-actions {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+    }
+</style>
 
 @code {
     [CascadingParameter]

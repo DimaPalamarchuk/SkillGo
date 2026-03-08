@@ -1,186 +1,126 @@
 ﻿@page "/chats"
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models.Chat
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
-@inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager Nav
 @attribute [Authorize]
 
 <PageTitle>Chats</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.False" Class="chats-page-shell pa-0">
-    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-8">
-        <MudPaper Class="chats-shell" Elevation="0">
-            <div class="chats-hero">
-                <div class="chats-hero-left">
-                    <div class="hero-badge">
-                        <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" />
-                        <span>Your conversations</span>
-                    </div>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudPaper Class="chats-shell" Elevation="0">
+        <div class="chats-header">
+            <MudText Typo="Typo.h5" Class="fw-bold">Chats</MudText>
 
-                    <MudText Typo="Typo.h4" Class="hero-title mt-4">Chats</MudText>
-                    <MudText Typo="Typo.body2" Class="hero-sub mt-2">Open conversations with freelancers and clients in one place.</MudText>
-                </div>
+            <MudTextField T="string"
+                          Placeholder="Search chats..."
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          @bind-Value="_search"
+                          Class="chats-search" />
+        </div>
 
-                <div class="chats-hero-right">
-                    <MudTextField T="string"
-                                  Placeholder="Search chats..."
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Adornment="Adornment.Start"
-                                  AdornmentIcon="@Icons.Material.Filled.Search"
-                                  Immediate="true"
-                                  @bind-Value="_search"
-                                  Class="chats-search" />
-                </div>
-            </div>
-
-            <div class="chats-list">
-                @if (_loading)
-                {
-                    <div class="chats-loading">
-                        @for (var i = 0; i < 6; i++)
-                        {
-                            <div class="chat-row-skeleton">
-                                <MudSkeleton Height="56px" Width="56px" Class="chat-avatar-skeleton" />
-                                <div class="chat-row-skeleton-content">
-                                    <MudSkeleton Height="18px" Width="42%" />
-                                    <MudSkeleton Height="14px" Width="70%" />
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else if (!FilteredItems.Any())
-                {
-                    <div class="chats-empty">
-                        <MudAvatar Size="Size.Large" Class="chats-empty-icon">
-                            <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" />
-                        </MudAvatar>
-
-                        @if (string.IsNullOrWhiteSpace(_search))
-                        {
-                            <MudText Typo="Typo.h6" Class="fw-bold">No chats yet</MudText>
-                            <MudText Class="chats-empty-sub">Your conversations will appear here.</MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.h6" Class="fw-bold">Nothing found</MudText>
-                            <MudText Class="chats-empty-sub">No chats match your search.</MudText>
-                        }
-                    </div>
-                }
-                else
-                {
-                    @foreach (var c in FilteredItems)
+        <div class="chats-list">
+            @if (_loading)
+            {
+                <div class="chats-loading">
+                    @for (var i = 0; i < 6; i++)
                     {
-                        <div class="chat-row @(c.UnreadCount > 0 ? "chat-row-unread" : "")" @onclick="@(() => OpenChat(c.ConversationId))">
-                            <div class="chat-avatar-wrap">
-                                <div class="chat-avatar">
-                                    @GetInitial(c.Title)
-                                </div>
-
-                                @if (c.UnreadCount > 0)
-                                {
-                                    <div class="chat-unread-badge">
-                                        @(c.UnreadCount > 99 ? "99+" : c.UnreadCount.ToString())
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="chat-main">
-                                <div class="chat-top">
-                                    <div class="chat-title-wrap">
-                                        <div class="chat-title">@c.Title</div>
-                                        @if (c.UnreadCount > 0)
-                                        {
-                                            <div class="chat-unread-text">@($"{c.UnreadCount} unread")</div>
-                                        }
-                                    </div>
-
-                                    <div class="chat-time">@FormatChatDate(c.LastAt)</div>
-                                </div>
-
-                                <div class="chat-bottom">
-                                    <div class="chat-preview @(c.UnreadCount > 0 ? "chat-preview-unread" : "")">@GetPreview(c)</div>
-                                </div>
+                        <div class="chat-row-skeleton">
+                            <MudSkeleton Height="56px" Width="56px" Class="chat-avatar-skeleton" />
+                            <div class="chat-row-skeleton-content">
+                                <MudSkeleton Height="18px" Width="42%" />
+                                <MudSkeleton Height="14px" Width="70%" />
                             </div>
                         </div>
                     }
+                </div>
+            }
+            else if (!FilteredItems.Any())
+            {
+                <div class="chats-empty">
+                    <MudAvatar Size="Size.Large" Class="chats-empty-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" />
+                    </MudAvatar>
+
+                    @if (string.IsNullOrWhiteSpace(_search))
+                    {
+                        <MudText Typo="Typo.h6" Class="fw-bold">No chats yet</MudText>
+                        <MudText Class="chats-empty-sub">Your conversations will appear here.</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h6" Class="fw-bold">Nothing found</MudText>
+                        <MudText Class="chats-empty-sub">No chats match your search.</MudText>
+                    }
+                </div>
+            }
+            else
+            {
+                @foreach (var c in FilteredItems)
+                {
+                    <div class="chat-row" @onclick="@(() => OpenChat(c.ConversationId))">
+                        @if (!string.IsNullOrWhiteSpace(c.AvatarUrl))
+                        {
+                            <img class="chat-avatar-image" src="@c.AvatarUrl" alt="@c.Title" />
+                        }
+                        else
+                        {
+                            <div class="chat-avatar">
+                                @GetInitial(c.Title)
+                            </div>
+                        }
+
+                        <div class="chat-main">
+                            <div class="chat-top">
+                                <div class="chat-title-wrap">
+                                    <div class="chat-title">@c.Title</div>
+
+                                    @if (c.UnreadCount > 0)
+                                    {
+                                        <div class="chat-unread-badge">@c.UnreadCount</div>
+                                    }
+                                </div>
+
+                                <div class="chat-time">@FormatChatDate(c.LastAt)</div>
+                            </div>
+
+                            <div class="chat-bottom">
+                                <div class="chat-preview">@GetPreview(c)</div>
+                            </div>
+                        </div>
+                    </div>
                 }
-            </div>
-        </MudPaper>
-    </MudContainer>
+            }
+        </div>
+    </MudPaper>
 </MudContainer>
 
 <style>
-    .chats-page-shell {
-        min-height: calc(100vh - 78px);
-        background:
-            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
-            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
-            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
-    }
-
     .chats-shell {
-        border-radius: 28px;
+        border-radius: 24px;
         background: rgba(255,255,255,.94);
-        border: 1px solid rgba(109,40,217,.10);
-        box-shadow: 0 16px 40px rgba(88,28,135,.05);
+        border: 1px solid rgba(15,23,42,.06);
+        box-shadow: 0 16px 40px rgba(15,23,42,.05);
         overflow: hidden;
     }
 
-    .chats-hero {
-        padding: 22px 22px 18px 22px;
-        border-bottom: 1px solid rgba(109,40,217,.08);
-        background: linear-gradient(180deg, rgba(109,40,217,.06), rgba(109,40,217,0));
-        display: flex;
-        justify-content: space-between;
-        gap: 18px;
-        align-items: end;
-        flex-wrap: wrap;
-    }
-
-    .chats-hero-left {
-        min-width: 0;
-    }
-
-    .hero-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
-        border-radius: 999px;
-        background: rgba(109,40,217,.08);
-        border: 1px solid rgba(109,40,217,.10);
-        font-size: 13px;
-        font-weight: 700;
-        color: #5b21b6;
-    }
-
-    .hero-title {
-        color: #1f1147;
-        font-weight: 900;
-        line-height: 1.05;
-        letter-spacing: -.02em;
-    }
-
-    .hero-sub {
-        color: #6b5f8d;
-        line-height: 1.6;
-    }
-
-    .chats-hero-right {
-        width: min(100%, 360px);
+    .chats-header {
+        padding: 18px 18px 14px 18px;
+        border-bottom: 1px solid rgba(15,23,42,.06);
+        background: linear-gradient(180deg, rgba(99,102,241,.06), rgba(99,102,241,0));
     }
 
     .chats-search {
-        width: 100%;
+        margin-top: 12px;
     }
 
     .chats-list {
@@ -195,7 +135,7 @@
         padding: 14px 18px;
         cursor: pointer;
         transition: background .16s ease, transform .16s ease;
-        border-bottom: 1px solid rgba(109,40,217,.06);
+        border-bottom: 1px solid rgba(15,23,42,.05);
     }
 
     .chat-row:last-child {
@@ -203,50 +143,33 @@
     }
 
     .chat-row:hover {
-        background: rgba(109,40,217,.05);
+        background: rgba(79,70,229,.05);
     }
 
-    .chat-row-unread {
-        background: rgba(109,40,217,.03);
-    }
-
-    .chat-avatar-wrap {
-        position: relative;
+    .chat-avatar,
+    .chat-avatar-image {
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
         flex: 0 0 auto;
     }
 
     .chat-avatar {
-        width: 56px;
-        height: 56px;
-        border-radius: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%);
-        color: #6d28d9;
+        background: linear-gradient(135deg, rgba(79,70,229,.14), rgba(99,102,241,.10));
+        color: #4338ca;
         font-weight: 950;
         font-size: 1rem;
-        border: 1px solid rgba(109,40,217,.10);
-        flex: 0 0 auto;
+        border: 1px solid rgba(79,70,229,.10);
     }
 
-    .chat-unread-badge {
-        position: absolute;
-        top: -6px;
-        right: -6px;
-        min-width: 22px;
-        height: 22px;
-        padding: 0 6px;
-        border-radius: 999px;
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: #fff;
-        font-size: .72rem;
-        font-weight: 900;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid #fff;
-        box-shadow: 0 8px 18px rgba(220,38,38,.22);
+    .chat-avatar-image {
+        object-fit: cover;
+        display: block;
+        border: 1px solid rgba(79,70,229,.10);
+        background: #fff;
     }
 
     .chat-main {
@@ -262,15 +185,15 @@
     }
 
     .chat-title-wrap {
-        min-width: 0;
         display: flex;
-        flex-direction: column;
-        gap: 2px;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
     }
 
     .chat-title {
         min-width: 0;
-        color: #1f1147;
+        color: #111827;
         font-weight: 900;
         font-size: 1rem;
         white-space: nowrap;
@@ -278,15 +201,25 @@
         text-overflow: ellipsis;
     }
 
-    .chat-unread-text {
-        color: #6d28d9;
-        font-size: .78rem;
-        font-weight: 800;
+    .chat-unread-badge {
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        color: #fff;
+        font-size: .75rem;
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        box-shadow: 0 8px 18px rgba(79,70,229,.22);
     }
 
     .chat-time {
         flex: 0 0 auto;
-        color: #6b5f8d;
+        color: rgba(17,24,39,.46);
         font-size: .8rem;
         font-weight: 800;
         white-space: nowrap;
@@ -297,17 +230,12 @@
     }
 
     .chat-preview {
-        color: rgba(31,17,71,.68);
+        color: rgba(17,24,39,.62);
         font-size: .92rem;
         line-height: 1.35;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-    }
-
-    .chat-preview-unread {
-        color: #1f1147;
-        font-weight: 800;
     }
 
     .chats-empty {
@@ -320,12 +248,12 @@
     }
 
     .chats-empty-icon {
-        background: linear-gradient(135deg, rgba(109,40,217,.12), rgba(99,102,241,.08));
-        color: #6d28d9;
+        background: linear-gradient(135deg, rgba(79,70,229,.12), rgba(99,102,241,.08));
+        color: #4338ca;
     }
 
     .chats-empty-sub {
-        color: #6b5f8d;
+        color: rgba(17,24,39,.60);
     }
 
     .chats-loading {
@@ -337,7 +265,7 @@
         align-items: center;
         gap: 14px;
         padding: 14px 18px;
-        border-bottom: 1px solid rgba(109,40,217,.06);
+        border-bottom: 1px solid rgba(15,23,42,.05);
     }
 
     .chat-avatar-skeleton {
@@ -353,19 +281,20 @@
     }
 
     @@media (max-width: 760px) {
-        .chats-hero {
-            padding: 18px 16px 14px 16px;
-        }
-
         .chat-row {
             padding: 12px 14px;
             gap: 12px;
         }
 
-        .chat-avatar {
+        .chat-avatar,
+        .chat-avatar-image {
             width: 50px;
             height: 50px;
             border-radius: 16px;
+        }
+
+        .chats-header {
+            padding: 16px 14px 12px 14px;
         }
     }
 </style>
@@ -399,6 +328,7 @@
     {
         public int ConversationId { get; set; }
         public string Title { get; set; } = "Chat";
+        public string? AvatarUrl { get; set; }
         public string? LastMessage { get; set; }
         public bool HasAttachments { get; set; }
         public bool IsOrderMessage { get; set; }
@@ -412,9 +342,9 @@
         _loading = true;
 
         var auth = await AuthenticationStateTask;
-        var me = await UserManager.GetUserAsync(auth.User);
+        var meId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (me == null)
+        if (string.IsNullOrWhiteSpace(meId))
         {
             _items = new();
             _loading = false;
@@ -423,15 +353,17 @@
 
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        var conversations = await db.Conversations.AsNoTracking()
-            .Where(x => x.UserAId == me.Id || x.UserBId == me.Id)
+        var conversations = await db.Conversations
+            .AsNoTracking()
+            .Where(x => x.UserAId == meId || x.UserBId == meId)
             .OrderByDescending(x => x.LastMessageAtUtc ?? x.CreatedAtUtc)
             .Take(100)
             .ToListAsync();
 
         var ids = conversations.Select(x => x.Id).ToList();
 
-        var lastMessages = await db.Messages.AsNoTracking()
+        var lastMessages = await db.Messages
+            .AsNoTracking()
             .Include(x => x.Attachments)
             .Where(m => ids.Contains(m.ConversationId))
             .GroupBy(m => m.ConversationId)
@@ -439,46 +371,86 @@
             .ToListAsync();
 
         var otherIds = conversations
-            .Select(x => x.UserAId == me.Id ? x.UserBId : x.UserAId)
+            .Select(x => x.UserAId == meId ? x.UserBId : x.UserAId)
             .Distinct()
             .ToList();
 
-        var users = await db.Users.AsNoTracking()
+        var users = await db.Users
+            .AsNoTracking()
             .Where(u => otherIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.UserName })
-            .ToListAsync();
-
-        var unreadData = await db.Messages.AsNoTracking()
-            .Where(m => ids.Contains(m.ConversationId) && m.SenderId != me.Id && !m.IsDeleted)
-            .Select(m => new
+            .Select(u => new
             {
-                m.ConversationId,
-                m.CreatedAtUtc
+                u.Id,
+                u.UserName,
+                u.DisplayName,
+                u.AvatarUrl
             })
             .ToListAsync();
 
-        var userMap = users.ToDictionary(x => x.Id, x => x.UserName);
-        var lastMap = lastMessages.Where(x => x != null).ToDictionary(x => x!.ConversationId, x => x!);
+        var userMap = users.ToDictionary(
+            x => x.Id,
+            x => new
+            {
+                Title = !string.IsNullOrWhiteSpace(x.DisplayName) ? x.DisplayName : (x.UserName ?? "User"),
+                x.AvatarUrl
+            });
+
+        var lastMap = lastMessages
+            .Where(x => x != null)
+            .ToDictionary(x => x!.ConversationId, x => x!);
+
+        var unreadCounts = await db.Messages
+            .AsNoTracking()
+            .Where(m =>
+                ids.Contains(m.ConversationId) &&
+                m.SenderId != meId &&
+                !m.IsDeleted)
+            .GroupBy(m => m.ConversationId)
+            .Select(g => new
+            {
+                ConversationId = g.Key,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var unreadMap = unreadCounts.ToDictionary(x => x.ConversationId, x => x.Count);
 
         _items = conversations.Select(c =>
         {
-            var otherId = c.UserAId == me.Id ? c.UserBId : c.UserAId;
+            var otherId = c.UserAId == meId ? c.UserBId : c.UserAId;
 
-            userMap.TryGetValue(otherId, out var userName);
+            userMap.TryGetValue(otherId, out var user);
             lastMap.TryGetValue(c.Id, out var lm);
 
-            var lastReadAt = c.UserAId == me.Id
-                ? c.LastReadByUserAAtUtc
-                : c.LastReadByUserBAtUtc;
+            var unreadCount = 0;
+            unreadMap.TryGetValue(c.Id, out unreadCount);
 
-            var unreadCount = unreadData.Count(x =>
-                x.ConversationId == c.Id &&
-                (!lastReadAt.HasValue || x.CreatedAtUtc > lastReadAt.Value));
+            if (c.UserAId == meId && c.LastReadByUserAAtUtc.HasValue)
+            {
+                unreadCount = conversations.Count > 0
+                    ? db.Messages.AsNoTracking().Count(m =>
+                        m.ConversationId == c.Id &&
+                        m.SenderId != meId &&
+                        !m.IsDeleted &&
+                        m.CreatedAtUtc > c.LastReadByUserAAtUtc.Value)
+                    : 0;
+            }
+            else if (c.UserBId == meId && c.LastReadByUserBAtUtc.HasValue)
+            {
+                unreadCount = conversations.Count > 0
+                    ? db.Messages.AsNoTracking().Count(m =>
+                        m.ConversationId == c.Id &&
+                        m.SenderId != meId &&
+                        !m.IsDeleted &&
+                        m.CreatedAtUtc > c.LastReadByUserBAtUtc.Value)
+                    : 0;
+            }
 
             return new Row
             {
                 ConversationId = c.Id,
-                Title = !string.IsNullOrWhiteSpace(userName) ? $"@{userName}" : "Chat",
+                Title = user?.Title ?? "User",
+                AvatarUrl = user?.AvatarUrl,
                 LastMessage = lm?.Body,
                 HasAttachments = lm?.Attachments.Any() == true,
                 IsOrderMessage = lm?.OrderId != null,
@@ -486,7 +458,7 @@
                 LastAt = c.LastMessageAtUtc ?? c.CreatedAtUtc,
                 UnreadCount = unreadCount
             };
-        }).ToList();
+        }).OrderByDescending(x => x.LastAt).ToList();
 
         _loading = false;
     }

@@ -2,7 +2,8 @@
 @using MudBlazor
 @using SkillGo.Data.Models
 @using SkillGo.Repository.IRepository
-@inject ICategoryRepository _categoryRepository
+@inject ICategoryRepository CategoryRepository
+@inject NavigationManager Nav
 
 <PageTitle>Categories</PageTitle>
 
@@ -21,14 +22,15 @@ else
                 <div>
                     <MudText Class="cat-kicker">Administration</MudText>
                     <MudText Class="cat-title">Category management</MudText>
-                    <MudText Class="cat-subtitle">Create, edit and manage platform categories.</MudText>
+                    <MudText Class="cat-subtitle">Create, edit and organize marketplace categories.</MudText>
                 </div>
 
                 <MudButton Href="/category/create"
                            Variant="Variant.Filled"
                            Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Add">
-                    Add new category
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Class="cat-btn">
+                    Add category
                 </MudButton>
             </div>
         </MudPaper>
@@ -36,15 +38,11 @@ else
         <MudPaper Class="cat-panel" Elevation="0">
             @if (Categories.Any())
             {
-                <MudTable Items="Categories" Hover="true" Dense="true" Class="cat-table">
-                    <HeaderContent>
-                        <MudTh>Name</MudTh>
-                        <MudTh Align="Align.Right">Actions</MudTh>
-                    </HeaderContent>
-
-                    <RowTemplate>
-                        <MudTd DataLabel="Name">
-                            <div class="cat-name-cell">
+                <div class="cat-list">
+                    @foreach (var context in Categories)
+                    {
+                        <div class="cat-card">
+                            <div class="cat-card-left">
                                 <div class="cat-icon-wrap">
                                     <MudIcon Icon="@Icons.Material.Filled.Category" />
                                 </div>
@@ -54,10 +52,8 @@ else
                                     <div class="cat-meta">Category ID: @context.Id</div>
                                 </div>
                             </div>
-                        </MudTd>
 
-                        <MudTd DataLabel="Actions" Align="Align.Right">
-                            <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                            <div class="cat-actions">
                                 <MudButton Href="@($"/category/update/{context.Id}")"
                                            Variant="Variant.Outlined"
                                            Color="Color.Primary"
@@ -68,20 +64,23 @@ else
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Error"
                                            StartIcon="@Icons.Material.Filled.Delete"
-                                           OnClick="() => DeleteCategory(context.Id)">
+                                           OnClick="@(() => DeleteCategory(context.Id))">
                                     Delete
                                 </MudButton>
-                            </MudStack>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
+                            </div>
+                        </div>
+                    }
+                </div>
             }
             else
             {
                 <div class="cat-empty">
-                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Large" />
-                    <MudText Typo="Typo.h6">No categories yet</MudText>
-                    <MudText Color="Color.Secondary">Create your first category to start organizing services.</MudText>
+                    <MudAvatar Size="Size.Large" Class="cat-empty-avatar">
+                        <MudIcon Icon="@Icons.Material.Filled.Inventory2" />
+                    </MudAvatar>
+
+                    <MudText Typo="Typo.h6" Class="cat-empty-title">No categories yet</MudText>
+                    <MudText Class="cat-empty-sub">Create your first category to start organizing services.</MudText>
                 </div>
             }
         </MudPaper>
@@ -102,11 +101,11 @@ else
     }
 
     .cat-hero {
-        border-radius: 28px;
+        border-radius: 30px;
         padding: 28px;
-        background: linear-gradient(135deg, #111827 0%, #1f2937 40%, #312e81 100%);
+        background: linear-gradient(135deg, #1f1147 0%, #4c1d95 42%, #6d28d9 100%);
         color: #fff;
-        box-shadow: 0 24px 48px rgba(15,23,42,.16);
+        box-shadow: 0 24px 48px rgba(31,17,71,.16);
     }
 
     .cat-hero-content {
@@ -138,29 +137,55 @@ else
         font-weight: 700;
     }
 
-    .cat-panel {
-        padding: 20px;
-        border-radius: 24px;
-        background: rgba(255,255,255,.94);
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 18px 36px rgba(15,23,42,.05);
+    .cat-btn {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
     }
 
-    .cat-name-cell {
+    .cat-panel {
+        padding: 20px;
+        border-radius: 26px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 18px 36px rgba(88,28,135,.05);
+    }
+
+    .cat-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .cat-card {
+        border-radius: 22px;
+        border: 1px solid rgba(109,40,217,.10);
+        background: linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
+        box-shadow: 0 14px 34px rgba(88,28,135,.05);
+        padding: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .cat-card-left {
         display: flex;
         align-items: center;
         gap: 12px;
+        min-width: 0;
     }
 
     .cat-icon-wrap {
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-        color: #4338ca;
+        background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+        color: #5b21b6;
         flex: 0 0 auto;
     }
 
@@ -169,8 +194,8 @@ else
     }
 
     .cat-name {
-        color: #111827;
-        font-weight: 900;
+        color: #1f1147;
+        font-weight: 950;
         line-height: 1.05;
     }
 
@@ -181,6 +206,12 @@ else
         font-weight: 700;
     }
 
+    .cat-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
     .cat-empty {
         min-height: 280px;
         display: flex;
@@ -188,13 +219,32 @@ else
         align-items: center;
         justify-content: center;
         gap: 10px;
-        color: #6b7280;
         text-align: center;
+    }
+
+    .cat-empty-avatar {
+        background: linear-gradient(135deg, rgba(109,40,217,.12), rgba(139,92,246,.08));
+        color: #5b21b6;
+    }
+
+    .cat-empty-title {
+        color: #111827;
+        font-weight: 950;
+    }
+
+    .cat-empty-sub {
+        color: rgba(17,24,39,.62);
     }
 
     @@media (max-width: 760px) {
         .cat-title {
             font-size: 1.6rem;
+        }
+
+        .cat-card,
+        .cat-panel,
+        .cat-hero {
+            border-radius: 22px;
         }
     }
 </style>
@@ -211,12 +261,13 @@ else
 
     private async Task LoadCategories()
     {
-        Categories = (await _categoryRepository.GetAllAsync()).ToList();
+        Categories = (await CategoryRepository.GetAllAsync()).ToList();
     }
 
     private async Task DeleteCategory(int id)
     {
-        await _categoryRepository.DeleteAsync(id);
+        await CategoryRepository.DeleteAsync(id);
         await LoadCategories();
+        StateHasChanged();
     }
 }

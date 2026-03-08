@@ -24,7 +24,7 @@ else
                 <div>
                     <MudText Class="cat-form-kicker">Administration</MudText>
                     <MudText Class="cat-form-title">@((Id > 0) ? "Update category" : "Create category")</MudText>
-                    <MudText Class="cat-form-subtitle">Manage taxonomy for the marketplace.</MudText>
+                    <MudText Class="cat-form-subtitle">Manage marketplace taxonomy in a clean and consistent way.</MudText>
                 </div>
             </div>
         </MudPaper>
@@ -78,11 +78,11 @@ else
     }
 
     .cat-form-hero {
-        border-radius: 28px;
+        border-radius: 30px;
         padding: 28px;
-        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #4338ca 100%);
+        background: linear-gradient(135deg, #1f1147 0%, #4c1d95 42%, #6d28d9 100%);
         color: #fff;
-        box-shadow: 0 24px 48px rgba(49,46,129,.16);
+        box-shadow: 0 24px 48px rgba(31,17,71,.16);
     }
 
     .cat-form-hero-content {
@@ -116,10 +116,10 @@ else
 
     .cat-form-panel {
         padding: 24px;
-        border-radius: 24px;
+        border-radius: 26px;
         background: rgba(255,255,255,.95);
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 18px 36px rgba(15,23,42,.05);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 18px 36px rgba(88,28,135,.05);
     }
 
     .cat-form-actions {
@@ -129,6 +129,11 @@ else
     @@media (max-width: 760px) {
         .cat-form-title {
             font-size: 1.6rem;
+        }
+
+        .cat-form-panel,
+        .cat-form-hero {
+            border-radius: 22px;
         }
     }
 </style>
@@ -161,7 +166,7 @@ else
         }
         else
         {
-            await JS.ToastrError("Category not found");
+            await JS.InvokeVoidAsync("alert", "Category not found");
             Nav.NavigateTo("/category");
         }
     }
@@ -173,12 +178,12 @@ else
         if (Category.Id == 0)
         {
             await CategoryRepository.CreateAsync(Category);
-            await JS.ToastrSuccess("Category created successfully");
+            await JS.InvokeVoidAsync("alert", "Category created successfully");
         }
         else
         {
             await CategoryRepository.UpdateAsync(Category);
-            await JS.ToastrSuccess("Category updated successfully");
+            await JS.InvokeVoidAsync("alert", "Category updated successfully");
         }
 
         IsSaving = false;

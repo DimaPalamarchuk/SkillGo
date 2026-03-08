@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using SkillGo.Data
+@using SkillGo.Components.Account
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
@@ -11,184 +12,228 @@
 
 <PageTitle>Confirm email</PageTitle>
 
-<div class="sg-auth">
-    <div class="sg-auth-shell">
-
-        <div class="sg-auth-card">
-            <div class="sg-auth-head">
-                <div class="sg-auth-badge">SG</div>
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+    <div class="auth-shell">
+        <MudPaper Class="auth-card" Elevation="0">
+            <div class="auth-head">
+                <div class="auth-badge">SG</div>
                 <div>
-                    <h1 class="sg-auth-title">Email confirmation</h1>
-                    <div class="sg-auth-sub">Activating your account</div>
+                    <div class="auth-title">Email confirmation</div>
+                    <div class="auth-sub">Activating your account</div>
                 </div>
             </div>
 
             <StatusMessage Message="@statusMessage" />
 
-            <div class="sg-note">
-                <div class="sg-note-title">Status</div>
-                <div class="sg-note-text">@statusMessage</div>
+            <MudPaper Class="confirm-note" Elevation="0">
+                <div class="confirm-note-title">Status</div>
+                <div class="confirm-note-text">@statusMessage</div>
 
-                <div class="sg-actions">
-                    <a class="sg-btn-primary"
-                       href="@(NavigationManager.GetUriWithQueryParameters(
-                            "Account/Login",
-                            new Dictionary<string, object?>()))">
+                <div class="confirm-actions">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Class="confirm-btn"
+                               Href="/Account/Login">
                         Go to login
-                    </a>
+                    </MudButton>
+                </div>
+            </MudPaper>
+        </MudPaper>
+
+        <MudPaper Class="auth-side" Elevation="0">
+            <div class="auth-side-kicker">SkillGo</div>
+            <div class="auth-side-title">All set</div>
+            <div class="auth-side-sub">
+                Once your email is confirmed, you can log in and start using SkillGo safely with full account access.
+            </div>
+
+            <div class="auth-side-list">
+                <div class="auth-side-item">
+                    <MudIcon Icon="@Icons.Material.Filled.MarkEmailRead" />
+                    <span>Secure account activation</span>
+                </div>
+                <div class="auth-side-item">
+                    <MudIcon Icon="@Icons.Material.Filled.LockReset" />
+                    <span>Recovery options available</span>
+                </div>
+                <div class="auth-side-item">
+                    <MudIcon Icon="@Icons.Material.Filled.Shield" />
+                    <span>Better platform safety</span>
                 </div>
             </div>
-        </div>
-
-        <div class="sg-auth-side">
-            <h2>All set</h2>
-            <p>Once your email is confirmed, you can log in and start using SkillGo.</p>
-            <ul>
-                <li>Secure account access</li>
-                <li>Recovery options enabled</li>
-                <li>Better platform safety</li>
-            </ul>
-        </div>
-
+        </MudPaper>
     </div>
-</div>
+</MudContainer>
 
 <style>
-    .sg-auth {
-        min-height: calc(100vh - 92px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 32px;
-        background: #f5f7fb;
-        color: #1f2937;
-    }
-
-    .sg-auth-shell {
+    .auth-shell {
         width: 100%;
-        max-width: 980px;
+        max-width: 1100px;
+        margin: 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+        gap: 22px;
+        align-items: stretch;
     }
 
-    .sg-auth-card {
-        background: #ffffff;
-        border-radius: 18px;
-        padding: 24px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 20px 50px rgba(0,0,0,.08);
+    .auth-card,
+    .auth-side {
+        border-radius: 30px;
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 18px 38px rgba(88,28,135,.06);
     }
 
-    .sg-auth-head {
+    .auth-card {
+        padding: 28px;
+        background: rgba(255,255,255,.96);
+    }
+
+    .auth-side {
+        padding: 30px;
+        background: linear-gradient(135deg, #1f1147 0%, #4c1d95 42%, #6d28d9 100%);
+        color: #fff;
+    }
+
+    .auth-head {
         display: flex;
         gap: 14px;
         align-items: center;
-        margin-bottom: 18px;
+        margin-bottom: 22px;
     }
 
-    .sg-auth-badge {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
+    .auth-badge {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 800;
+        font-weight: 900;
         color: #fff;
-        background: linear-gradient(135deg,#7c3aed,#22c55e);
+        background: linear-gradient(135deg,#6d28d9,#8b5cf6);
+        box-shadow: 0 14px 26px rgba(109,40,217,.22);
     }
 
-    .sg-auth-title {
-        margin: 0;
-        font-size: 26px;
+    .auth-title {
+        color: #1f1147;
+        font-size: 1.8rem;
+        font-weight: 950;
+        line-height: 1.05;
     }
 
-    .sg-auth-sub {
-        font-size: 14px;
-        color: #6b7280;
+    .auth-sub {
+        margin-top: 4px;
+        color: #6b5f8d;
+        font-weight: 700;
     }
 
-    .sg-note {
+    .confirm-note {
         margin-top: 10px;
-        padding: 16px;
-        border-radius: 16px;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
+        padding: 18px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 12px 28px rgba(88,28,135,.05);
     }
 
-    .sg-note-title {
-        font-weight: 800;
-        font-size: 14px;
-        color: #111827;
-        margin-bottom: 6px;
+    .confirm-note-title {
+        color: rgba(17,24,39,.56);
+        font-size: .72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
     }
 
-    .sg-note-text {
-        font-size: 14px;
-        color: #4b5563;
-        line-height: 1.5;
+    .confirm-note-text {
+        margin-top: 8px;
+        font-size: .98rem;
+        color: #1f1147;
+        line-height: 1.6;
         word-break: break-word;
+        white-space: pre-wrap;
+        font-weight: 700;
     }
 
-    .sg-actions {
+    .confirm-actions {
+        margin-top: 16px;
         display: flex;
         gap: 10px;
-        margin-top: 14px;
         flex-wrap: wrap;
     }
 
-    .sg-btn-primary {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 10px 14px;
-        border: none;
+    .confirm-btn {
         border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 14px;
+        text-transform: none;
+    }
+
+    .auth-side-kicker {
+        color: rgba(255,255,255,.70);
+        font-size: .78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .16em;
+    }
+
+    .auth-side-title {
+        margin-top: 10px;
+        font-size: 2rem;
+        line-height: 1.06;
+        font-weight: 950;
+    }
+
+    .auth-side-sub {
+        margin-top: 12px;
+        color: rgba(255,255,255,.80);
+        line-height: 1.6;
         font-weight: 700;
-        color: #fff;
-        background: linear-gradient(135deg,#7c3aed,#22c55e);
-        text-decoration: none;
-        cursor: pointer;
+        max-width: 520px;
     }
 
-    .sg-auth-side {
-        background: #ffffff;
+    .auth-side-list {
+        margin-top: 26px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .auth-side-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px;
         border-radius: 18px;
-        padding: 24px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 20px 50px rgba(0,0,0,.06);
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.12);
+        font-weight: 800;
     }
 
-        .sg-auth-side h2 {
-            margin-top: 0;
-        }
-
-        .sg-auth-side p {
-            color: #6b7280;
-        }
-
-        .sg-auth-side ul {
-            padding-left: 18px;
-            color: #374151;
-        }
-
-    @@media(max-width:900px) {
-        .sg-auth-shell {
+    @@media (max-width: 900px) {
+        .auth-shell {
             grid-template-columns: 1fr;
         }
 
-        .sg-auth-side {
+        .auth-side {
             display: none;
+        }
+    }
+
+    @@media (max-width: 760px) {
+        .auth-card {
+            padding: 22px;
+            border-radius: 24px;
+        }
+
+        .auth-title {
+            font-size: 1.55rem;
         }
     }
 </style>
 
 @code {
     private string? statusMessage;
-
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
 
     [SupplyParameterFromQuery]
     private string? UserId { get; set; }
@@ -198,22 +243,24 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (UserId is null || Code is null)
+        if (string.IsNullOrWhiteSpace(UserId) || string.IsNullOrWhiteSpace(Code))
         {
-            RedirectManager.RedirectTo("");
+            statusMessage = "Invalid confirmation link.";
+            return;
         }
 
         var user = await UserManager.FindByIdAsync(UserId);
         if (user is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
             statusMessage = $"Error loading user with ID {UserId}";
+            return;
         }
-        else
-        {
-            var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
-            var result = await UserManager.ConfirmEmailAsync(user, code);
-            statusMessage = result.Succeeded ? "Thank you for confirming your email." : "Error confirming your email.";
-        }
+
+        var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
+        var result = await UserManager.ConfirmEmailAsync(user, code);
+
+        statusMessage = result.Succeeded
+            ? "Thank you for confirming your email."
+            : "Error confirming your email.";
     }
 }

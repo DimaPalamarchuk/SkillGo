@@ -1,5 +1,6 @@
 ﻿@page "/admin/reports"
 @attribute [Authorize(Roles = "Admin")]
+@layout SkillGo.Components.Layout.AdminLayout
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
@@ -11,17 +12,41 @@
 
 <PageTitle>Admin Reports</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.False" Class="mt-6">
-    <div class="reports-hero">
-        <div>
-            <div class="reports-kicker">Administration</div>
-            <div class="reports-title">Reports</div>
-            <div class="reports-subtitle">Review user, service, order and message violations.</div>
+<MudStack Spacing="3">
+    <MudPaper Class="ar-hero" Elevation="0">
+        <div class="ar-hero-top">
+            <div>
+                <div class="ar-kicker">Administration</div>
+                <div class="ar-title">Reports center</div>
+                <div class="ar-subtitle">Review profile, service, order and message violations in one moderation queue.</div>
+            </div>
         </div>
-    </div>
 
-    <MudPaper Class="reports-shell mt-4" Elevation="0">
-        <div class="reports-toolbar">
+        <div class="ar-stats">
+            <div class="ar-stat">
+                <div class="ar-stat-label">Total</div>
+                <div class="ar-stat-value">@_items.Count</div>
+            </div>
+
+            <div class="ar-stat">
+                <div class="ar-stat-label">Open</div>
+                <div class="ar-stat-value">@_items.Count(x => x.Status == ReportStatus.Open)</div>
+            </div>
+
+            <div class="ar-stat">
+                <div class="ar-stat-label">Resolved</div>
+                <div class="ar-stat-value">@_items.Count(x => x.Status == ReportStatus.Resolved)</div>
+            </div>
+
+            <div class="ar-stat">
+                <div class="ar-stat-label">Rejected</div>
+                <div class="ar-stat-value">@_items.Count(x => x.Status == ReportStatus.Rejected)</div>
+            </div>
+        </div>
+    </MudPaper>
+
+    <MudPaper Class="ar-panel" Elevation="0">
+        <div class="ar-toolbar">
             <MudTextField T="string"
                           Value="@_search"
                           ValueChanged="OnSearchChanged"
@@ -30,13 +55,13 @@
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           Immediate="true"
-                          Class="reports-search" />
+                          Class="ar-search" />
 
             <MudSelect T="string"
                        Value="@_typeFilter"
                        ValueChanged="OnTypeChanged"
                        Variant="Variant.Outlined"
-                       Class="reports-filter">
+                       Class="ar-filter">
                 <MudSelectItem T="string" Value="@("All")">All types</MudSelectItem>
                 <MudSelectItem T="string" Value="@("Profile")">Profile</MudSelectItem>
                 <MudSelectItem T="string" Value="@("Service")">Service</MudSelectItem>
@@ -48,7 +73,7 @@
                        Value="@_statusFilter"
                        ValueChanged="OnStatusChanged"
                        Variant="Variant.Outlined"
-                       Class="reports-filter">
+                       Class="ar-filter">
                 <MudSelectItem T="string" Value="@("All")">All statuses</MudSelectItem>
                 <MudSelectItem T="string" Value="@("Open")">Open</MudSelectItem>
                 <MudSelectItem T="string" Value="@("Resolved")">Resolved</MudSelectItem>
@@ -58,31 +83,31 @@
 
         @if (_loading)
         {
-            <div class="reports-loading">
+            <div class="ar-loading">
                 <MudProgressCircular Indeterminate="true" />
             </div>
         }
         else if (_items.Count == 0)
         {
-            <div class="reports-empty">
+            <div class="ar-empty">
                 <MudIcon Icon="@Icons.Material.Filled.ReportGmailerrorred" Size="Size.Large" />
-                <div class="reports-empty-title">No reports found</div>
-                <div class="reports-empty-subtitle">Try changing filters or wait for new reports.</div>
+                <div class="ar-empty-title">No reports found</div>
+                <div class="ar-empty-subtitle">Try changing the filters or wait for new reports.</div>
             </div>
         }
         else
         {
-            <div class="reports-grid">
+            <div class="ar-grid">
                 @foreach (var item in _items)
                 {
-                    <div class="report-card">
-                        <div class="report-card-top">
+                    <div class="ar-card">
+                        <div class="ar-card-top">
                             <div>
-                                <div class="report-id">Report #@item.Id</div>
-                                <div class="report-type">@item.TargetType</div>
+                                <div class="ar-card-id">Report #@item.Id</div>
+                                <div class="ar-card-sub">@TargetObjectText(item)</div>
                             </div>
 
-                            <MudStack Spacing="1" AlignItems="AlignItems.End">
+                            <div class="ar-card-badges">
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@TargetTypeColor(item.TargetType)">
                                     @item.TargetType
                                 </MudChip>
@@ -90,50 +115,52 @@
                                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(item.Status)">
                                     @item.Status
                                 </MudChip>
-                            </MudStack>
-                        </div>
-
-                        <div class="report-meta-grid">
-                            <div class="report-meta-box">
-                                <div class="report-meta-label">Reporter</div>
-                                <div class="report-meta-value">@DisplayUser(item.ReporterUser)</div>
-                            </div>
-
-                            <div class="report-meta-box">
-                                <div class="report-meta-label">Target</div>
-                                <div class="report-meta-value">@DisplayUser(item.TargetUser)</div>
-                            </div>
-
-                            <div class="report-meta-box">
-                                <div class="report-meta-label">Created</div>
-                                <div class="report-meta-value">@item.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                            </div>
-
-                            <div class="report-meta-box">
-                                <div class="report-meta-label">Object</div>
-                                <div class="report-meta-value">@TargetObjectText(item)</div>
                             </div>
                         </div>
 
-                        <div class="report-reason-label">Reason</div>
-                        <div class="report-reason">@TrimText(item.Reason, 180)</div>
+                        <div class="ar-meta-grid">
+                            <div class="ar-meta-box">
+                                <div class="ar-meta-label">Reporter</div>
+                                <div class="ar-meta-value">@DisplayUser(item.ReporterUser)</div>
+                            </div>
+
+                            <div class="ar-meta-box">
+                                <div class="ar-meta-label">Target</div>
+                                <div class="ar-meta-value">@DisplayUser(item.TargetUser)</div>
+                            </div>
+
+                            <div class="ar-meta-box">
+                                <div class="ar-meta-label">Created</div>
+                                <div class="ar-meta-value">@item.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                            </div>
+
+                            <div class="ar-meta-box">
+                                <div class="ar-meta-label">Status</div>
+                                <div class="ar-meta-value">@item.Status</div>
+                            </div>
+                        </div>
+
+                        <div class="ar-reason-label">Reason</div>
+                        <div class="ar-reason">@TrimText(item.Reason, 180)</div>
 
                         @if (item.Status != ReportStatus.Open)
                         {
-                            <div class="report-resolution-box">
-                                <div class="report-resolution-label">Closed by</div>
-                                <div class="report-resolution-value">@DisplayUser(item.ResolvedByUser)</div>
+                            <div class="ar-resolution">
+                                <div class="ar-resolution-label">Resolution</div>
+                                <div class="ar-resolution-value">@ResolutionResultText(item)</div>
 
-                                <div class="report-resolution-label mt-2">Result</div>
-                                <div class="report-resolution-value">@ResolutionResultText(item)</div>
+                                @if (!string.IsNullOrWhiteSpace(item.ResolutionNote))
+                                {
+                                    <div class="ar-resolution-note">@TrimText(item.ResolutionNote, 160)</div>
+                                }
                             </div>
                         }
 
-                        <div class="report-actions">
+                        <div class="ar-actions">
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        OnClick="@(() => Nav.NavigateTo($"/admin/reports/{item.Id}"))">
-                                Open
+                                Open report
                             </MudButton>
                         </div>
                     </div>
@@ -141,18 +168,26 @@
             </div>
         }
     </MudPaper>
-</MudContainer>
+</MudStack>
 
 <style>
-    .reports-hero {
-        border-radius: 26px;
+    .ar-hero {
+        border-radius: 30px;
         padding: 28px;
-        background: linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%);
+        background: linear-gradient(135deg, #1f1147 0%, #4c1d95 42%, #6d28d9 100%);
         color: #fff;
-        box-shadow: 0 24px 56px rgba(15,23,42,.18);
+        box-shadow: 0 24px 48px rgba(31,17,71,.16);
     }
 
-    .reports-kicker {
+    .ar-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .ar-kicker {
         color: rgba(255,255,255,.68);
         font-size: .78rem;
         font-weight: 900;
@@ -160,44 +195,76 @@
         letter-spacing: .16em;
     }
 
-    .reports-title {
+    .ar-title {
         margin-top: 8px;
         font-size: 2rem;
-        font-weight: 950;
         line-height: 1.04;
+        font-weight: 950;
     }
 
-    .reports-subtitle {
+    .ar-subtitle {
         margin-top: 8px;
         color: rgba(255,255,255,.78);
         font-weight: 700;
+        max-width: 760px;
     }
 
-    .reports-shell {
+    .ar-stats {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .ar-stat {
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.14);
+        backdrop-filter: blur(8px);
+    }
+
+    .ar-stat-label {
+        color: rgba(255,255,255,.64);
+        font-size: .74rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .ar-stat-value {
+        margin-top: 6px;
+        color: #fff;
+        font-weight: 950;
+        font-size: 1.3rem;
+        line-height: 1;
+    }
+
+    .ar-panel {
         padding: 22px;
-        border-radius: 24px;
-        background: rgba(255,255,255,.96);
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 18px 40px rgba(15,23,42,.05);
+        border-radius: 26px;
+        background: rgba(255,255,255,.95);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 18px 38px rgba(88,28,135,.06);
     }
 
-    .reports-toolbar {
+    .ar-toolbar {
         display: flex;
         gap: 12px;
         flex-wrap: wrap;
         margin-bottom: 18px;
     }
 
-    .reports-search {
+    .ar-search {
         flex: 1 1 360px;
     }
 
-    .reports-filter {
+    .ar-filter {
         width: 220px;
     }
 
-    .reports-loading,
-    .reports-empty {
+    .ar-loading,
+    .ar-empty {
         min-height: 280px;
         display: flex;
         flex-direction: column;
@@ -207,61 +274,69 @@
         text-align: center;
     }
 
-    .reports-empty-title {
+    .ar-empty-title {
         font-size: 1.08rem;
         font-weight: 900;
         color: #111827;
     }
 
-    .reports-empty-subtitle {
+    .ar-empty-subtitle {
         color: rgba(17,24,39,.62);
         font-weight: 700;
     }
 
-    .reports-grid {
+    .ar-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
         gap: 16px;
     }
 
-    .report-card {
-        border-radius: 22px;
-        border: 1px solid rgba(15,23,42,.08);
-        background: #fff;
-        box-shadow: 0 14px 34px rgba(15,23,42,.05);
+    .ar-card {
+        border-radius: 24px;
+        border: 1px solid rgba(109,40,217,.10);
+        background: linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
+        box-shadow: 0 14px 34px rgba(88,28,135,.05);
         padding: 18px;
         display: flex;
         flex-direction: column;
         gap: 14px;
     }
 
-    .report-card-top {
+    .ar-card-top {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 10px;
     }
 
-    .report-id {
-        color: #111827;
+    .ar-card-id {
+        color: #1f1147;
         font-size: 1.04rem;
         font-weight: 950;
         line-height: 1.1;
     }
 
-    .report-type {
+    .ar-card-sub {
         margin-top: 4px;
-        color: rgba(17,24,39,.56);
+        color: #6b5f8d;
         font-weight: 800;
+        line-height: 1.4;
     }
 
-    .report-meta-grid {
+    .ar-card-badges {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-end;
+    }
+
+    .ar-meta-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
     }
 
-    .report-meta-box {
+    .ar-meta-box {
         border-radius: 16px;
         border: 1px solid rgba(15,23,42,.06);
         background: #f8fafc;
@@ -269,7 +344,9 @@
         min-width: 0;
     }
 
-    .report-meta-label {
+    .ar-meta-label,
+    .ar-reason-label,
+    .ar-resolution-label {
         color: rgba(17,24,39,.56);
         font-size: .72rem;
         font-weight: 900;
@@ -277,55 +354,63 @@
         letter-spacing: .08em;
     }
 
-    .report-meta-value {
+    .ar-meta-value {
         margin-top: 6px;
         color: #111827;
         font-weight: 900;
-        line-height: 1.3;
+        line-height: 1.35;
         word-break: break-word;
     }
 
-    .report-reason-label,
-    .report-resolution-label {
-        color: rgba(17,24,39,.56);
-        font-size: .72rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .08em;
-    }
-
-    .report-reason,
-    .report-resolution-value {
-        color: #111827;
-        line-height: 1.45;
+    .ar-reason {
+        color: #1f1147;
+        line-height: 1.5;
         white-space: pre-wrap;
         word-break: break-word;
     }
 
-    .report-resolution-box {
+    .ar-resolution {
         border-radius: 16px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #f8fafc;
+        border: 1px solid rgba(109,40,217,.10);
+        background: #faf7ff;
         padding: 12px;
     }
 
-    .report-actions {
+    .ar-resolution-value {
+        margin-top: 6px;
+        color: #1f1147;
+        font-weight: 900;
+        line-height: 1.35;
+    }
+
+    .ar-resolution-note {
+        margin-top: 8px;
+        color: #6b5f8d;
+        line-height: 1.45;
+    }
+
+    .ar-actions {
         display: flex;
         justify-content: flex-end;
         margin-top: auto;
     }
 
     @@media (max-width: 760px) {
-        .reports-title {
+        .ar-title {
             font-size: 1.6rem;
         }
 
-        .reports-filter {
+        .ar-stats,
+        .ar-meta-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .ar-filter {
             width: 100%;
         }
 
-        .report-meta-grid {
-            grid-template-columns: 1fr;
+        .ar-card-badges {
+            align-items: flex-start;
         }
     }
 </style>

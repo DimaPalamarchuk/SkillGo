@@ -1,378 +1,309 @@
 ﻿@page "/orders"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models
 @using SkillGo.Data.Models.Orders
-@using SkillGo.Repository.IRepository
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
-@inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager Nav
-@inject IOrderRepository OrderRepo
 
 <PageTitle>Orders</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
-    <div class="hero">
-        <div class="hero-inner">
-            <div class="hero-left">
-                <div class="hero-title">Orders</div>
-                <div class="hero-sub">Track purchases, deliveries and completed work in one place.</div>
-            </div>
-
-            <div class="hero-right">
-                <MudSelect T="string"
-                           Variant="Variant.Outlined"
-                           Value="@_mode"
-                           ValueChanged="OnModeChanged"
-                           Class="mode-select">
-                    <MudSelectItem T="string" Value="@("All")">All</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Buying")">Buying</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("Selling")">Selling</MudSelectItem>
-                </MudSelect>
-            </div>
-        </div>
-
-        <div class="hero-stats">
-            <div class="stat-chip">
-                <div class="stat-label">Total</div>
-                <div class="stat-value">@_totalItems</div>
-            </div>
-
-            <div class="stat-chip">
-                <div class="stat-label">In progress</div>
-                <div class="stat-value">@_allOrders.Count(x => x.Status == OrderStatus.InProgress)</div>
-            </div>
-
-            <div class="stat-chip">
-                <div class="stat-label">Completed</div>
-                <div class="stat-value">@_allOrders.Count(x => x.Status == OrderStatus.Completed)</div>
-            </div>
-        </div>
-    </div>
-
-    @if (_loading)
-    {
-        <MudGrid Spacing="4" Class="mt-4">
-            @for (var i = 0; i < 6; i++)
-            {
-                <MudItem xs="12" md="6">
-                    <div class="order-card skeleton"></div>
-                </MudItem>
-            }
-        </MudGrid>
-    }
-    else if (_orders.Count == 0)
-    {
-        <MudPaper Class="empty-shell mt-4" Elevation="0">
-            <div class="empty-title">No orders yet</div>
-            <div class="empty-sub">When you buy or sell a service, it will appear here.</div>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong mt-4" Href="/services/category">
-                Browse services
-            </MudButton>
-        </MudPaper>
-    }
-    else
-    {
-        <MudGrid Spacing="4" Class="mt-4">
-            @foreach (var order in _orders)
-            {
-                var otherUserId = order.BuyerId == _meId ? order.SellerId : order.BuyerId;
-                var user = GetUser(otherUserId);
-
-                <MudItem xs="12" md="6">
-                    <div class="order-card">
-                        <div class="order-top">
-                            <div class="order-title-wrap">
-                                <div class="order-id">Order #@order.Id</div>
-                                <div class="order-service">
-                                    @(order.ServiceOffer?.Title ?? "Service")
-                                </div>
-                            </div>
-
-                            <MudChip T="string"
-                                     Size="Size.Small"
-                                     Color="@StatusColor(order.Status)"
-                                     Variant="Variant.Filled">
-                                @order.Status.ToString()
-                            </MudChip>
-                        </div>
-
-                        <div class="order-meta-grid">
-                            <div class="meta-box">
-                                <div class="meta-label">Amount</div>
-                                <div class="meta-value">@order.Amount.ToString("0.00") zł</div>
-                            </div>
-
-                            <div class="meta-box">
-                                <div class="meta-label">Escrow</div>
-                                <div class="meta-value">@order.EscrowAmount.ToString("0.00") zł</div>
-                            </div>
-
-                            <div class="meta-box">
-                                <div class="meta-label">User</div>
-                                <div class="meta-value ellipsis">
-                                    @if (user != null && !string.IsNullOrWhiteSpace(user.UserName))
-                                    {
-                                        <MudLink Href="@($"/profile/{user.UserName}")" Class="text-link">
-                                            @DisplayName(user)
-                                        </MudLink>
-                                    }
-                                    else
-                                    {
-                                        <span>@otherUserId</span>
-                                    }
-                                </div>
-                            </div>
-
-                            <div class="meta-box">
-                                <div class="meta-label">Created</div>
-                                <div class="meta-value">@order.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")</div>
-                            </div>
-                        </div>
-
-                        <div class="order-actions">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       Class="btn-strong"
-                                       OnClick="@(() => Nav.NavigateTo($"/orders/{order.Id}"))">
-                                Details
-                            </MudButton>
-
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       Class="btn-strong"
-                                       Disabled="@(order.ServiceOfferId <= 0)"
-                                       OnClick="@(() => Nav.NavigateTo($"/services/{order.ServiceOfferId}"))">
-                                Service
-                            </MudButton>
-
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       Class="btn-strong"
-                                       OnClick="@(() => Nav.NavigateTo($"/chat/{order.ConversationId}"))">
-                                Chat
-                            </MudButton>
-                        </div>
+<MudContainer MaxWidth="MaxWidth.False" Class="orders-page-shell pa-0">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-8">
+        <MudPaper Class="orders-hero pa-6 pa-md-8" Elevation="0">
+            <MudGrid Spacing="3" AlignItems="AlignItems.Center">
+                <MudItem xs="12" md="8">
+                    <div class="orders-hero-badge">
+                        <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
+                        <span>Manage your workflow</span>
                     </div>
-                </MudItem>
-            }
-        </MudGrid>
 
-        <div class="orders-pagination">
-            <MudPagination Count="@_totalPages"
-                           Selected="@_page"
-                           SelectedChanged="OnPageChanged"
-                           Color="Color.Primary"
-                           Variant="Variant.Outlined" />
-        </div>
-    }
+                    <MudText Typo="Typo.h3" Class="orders-hero-title mt-4">
+                        Orders
+                    </MudText>
+
+                    <MudText Typo="Typo.body1" Class="orders-hero-sub mt-4">
+                        Track purchases, deliveries and completed work in one place.
+                    </MudText>
+
+                    <MudStack Row="true" Spacing="1" Class="mt-4 orders-stats-row">
+                        <MudChip T="string" Variant="Variant.Outlined" Class="orders-hero-chip">Total: @_totalItems</MudChip>
+                        <MudChip T="string" Variant="Variant.Outlined" Class="orders-hero-chip">In progress: @_allOrders.Count(x => x.Status == OrderStatus.InProgress)</MudChip>
+                        <MudChip T="string" Variant="Variant.Outlined" Class="orders-hero-chip">Completed: @_allOrders.Count(x => x.Status == OrderStatus.Completed)</MudChip>
+                    </MudStack>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="orders-hero-side pa-5" Elevation="0">
+                        <MudText Typo="Typo.h6" Class="hero-side-title">View mode</MudText>
+                        <MudText Typo="Typo.body2" Class="hero-side-sub mt-1">Choose which orders to display.</MudText>
+
+                        <MudSelect T="string"
+                                   Variant="Variant.Outlined"
+                                   Value="@_mode"
+                                   ValueChanged="OnModeChanged"
+                                   Class="mode-select mt-4"
+                                   FullWidth="true">
+                            <MudSelectItem T="string" Value="@("All")">All</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Buying")">Buying</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Selling")">Selling</MudSelectItem>
+                        </MudSelect>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @if (_loading)
+        {
+            <MudGrid Spacing="3" Class="mt-4">
+                @for (var i = 0; i < 6; i++)
+                {
+                    <MudItem xs="12" md="6">
+                        <div class="order-card skeleton"></div>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else if (_orders.Count == 0)
+        {
+            <MudPaper Class="empty-paper mt-4 pa-8 text-center" Elevation="0">
+                <MudText Typo="Typo.h5" Class="empty-title">No orders yet</MudText>
+                <MudText Typo="Typo.body2" Class="empty-sub mt-2">When you buy or sell a service, it will appear here.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong mt-4" Href="/services/category">
+                    Browse services
+                </MudButton>
+            </MudPaper>
+        }
+        else
+        {
+            <MudGrid Spacing="3" Class="mt-4">
+                @foreach (var order in _orders)
+                {
+                    var otherUserId = order.BuyerId == _meId ? order.SellerId : order.BuyerId;
+                    var user = GetUser(otherUserId);
+
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="order-card" Elevation="0">
+                            <MudStack Spacing="2" Class="h-100">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="2">
+                                    <div class="order-title-wrap">
+                                        <MudText Typo="Typo.h6" Class="order-id">Order #@order.Id</MudText>
+                                        <MudText Typo="Typo.body2" Class="order-service mt-1">
+                                            @(order.ServiceOffer?.Title ?? "Service")
+                                        </MudText>
+                                    </div>
+
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@StatusColor(order.Status)"
+                                             Variant="Variant.Filled">
+                                        @order.Status.ToString()
+                                    </MudChip>
+                                </MudStack>
+
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12" sm="6">
+                                        <MudPaper Class="meta-box pa-3" Elevation="0">
+                                            <MudText Typo="Typo.caption" Class="meta-label">Amount</MudText>
+                                            <MudText Typo="Typo.body1" Class="meta-value mt-1">@order.Amount.ToString("0.00") zł</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudPaper Class="meta-box pa-3" Elevation="0">
+                                            <MudText Typo="Typo.caption" Class="meta-label">Escrow</MudText>
+                                            <MudText Typo="Typo.body1" Class="meta-value mt-1">@order.EscrowAmount.ToString("0.00") zł</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudPaper Class="meta-box pa-3" Elevation="0">
+                                            <MudText Typo="Typo.caption" Class="meta-label">User</MudText>
+                                            <div class="mt-1">
+                                                @if (user != null && !string.IsNullOrWhiteSpace(user.UserName))
+                                                {
+                                                    <MudLink Href="@($"/profile/{user.UserName}")" Class="meta-link">
+                                                        @DisplayName(user)
+                                                    </MudLink>
+                                                }
+                                                else
+                                                {
+                                                    <span class="meta-value">@otherUserId</span>
+                                                }
+                                            </div>
+                                        </MudPaper>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudPaper Class="meta-box pa-3" Elevation="0">
+                                            <MudText Typo="Typo.caption" Class="meta-label">Created</MudText>
+                                            <MudText Typo="Typo.body2" Class="meta-value mt-1">@order.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd")</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-auto">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Class="btn-strong"
+                                               OnClick="@(() => Nav.NavigateTo($"/orders/{order.Id}"))">
+                                        Details
+                                    </MudButton>
+
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               Class="btn-strong"
+                                               Disabled="@(order.ServiceOfferId <= 0)"
+                                               OnClick="@(() => Nav.NavigateTo($"/services/{order.ServiceOfferId}"))">
+                                        Service
+                                    </MudButton>
+
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               Class="btn-strong"
+                                               OnClick="@(() => Nav.NavigateTo($"/chat/{order.ConversationId}"))">
+                                        Chat
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <div class="orders-pagination">
+                <MudPagination Count="@_totalPages"
+                               Selected="@_page"
+                               SelectedChanged="OnPageChanged"
+                               Color="Color.Primary"
+                               Variant="Variant.Outlined" />
+            </div>
+        }
+    </MudContainer>
 </MudContainer>
 
 <style>
-    .hero {
-        border-radius: 24px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        position: relative;
-        overflow: hidden;
+    .orders-page-shell {
+        min-height: calc(100vh - 78px);
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
+            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
-        .hero::before {
-            content: "";
-            position: absolute;
-            inset: -45% -70%;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 55%);
-            transform: rotate(12deg);
-            opacity: .9;
-            pointer-events: none;
-        }
+    .orders-hero {
+        border-radius: 32px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 22px 60px rgba(76,29,149,.18);
+    }
 
-    .hero-inner {
-        position: relative;
-        z-index: 1;
-        padding: 26px 26px 12px 26px;
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
+    .orders-hero-badge {
+        display: inline-flex;
         align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .orders-hero-title {
+        font-weight: 900;
+        line-height: 1.02;
+        letter-spacing: -.03em;
+    }
+
+    .orders-hero-sub {
+        color: rgba(255,255,255,.82);
+        line-height: 1.8;
+        font-size: 16px;
+        max-width: 760px;
+    }
+
+    .orders-stats-row {
         flex-wrap: wrap;
     }
 
-    .hero-left {
-        min-width: 0;
+    .orders-hero-chip {
+        color: #fff !important;
+        border-color: rgba(255,255,255,.24) !important;
+        background: rgba(255,255,255,.06) !important;
+        font-weight: 700;
     }
 
-    .hero-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.7rem;
-        letter-spacing: .2px;
-        line-height: 1.12;
+    .orders-hero-side,
+    .order-card,
+    .meta-box,
+    .empty-paper {
+        border-radius: 26px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
     }
 
-    .hero-sub {
-        color: rgba(17,24,39,.65);
-        font-size: 1rem;
-        line-height: 1.35;
-        margin-top: 6px;
-    }
-
-    .hero-right {
-        min-width: 220px;
-    }
-
-    .mode-select {
-        min-width: 220px;
-    }
-
-    .hero-stats {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        padding: 0 26px 26px 26px;
-    }
-
-    .stat-chip {
-        min-width: 140px;
-        border-radius: 16px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: rgba(255,255,255,.72);
-        backdrop-filter: blur(6px);
-        padding: 10px 12px;
-    }
-
-    .stat-label {
-        color: rgba(17,24,39,.6);
-        font-size: .9rem;
+    .hero-side-title,
+    .order-id,
+    .meta-value,
+    .empty-title {
+        color: #1f1147;
         font-weight: 800;
     }
 
-    .stat-value {
-        margin-top: 4px;
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.15rem;
-        line-height: 1.1;
+    .hero-side-sub,
+    .order-service,
+    .meta-label,
+    .empty-sub {
+        color: #6b5f8d;
     }
 
     .order-card {
-        border-radius: 22px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
         height: 100%;
+        padding: 20px;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
     }
 
-    .order-top {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        align-items: flex-start;
+    .order-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(109,40,217,.22);
+        box-shadow: 0 18px 42px rgba(88,28,135,.10);
     }
 
     .order-title-wrap {
         min-width: 0;
     }
 
-    .order-id {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.08rem;
-        letter-spacing: .2px;
-        line-height: 1.15;
-    }
-
     .order-service {
-        color: rgba(17,24,39,.65);
-        margin-top: 6px;
-        line-height: 1.3;
+        line-height: 1.45;
         word-break: break-word;
     }
 
-    .order-meta-grid {
-        display: grid;
-        grid-template-columns: repeat(2,minmax(0,1fr));
-        gap: 12px;
-    }
-
     .meta-box {
-        border-radius: 16px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: rgba(99,102,241,.04);
-        padding: 12px 14px;
-        min-width: 0;
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
     }
 
-    .meta-label {
-        color: rgba(17,24,39,.6);
-        font-size: .88rem;
+    .meta-link {
+        color: #1f1147 !important;
         font-weight: 800;
+        text-decoration: none !important;
     }
 
-    .meta-value {
-        margin-top: 6px;
-        color: #111827;
-        font-weight: 950;
-        line-height: 1.2;
-        min-width: 0;
-    }
-
-    .ellipsis {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .text-link {
-        font-weight: 950;
-        color: #111827;
-        text-decoration: none;
-    }
-
-    .order-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: auto;
+    .meta-link:hover {
+        color: #6d28d9 !important;
     }
 
     .btn-strong {
         border-radius: 14px;
         font-weight: 900;
         letter-spacing: .2px;
+        text-transform: none;
         padding: 10px 14px;
-    }
-
-    .empty-shell {
-        margin-top: 16px;
-        border-radius: 22px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        padding: 28px;
-        text-align: center;
-    }
-
-    .empty-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.15rem;
-    }
-
-    .empty-sub {
-        color: rgba(17,24,39,.65);
-        margin-top: 8px;
     }
 
     .orders-pagination {
@@ -386,30 +317,35 @@
         position: relative;
         overflow: hidden;
         min-height: 250px;
+        border-radius: 26px;
+        border: 1px solid rgba(109,40,217,.10);
     }
 
-        .skeleton::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
-            background-size: 200% 100%;
-            animation: shimmer 1.2s infinite linear;
-        }
+    .skeleton::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite linear;
+    }
 
     @@keyframes shimmer {
-        0% {
-            background-position: 0% 0;
-        }
-
-        100% {
-            background-position: 200% 0;
-        }
+        0% { background-position: 0% 0; }
+        100% { background-position: 200% 0; }
     }
 
-    @@media (max-width: 900px) {
-        .order-meta-grid {
-            grid-template-columns: 1fr;
+    @@media (max-width: 700px) {
+        .orders-hero,
+        .orders-hero-side,
+        .order-card,
+        .meta-box,
+        .empty-paper {
+            border-radius: 22px;
+        }
+
+        .orders-hero-title {
+            font-size: 2rem !important;
         }
     }
 </style>
@@ -445,18 +381,17 @@
     private async Task OnPageChanged(int page)
     {
         _page = page;
-        await ApplyPagingAsync();
+        ApplyPaging();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadAsync()
     {
-        if (_loading && _allOrders.Count == 0)
-            StateHasChanged();
-
         _loading = true;
         _allOrders.Clear();
         _orders.Clear();
         _users.Clear();
+        StateHasChanged();
 
         var authState = await AuthenticationStateTask;
         var principal = authState.User;
@@ -468,31 +403,38 @@
             return;
         }
 
-        var me = await UserManager.GetUserAsync(principal);
-        if (me == null)
+        _meId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(_meId))
         {
             Nav.NavigateTo("/Account/Login");
             _loading = false;
             return;
         }
 
-        _meId = me.Id;
+        await using var db = await DbFactory.CreateDbContextAsync();
 
-        var orders = await OrderRepo.GetForUserAsync(me.Id);
+        var ordersQuery = db.Orders
+            .AsNoTracking()
+            .Include(x => x.ServiceOffer)
+            .Where(x => x.BuyerId == _meId || x.SellerId == _meId);
 
         if (_mode == "Buying")
-            orders = orders.Where(x => x.BuyerId == me.Id).ToList();
+            ordersQuery = ordersQuery.Where(x => x.BuyerId == _meId);
 
         if (_mode == "Selling")
-            orders = orders.Where(x => x.SellerId == me.Id).ToList();
+            ordersQuery = ordersQuery.Where(x => x.SellerId == _meId);
 
-        _allOrders = orders
+        _allOrders = await ordersQuery
             .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync();
+
+        var ids = _allOrders
+            .SelectMany(o => new[] { o.BuyerId, o.SellerId })
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
             .ToList();
 
-        var ids = _allOrders.SelectMany(o => new[] { o.BuyerId, o.SellerId }).Distinct().ToList();
-
-        await using var db = await DbFactory.CreateDbContextAsync();
         var users = await db.Users
             .AsNoTracking()
             .Where(u => ids.Contains(u.Id))
@@ -500,13 +442,13 @@
 
         _users = users.ToDictionary(x => x.Id, x => x);
 
-        await ApplyPagingAsync();
+        ApplyPaging();
 
         _loading = false;
         StateHasChanged();
     }
 
-    private Task ApplyPagingAsync()
+    private void ApplyPaging()
     {
         _totalItems = _allOrders.Count;
         _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
@@ -518,8 +460,6 @@
             .Skip((_page - 1) * _pageSize)
             .Take(_pageSize)
             .ToList();
-
-        return Task.CompletedTask;
     }
 
     private ApplicationUser? GetUser(string id)

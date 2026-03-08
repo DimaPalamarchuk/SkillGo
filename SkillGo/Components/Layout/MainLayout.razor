@@ -1,9 +1,17 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
-@using MudBlazor
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
 @using SkillGo.Components.Shared
+@using SkillGo.Data
+@using SkillGo.Data.Models.Chat
+@using SkillGo.Data.Models.Orders
 @inject SkillGo.Repository.WalletState WalletState
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -51,6 +59,72 @@
             <div class="sg-appbar-right">
                 <AuthorizeView>
                     <Authorized Context="authContext">
+                        <details class="sg-notify-dropdown">
+                            <summary class="sg-notify-summary" @onclick="OnNotificationOpen">
+                                <div class="sg-notify-icon-wrap">
+                                    <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Size="Size.Medium" />
+                                    @if (_notificationCount > 0)
+                                    {
+                                        <span class="sg-notify-badge">@(_notificationCount > 99 ? "99+" : _notificationCount.ToString())</span>
+                                    }
+                                </div>
+                            </summary>
+
+                            <div class="sg-notify-menu">
+                                <div class="sg-notify-head">
+                                    <div class="sg-notify-title">Notifications</div>
+                                    <div class="sg-notify-sub">@NotificationSubtitle</div>
+                                </div>
+
+                                <div class="sg-user-menu-divider"></div>
+
+                                @if (_loadingNotifications)
+                                {
+                                    <div class="sg-notify-loading">
+                                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                                        <span>Loading...</span>
+                                    </div>
+                                }
+                                else if (_notifications.Count == 0)
+                                {
+                                    <div class="sg-notify-empty">
+                                        <MudIcon Icon="@Icons.Material.Filled.NotificationsOff" />
+                                        <div>No new notifications</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="sg-notify-list">
+                                        @foreach (var item in _notifications)
+                                        {
+                                            <button type="button" class="sg-notify-item" @onclick="@(() => OpenNotification(item))">
+                                                <div class="sg-notify-item-icon @item.CssClass">
+                                                    <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                                                </div>
+
+                                                <div class="sg-notify-item-copy">
+                                                    <div class="sg-notify-item-title">@item.Title</div>
+                                                    <div class="sg-notify-item-text">@item.Text</div>
+                                                </div>
+
+                                                @if (!string.IsNullOrWhiteSpace(item.BadgeText))
+                                                {
+                                                    <div class="sg-notify-item-badge">@item.BadgeText</div>
+                                                }
+                                            </button>
+                                        }
+                                    </div>
+                                }
+
+                                <div class="sg-user-menu-divider"></div>
+
+                                <div class="sg-notify-actions">
+                                    <a href="/chats" class="sg-user-menu-item">Open chats</a>
+                                    <a href="/orders" class="sg-user-menu-item">Open orders</a>
+                                </div>
+                            </div>
+                        </details>
+
                         <a href="/wallet" class="sg-balance-pill">
                             <span class="sg-balance-label">Balance</span>
                             <span class="sg-balance-value">@BalanceText</span>
@@ -59,7 +133,14 @@
                         <details class="sg-user-dropdown">
                             <summary class="sg-user-summary">
                                 <div class="sg-user-summary-left">
-                                    <div class="sg-user-avatar">@UserInitial(authContext.User.Identity?.Name)</div>
+                                    @if (!string.IsNullOrWhiteSpace(_avatarUrl))
+                                    {
+                                        <img src="@_avatarUrl" alt="Avatar" class="sg-user-avatar-image" />
+                                    }
+                                    else
+                                    {
+                                        <div class="sg-user-avatar">@UserInitial(authContext.User.Identity?.Name)</div>
+                                    }
 
                                     <div class="sg-user-copy">
                                         <div class="sg-user-name">@authContext.User.Identity?.Name</div>
@@ -72,7 +153,14 @@
 
                             <div class="sg-user-menu">
                                 <div class="sg-user-menu-head">
-                                    <div class="sg-user-menu-avatar">@UserInitial(authContext.User.Identity?.Name)</div>
+                                    @if (!string.IsNullOrWhiteSpace(_avatarUrl))
+                                    {
+                                        <img src="@_avatarUrl" alt="Avatar" class="sg-user-menu-avatar-image" />
+                                    }
+                                    else
+                                    {
+                                        <div class="sg-user-menu-avatar">@UserInitial(authContext.User.Identity?.Name)</div>
+                                    }
 
                                     <div class="sg-user-menu-copy">
                                         <div class="sg-user-menu-name">@authContext.User.Identity?.Name</div>
@@ -251,6 +339,201 @@
         border: 1px solid rgba(255,255,255,.14);
     }
 
+    .sg-notify-dropdown,
+    .sg-user-dropdown {
+        position: relative;
+    }
+
+    .sg-notify-dropdown summary,
+    .sg-user-dropdown summary {
+        list-style: none;
+    }
+
+    .sg-notify-dropdown summary::-webkit-details-marker,
+    .sg-user-dropdown summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .sg-notify-summary {
+        width: 46px;
+        height: 46px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.14);
+        box-shadow: 0 10px 24px rgba(46,16,101,.18);
+        color: #ffffff;
+    }
+
+    .sg-notify-icon-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sg-notify-badge {
+        position: absolute;
+        top: -7px;
+        right: -10px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #ef4444;
+        color: #fff;
+        font-size: .68rem;
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 18px rgba(239,68,68,.35);
+        border: 2px solid #4c1d95;
+    }
+
+    .sg-notify-menu,
+    .sg-user-menu {
+        position: absolute;
+        top: calc(100% + 12px);
+        right: 0;
+        min-width: 250px;
+        padding: 10px;
+        border-radius: 22px;
+        background: rgba(255,255,255,.98);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 26px 54px rgba(31,17,71,.16);
+        z-index: 1400;
+    }
+
+    .sg-notify-menu {
+        width: min(420px, 92vw);
+        min-width: 320px;
+    }
+
+    .sg-notify-head {
+        padding: 8px;
+    }
+
+    .sg-notify-title {
+        color: #1f1147;
+        font-weight: 950;
+        font-size: 1rem;
+        line-height: 1.08;
+    }
+
+    .sg-notify-sub {
+        margin-top: 4px;
+        color: rgba(31,17,71,.56);
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .sg-notify-loading,
+    .sg-notify-empty {
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        flex-direction: column;
+        color: rgba(31,17,71,.62);
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .sg-notify-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 380px;
+        overflow: auto;
+        padding: 2px;
+    }
+
+    .sg-notify-item {
+        width: 100%;
+        border: none;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 16px;
+        background: #ffffff;
+        cursor: pointer;
+        transition: background .16s ease, transform .16s ease;
+    }
+
+    .sg-notify-item:hover {
+        background: rgba(109,40,217,.06);
+        transform: translateY(-1px);
+    }
+
+    .sg-notify-item-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+
+    .sg-notify-item-icon.message {
+        background: rgba(79,70,229,.10);
+        color: #4338ca;
+    }
+
+    .sg-notify-item-icon.order {
+        background: rgba(16,185,129,.12);
+        color: #047857;
+    }
+
+    .sg-notify-item-copy {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .sg-notify-item-title {
+        color: #1f1147;
+        font-weight: 850;
+        line-height: 1.1;
+    }
+
+    .sg-notify-item-text {
+        margin-top: 4px;
+        color: rgba(31,17,71,.58);
+        font-size: .82rem;
+        font-weight: 700;
+        line-height: 1.3;
+        word-break: break-word;
+    }
+
+    .sg-notify-item-badge {
+        min-width: 24px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: rgba(79,70,229,.12);
+        color: #4338ca;
+        font-size: .72rem;
+        font-weight: 900;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+
+    .sg-notify-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
     .sg-balance-pill {
         min-height: 44px;
         padding: 0 16px;
@@ -285,12 +568,6 @@
         text-decoration: none;
         color: rgba(255,255,255,.86);
         font-weight: 800;
-        transition: background .16s ease, color .16s ease;
-    }
-
-    .sg-auth-link:hover {
-        background: rgba(255,255,255,.10);
-        color: #ffffff;
     }
 
     .sg-signup-btn {
@@ -304,18 +581,6 @@
         color: #4c1d95;
         font-weight: 900;
         box-shadow: 0 14px 26px rgba(46,16,101,.18);
-    }
-
-    .sg-user-dropdown {
-        position: relative;
-    }
-
-    .sg-user-dropdown summary {
-        list-style: none;
-    }
-
-    .sg-user-dropdown summary::-webkit-details-marker {
-        display: none;
     }
 
     .sg-user-summary {
@@ -340,10 +605,15 @@
         min-width: 0;
     }
 
-    .sg-user-avatar {
+    .sg-user-avatar,
+    .sg-user-avatar-image {
         width: 30px;
         height: 30px;
         border-radius: 999px;
+        flex: 0 0 auto;
+    }
+
+    .sg-user-avatar {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -351,7 +621,12 @@
         color: #ffffff;
         font-size: .83rem;
         font-weight: 950;
-        flex: 0 0 auto;
+    }
+
+    .sg-user-avatar-image {
+        object-fit: cover;
+        border: 1px solid rgba(255,255,255,.18);
+        background: #fff;
     }
 
     .sg-user-copy {
@@ -384,19 +659,6 @@
         flex: 0 0 auto;
     }
 
-    .sg-user-menu {
-        position: absolute;
-        top: calc(100% + 12px);
-        right: 0;
-        min-width: 250px;
-        padding: 10px;
-        border-radius: 22px;
-        background: rgba(255,255,255,.98);
-        border: 1px solid rgba(109,40,217,.10);
-        box-shadow: 0 26px 54px rgba(31,17,71,.16);
-        z-index: 1400;
-    }
-
     .sg-user-menu-head {
         display: flex;
         align-items: center;
@@ -404,17 +666,27 @@
         padding: 8px;
     }
 
-    .sg-user-menu-avatar {
+    .sg-user-menu-avatar,
+    .sg-user-menu-avatar-image {
         width: 40px;
         height: 40px;
         border-radius: 15px;
+        flex: 0 0 auto;
+    }
+
+    .sg-user-menu-avatar {
         display: flex;
         align-items: center;
         justify-content: center;
         background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%);
         color: #6d28d9;
         font-weight: 950;
-        flex: 0 0 auto;
+    }
+
+    .sg-user-menu-avatar-image {
+        object-fit: cover;
+        border: 1px solid rgba(109,40,217,.14);
+        background: #fff;
     }
 
     .sg-user-menu-copy {
@@ -450,13 +722,11 @@
         text-decoration: none;
         color: #1f1147;
         font-weight: 750;
-        transition: background .16s ease, transform .16s ease, color .16s ease;
     }
 
     .sg-user-menu-item:hover {
         background: rgba(109,40,217,.08);
         color: #5b21b6;
-        transform: translateX(1px);
     }
 
     .sg-user-menu-item-admin {
@@ -533,6 +803,10 @@
         .sg-page-shell {
             padding: 22px 14px 20px 14px;
         }
+
+        .sg-notify-menu {
+            min-width: 290px;
+        }
     }
 
     @@media (max-width: 560px) {
@@ -552,6 +826,12 @@
 
 @code {
     private bool _drawerOpen = true;
+    private string? _avatarUrl;
+    private string? _meId;
+
+    private bool _loadingNotifications = true;
+    private int _notificationCount;
+    private List<LayoutNotificationItem> _notifications = new();
 
     private readonly MudTheme _theme = new MudTheme()
     {
@@ -578,10 +858,201 @@
     private string BalanceText =>
         WalletState.IsLoaded ? $"{WalletState.Balance:0.##} zł" : "—";
 
+    private string NotificationSubtitle =>
+        _notificationCount == 0 ? "You’re all caught up" : $"{_notificationCount} item(s) need attention";
+
     protected override async Task OnInitializedAsync()
     {
         WalletState.Changed += OnWalletChanged;
         await WalletState.RefreshAsync();
+        await LoadUserDataAsync();
+        await LoadNotificationsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadNotificationsAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadUserDataAsync()
+    {
+        var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var principal = auth.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+        {
+            _meId = null;
+            _avatarUrl = null;
+            return;
+        }
+
+        _meId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(_meId))
+        {
+            _avatarUrl = null;
+            return;
+        }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var me = await db.Users
+            .AsNoTracking()
+            .Where(x => x.Id == _meId)
+            .Select(x => new { x.AvatarUrl })
+            .FirstOrDefaultAsync();
+
+        _avatarUrl = me?.AvatarUrl;
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        _loadingNotifications = true;
+
+        try
+        {
+            var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var principal = auth.User;
+
+            if (principal?.Identity?.IsAuthenticated != true)
+            {
+                _notifications.Clear();
+                _notificationCount = 0;
+                return;
+            }
+
+            _meId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(_meId))
+            {
+                _notifications.Clear();
+                _notificationCount = 0;
+                return;
+            }
+
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var conversations = await db.Conversations
+                .AsNoTracking()
+                .Where(x => x.UserAId == _meId || x.UserBId == _meId)
+                .ToListAsync();
+
+            var conversationIds = conversations.Select(x => x.Id).ToList();
+
+            var unreadMessageNotifications = new List<LayoutNotificationItem>();
+
+            if (conversationIds.Count > 0)
+            {
+                var users = await db.Users
+                    .AsNoTracking()
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.UserName,
+                        x.DisplayName,
+                        x.AvatarUrl
+                    })
+                    .ToListAsync();
+
+                var userMap = users.ToDictionary(x => x.Id, x => x);
+
+                foreach (var conv in conversations)
+                {
+                    var lastRead = conv.UserAId == _meId
+                        ? conv.LastReadByUserAAtUtc
+                        : conv.LastReadByUserBAtUtc;
+
+                    var unreadCount = await db.Messages
+                        .AsNoTracking()
+                        .Where(m =>
+                            m.ConversationId == conv.Id &&
+                            m.SenderId != _meId &&
+                            !m.IsDeleted &&
+                            (!lastRead.HasValue || m.CreatedAtUtc > lastRead.Value))
+                        .CountAsync();
+
+                    if (unreadCount <= 0)
+                        continue;
+
+                    var otherId = conv.UserAId == _meId ? conv.UserBId : conv.UserAId;
+                    userMap.TryGetValue(otherId, out var otherUser);
+
+                    var otherName = otherUser is null
+                        ? "User"
+                        : !string.IsNullOrWhiteSpace(otherUser.DisplayName)
+                            ? otherUser.DisplayName
+                            : otherUser.UserName ?? "User";
+
+                    unreadMessageNotifications.Add(new LayoutNotificationItem
+                    {
+                        Type = "message",
+                        Title = otherName,
+                        Text = unreadCount == 1 ? "1 unread message" : $"{unreadCount} unread messages",
+                        Url = $"/chat/{conv.Id}",
+                        BadgeText = unreadCount.ToString(),
+                        Icon = Icons.Material.Filled.ChatBubbleOutline,
+                        CssClass = "message"
+                    });
+                }
+            }
+
+            var orderNotifications = await db.Orders
+                .AsNoTracking()
+                .Include(x => x.ServiceOffer)
+                .Where(x =>
+                    (x.BuyerId == _meId || x.SellerId == _meId) &&
+                    x.Status == OrderStatus.InProgress)
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .Take(5)
+                .ToListAsync();
+
+            var orderItems = orderNotifications
+                .Select(x => new LayoutNotificationItem
+                {
+                    Type = "order",
+                    Title = $"Order #{x.Id}",
+                    Text = x.ServiceOffer != null
+                        ? $"{x.ServiceOffer.Title} · In progress"
+                        : "Active order",
+                    Url = $"/orders/{x.Id}",
+                    BadgeText = null,
+                    Icon = Icons.Material.Filled.ReceiptLong,
+                    CssClass = "order"
+                })
+                .ToList();
+
+            _notifications = unreadMessageNotifications
+                .Concat(orderItems)
+                .Take(10)
+                .ToList();
+
+            _notificationCount = unreadMessageNotifications.Sum(x =>
+            {
+                if (int.TryParse(x.BadgeText, out var count))
+                    return count;
+                return 1;
+            }) + orderItems.Count;
+        }
+        finally
+        {
+            _loadingNotifications = false;
+        }
+    }
+
+    private async Task OnNotificationOpen()
+    {
+        await LoadNotificationsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenNotification(LayoutNotificationItem item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.Url))
+            Nav.NavigateTo(item.Url);
     }
 
     private void OnWalletChanged()
@@ -602,5 +1073,16 @@
     public void Dispose()
     {
         WalletState.Changed -= OnWalletChanged;
+    }
+
+    private sealed class LayoutNotificationItem
+    {
+        public string Type { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Text { get; set; } = "";
+        public string? Url { get; set; }
+        public string? BadgeText { get; set; }
+        public string Icon { get; set; } = Icons.Material.Filled.Notifications;
+        public string CssClass { get; set; } = "";
     }
 }

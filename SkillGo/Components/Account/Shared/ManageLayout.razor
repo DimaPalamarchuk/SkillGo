@@ -1,17 +1,70 @@
 ﻿@inherits LayoutComponentBase
 @layout AccountLayout
+@using MudBlazor
 
-<h1>Manage your account</h1>
+<MudContainer MaxWidth="MaxWidth.False" Class="manage-shell pa-0">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-8">
+        <MudPaper Class="manage-paper pa-5" Elevation="0">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="3">
+                    <MudPaper Class="manage-nav-card pa-3" Elevation="0">
+                        <MudText Typo="Typo.h6" Class="manage-nav-title">Account settings</MudText>
+                        <MudText Typo="Typo.body2" Class="manage-nav-sub">Manage your profile and security.</MudText>
 
-<div>
-    <h2>Change your account settings</h2>
-    <hr />
-    <div class="row">
-        <div class="col-md-3">
-            <ManageNavMenu />
-        </div>
-        <div class="col-md-9">
-            @Body
-        </div>
-    </div>
-</div>
+                        <div class="mt-3">
+                            <ManageNavMenu />
+                        </div>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" md="9">
+                    <div class="manage-body">
+                        @Body
+                    </div>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudContainer>
+</MudContainer>
+
+<style>
+    .manage-shell {
+        min-height: calc(100vh - 78px);
+    }
+
+    .manage-paper {
+        border-radius: 28px;
+        background: rgba(255,255,255,.76);
+        border: 1px solid rgba(109,40,217,.08);
+        box-shadow: 0 18px 44px rgba(31,17,71,.06);
+        backdrop-filter: blur(10px);
+    }
+
+    .manage-nav-card {
+        border-radius: 22px;
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 12px 30px rgba(88,28,135,.04);
+    }
+
+    .manage-nav-title {
+        color: #1f1147;
+        font-weight: 900;
+    }
+
+    .manage-nav-sub {
+        color: #6b5f8d;
+        line-height: 1.45;
+    }
+
+    .manage-body {
+        min-width: 0;
+    }
+
+    @@media (max-width: 700px) {
+        .manage-paper,
+        .manage-nav-card {
+            border-radius: 22px;
+        }
+    }
+</style>

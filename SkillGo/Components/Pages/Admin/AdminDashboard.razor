@@ -87,6 +87,14 @@
                     Manage users
                 </MudButton>
 
+                <MudButton Href="/admin/orders"
+                           FullWidth="true"
+                           Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.ReceiptLong">
+                    Moderate orders
+                </MudButton>
+
                 <MudButton Href="/admin/reports"
                            FullWidth="true"
                            Variant="Variant.Outlined"
@@ -217,7 +225,7 @@
         _categoriesCount = await db.Categories.CountAsync();
         _totalBalance = await db.Users.SumAsync(x => x.Balance);
 
-        var users = await db.Users.ToListAsync();
+        var users = await db.Users.AsNoTracking().ToListAsync();
         var freelancers = 0;
 
         foreach (var user in users)

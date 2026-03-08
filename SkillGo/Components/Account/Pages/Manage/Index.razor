@@ -1,77 +1,439 @@
 ﻿@page "/Account/Manage"
+@rendermode InteractiveServer
+@layout ManageLayout
 
 @using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Identity
+@using MudBlazor
 @using SkillGo.Data
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
-@inject IdentityUserAccessor UserAccessor
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IdentityRedirectManager RedirectManager
+@inject IWebHostEnvironment Env
 
 <PageTitle>Profile</PageTitle>
 
-<h3>Profile</h3>
 <StatusMessage />
 
-<div class="row">
-    <div class="col-md-6">
-        <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <input type="text" value="@username" class="form-control" placeholder="Please choose your username." disabled />
-                <label for="username" class="form-label">Username</label>
-            </div>
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.PhoneNumber" class="form-control" placeholder="Please enter your phone number." />
-                <label for="phone-number" class="form-label">Phone number</label>
-                <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
-        </EditForm>
-    </div>
-</div>
+<MudPaper Class="account-hero" Elevation="0">
+    <MudStack Spacing="1">
+        <MudText Class="account-kicker">Account</MudText>
+        <MudText Typo="Typo.h3" Class="account-title">Manage your profile</MudText>
+        <MudText Typo="Typo.body1" Class="account-sub">
+            Update your avatar, public information and phone number.
+        </MudText>
+    </MudStack>
+</MudPaper>
+
+<MudGrid Spacing="3" Class="mt-4">
+    <MudItem xs="12" md="4">
+        <MudPaper Class="account-card profile-card" Elevation="0">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                <img src="@CurrentAvatar" alt="Avatar" class="profile-avatar" />
+
+                <MudText Typo="Typo.h5" Class="profile-name">@DisplayName</MudText>
+                <MudText Typo="Typo.body2" Class="profile-username">@("@" + (username ?? "user"))</MudText>
+                <MudText Typo="Typo.caption" Class="profile-meta">Public account profile</MudText>
+
+                <InputFile OnChange="OnAvatarSelected"
+                           accept="image/png,image/jpeg,image/webp,image/gif"
+                           class="w-100" />
+
+                @if (!string.IsNullOrWhiteSpace(user?.AvatarUrl))
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               FullWidth="true"
+                               Class="btn-strong"
+                               OnClick="RemoveAvatarAsync">
+                        Remove avatar
+                    </MudButton>
+                }
+
+                <MudText Typo="Typo.caption" Class="avatar-hint">
+                    PNG, JPG, WEBP or GIF. Maximum size: 5 MB.
+                </MudText>
+
+                @if (!string.IsNullOrWhiteSpace(_avatarError))
+                {
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="w-100">
+                        @_avatarError
+                    </MudAlert>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_avatarSuccess))
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="w-100">
+                        @_avatarSuccess
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="8">
+        <MudPaper Class="account-card form-card" Elevation="0">
+            <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" Method="post">
+                <AntiforgeryToken />
+                <DataAnnotationsValidator />
+
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6" Class="section-title">Profile details</MudText>
+                    <MudText Typo="Typo.body2" Class="section-sub">
+                        These values are shown in your account and public profile.
+                    </MudText>
+
+                    <MudTextField T="string"
+                                  Label="Username"
+                                  Value="@username"
+                                  Variant="Variant.Outlined"
+                                  Disabled="true"
+                                  FullWidth="true" />
+
+                    <MudTextField T="string"
+                                  Label="Display name"
+                                  @bind-Value="Input.DisplayName"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                    <ValidationMessage For="() => Input.DisplayName" class="field-error" />
+
+                    <MudTextField T="string"
+                                  Label="Phone number"
+                                  @bind-Value="Input.PhoneNumber"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+                    <ValidationMessage For="() => Input.PhoneNumber" class="field-error" />
+
+                    <MudTextField T="string"
+                                  Label="Bio"
+                                  @bind-Value="Input.Bio"
+                                  Variant="Variant.Outlined"
+                                  Lines="6"
+                                  FullWidth="true" />
+                    <ValidationMessage For="() => Input.Bio" class="field-error" />
+
+                    <ValidationSummary class="field-error" role="alert" />
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-2">
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Class="btn-strong">
+                            Save changes
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </EditForm>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<style>
+    .account-hero {
+        border-radius: 28px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 22px 60px rgba(76,29,149,.18);
+        padding: 26px;
+    }
+
+    .account-kicker {
+        font-size: .76rem;
+        font-weight: 900;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,.68);
+    }
+
+    .account-title {
+        font-weight: 950;
+        letter-spacing: -.03em;
+        line-height: 1.04;
+    }
+
+    .account-sub {
+        color: rgba(255,255,255,.80);
+        max-width: 760px;
+        line-height: 1.6;
+    }
+
+    .account-card {
+        border-radius: 24px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
+    }
+
+    .profile-card,
+    .form-card {
+        padding: 22px;
+    }
+
+    .profile-avatar {
+        width: 118px;
+        height: 118px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid rgba(109,40,217,.14);
+        background: #fff;
+        box-shadow: 0 14px 30px rgba(88,28,135,.10);
+    }
+
+    .profile-name,
+    .section-title {
+        color: #1f1147;
+        font-weight: 900;
+    }
+
+    .profile-username,
+    .profile-meta,
+    .section-sub,
+    .avatar-hint {
+        color: #6b5f8d;
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        text-transform: none;
+    }
+
+    .field-error {
+        color: #b91c1c;
+        font-size: .88rem;
+    }
+
+    @@media (max-width: 700px) {
+        .account-hero,
+        .account-card {
+            border-radius: 22px;
+        }
+
+        .account-title {
+            font-size: 1.8rem !important;
+        }
+    }
+</style>
 
 @code {
-    private ApplicationUser user = default!;
+    private ApplicationUser? user;
     private string? username;
     private string? phoneNumber;
-
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
+    private string? _avatarError;
+    private string? _avatarSuccess;
+    private long _avatarVersion = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = new();
 
+    private string CurrentAvatar =>
+        string.IsNullOrWhiteSpace(user?.AvatarUrl)
+            ? "/images/default-avatar.png"
+            : $"{user!.AvatarUrl}?v={_avatarVersion}";
+
+    private string DisplayName =>
+        !string.IsNullOrWhiteSpace(Input.DisplayName)
+            ? Input.DisplayName!
+            : (!string.IsNullOrWhiteSpace(user?.DisplayName) ? user!.DisplayName! : (username ?? "User"));
+
     protected override async Task OnInitializedAsync()
     {
-        user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+        await LoadUserAsync();
+    }
+
+    private async Task<ApplicationUser?> GetCurrentUserAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated != true)
+            return null;
+
+        return await UserManager.GetUserAsync(principal);
+    }
+
+    private async Task LoadUserAsync()
+    {
+        user = await GetCurrentUserAsync();
+
+        if (user is null)
+            return;
+
         username = await UserManager.GetUserNameAsync(user);
         phoneNumber = await UserManager.GetPhoneNumberAsync(user);
 
         Input.PhoneNumber ??= phoneNumber;
+        Input.DisplayName ??= user.DisplayName;
+        Input.Bio ??= user.Bio;
     }
 
     private async Task OnValidSubmitAsync()
     {
-        if (Input.PhoneNumber != phoneNumber)
+        _avatarError = null;
+        _avatarSuccess = null;
+
+        user = await GetCurrentUserAsync();
+        if (user is null)
+            return;
+
+        var currentPhone = await UserManager.GetPhoneNumberAsync(user);
+
+        if (Input.PhoneNumber != currentPhone)
         {
             var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
             if (!setPhoneResult.Succeeded)
             {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
+                return;
             }
+
+            phoneNumber = Input.PhoneNumber;
+        }
+
+        user.DisplayName = string.IsNullOrWhiteSpace(Input.DisplayName) ? null : Input.DisplayName.Trim();
+        user.Bio = string.IsNullOrWhiteSpace(Input.Bio) ? null : Input.Bio.Trim();
+
+        var updateResult = await UserManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            return;
+
+        await SignInManager.RefreshSignInAsync(user);
+        _avatarSuccess = "Profile updated successfully.";
+    }
+
+    private async Task OnAvatarSelected(InputFileChangeEventArgs e)
+    {
+        _avatarError = null;
+        _avatarSuccess = null;
+
+        user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            _avatarError = "User not found.";
+            return;
+        }
+
+        var file = e.File;
+        if (file is null)
+        {
+            _avatarError = "File was not selected.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Env.WebRootPath))
+        {
+            _avatarError = "wwwroot path was not found.";
+            return;
+        }
+
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            _avatarError = "File is too large. Maximum size is 5 MB.";
+            return;
+        }
+
+        var ext = Path.GetExtension(file.Name)?.ToLowerInvariant();
+        if (ext is not ".png" and not ".jpg" and not ".jpeg" and not ".webp" and not ".gif")
+        {
+            _avatarError = "Allowed formats: PNG, JPG, WEBP, GIF.";
+            return;
+        }
+
+        var uploadsRoot = Path.Combine(Env.WebRootPath, "uploads", "avatars");
+        Directory.CreateDirectory(uploadsRoot);
+
+        if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+        {
+            var oldRelative = user.AvatarUrl.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+            var oldPhysical = Path.Combine(Env.WebRootPath, oldRelative);
+
+            if (File.Exists(oldPhysical))
+                File.Delete(oldPhysical);
+        }
+
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var physicalPath = Path.Combine(uploadsRoot, fileName);
+
+        await using (var source = file.OpenReadStream(5 * 1024 * 1024))
+        await using (var target = File.Create(physicalPath))
+        {
+            await source.CopyToAsync(target);
+        }
+
+        user.AvatarUrl = $"/uploads/avatars/{fileName}";
+
+        var result = await UserManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            _avatarError = "Failed to save avatar.";
+            return;
         }
 
         await SignInManager.RefreshSignInAsync(user);
-        RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
+
+        _avatarVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        _avatarSuccess = "Avatar updated successfully.";
+        StateHasChanged();
+    }
+
+    private async Task RemoveAvatarAsync()
+    {
+        _avatarError = null;
+        _avatarSuccess = null;
+
+        user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            _avatarError = "User not found.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Env.WebRootPath))
+        {
+            _avatarError = "wwwroot path was not found.";
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+        {
+            var relative = user.AvatarUrl.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString());
+            var physical = Path.Combine(Env.WebRootPath, relative);
+
+            if (File.Exists(physical))
+                File.Delete(physical);
+        }
+
+        user.AvatarUrl = null;
+
+        var result = await UserManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            _avatarError = "Failed to remove avatar.";
+            return;
+        }
+
+        await SignInManager.RefreshSignInAsync(user);
+
+        _avatarVersion = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        _avatarSuccess = "Avatar removed successfully.";
+        StateHasChanged();
     }
 
     private sealed class InputModel
     {
         [Phone]
-        [Display(Name = "Phone number")]
         public string? PhoneNumber { get; set; }
+
+        [StringLength(80)]
+        public string? DisplayName { get; set; }
+
+        [StringLength(500)]
+        public string? Bio { get; set; }
     }
 }

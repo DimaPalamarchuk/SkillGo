@@ -1,19 +1,16 @@
 ﻿@page "/chat/{ConversationId:int}"
 @rendermode InteractiveServer
 @using System.Security.Claims
-@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
-@using Microsoft.AspNetCore.Components.Rendering
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.JSInterop
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models.Chat
 @using SkillGo.Data.Models.Orders
-@using SkillGo.Data.Models.Presence
 @using SkillGo.Data.Models.Reports
 @using SkillGo.Services
 @using SkillGo.Components.Shared
@@ -36,7 +33,7 @@
         <MudContainer MaxWidth="MaxWidth.False" Class="pa-0 sg-chat-container">
             @if (_loading)
             {
-                <MudPaper Elevation="0" Class="sg-chat-paper sg-chat-paper-loading">
+                <MudPaper Elevation="0" Class="pa-4 sg-chat-paper">
                     <MudStack Spacing="2">
                         <MudSkeleton Height="42px" Width="40%" />
                         <MudStack Spacing="2" Style="flex:1; height: calc(100% - 120px); overflow:hidden;">
@@ -51,14 +48,14 @@
             }
             else if (_forbidden)
             {
-                <MudPaper Class="sg-chat-paper sg-chat-state-paper pa-6" Elevation="0">
-                    <MudText Typo="Typo.h5" Class="state-title">Access denied</MudText>
-                    <MudText Typo="Typo.body2" Class="state-sub mt-2">You don’t have access to this conversation.</MudText>
+                <MudPaper Class="pa-4 sg-chat-paper" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
+                    <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
                 </MudPaper>
             }
             else
             {
-                <MudPaper Elevation="0" Class="sg-chat-paper sg-chat-paper-main">
+                <MudPaper Elevation="0" Class="sg-chat-paper" Style="display:flex; flex-direction:column;">
                     <div class="sg-chat-header">
                         <div class="sg-chat-header-row">
                             <div class="sg-chat-header-left">
@@ -67,24 +64,28 @@
                                                OnClick="GoBack"
                                                Class="sg-back-btn" />
 
-                                <MudAvatar Size="Size.Medium" Class="sg-chat-avatar">
-                                    @_otherInitials
-                                </MudAvatar>
+                                @if (!string.IsNullOrWhiteSpace(_otherAvatarUrl))
+                                {
+                                    <img src="@_otherAvatarUrl" alt="@_title" class="sg-header-avatar-image" />
+                                }
+                                else
+                                {
+                                    <MudAvatar Size="Size.Medium" Class="sg-header-avatar">
+                                        @_otherInitials
+                                    </MudAvatar>
+                                }
 
                                 <div class="sg-chat-title-wrap">
-                                    <MudText Typo="Typo.h6" Class="sg-chat-title">
+                                    <MudText Typo="Typo.h6" Class="fw-bold sg-chat-title">
                                         @_title
                                     </MudText>
 
-                                    <div class="sg-chat-meta-row">
-                                        <span class="sg-online-wrap">
-                                            <span class="sg-online-dot" style="@($"background:{(_otherOnline ? "#22c55e" : "#94a3b8")};")"></span>
-                                            <MudText Typo="Typo.caption" Class="sg-chat-meta-text">
-                                                @(_otherOnline ? "Online" : _otherLastSeenText)
-                                            </MudText>
-                                        </span>
-
-                                        <MudText Typo="Typo.caption" Class="sg-chat-meta-text">
+                                    <div class="sg-chat-title-sub">
+                                        <span class="sg-chat-status-dot" style="background:@(_otherOnline ? "#22c55e" : "#94a3b8");"></span>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                            @(_otherOnline ? "Online" : _otherLastSeenText)
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
                                             • #@ConversationId
                                         </MudText>
                                     </div>
@@ -97,14 +98,14 @@
                         <div class="sg-chat-messages-inner">
                             @if (_messages.Count == 0)
                             {
-                                <MudPaper Elevation="0" Class="sg-empty-chat-card pa-5">
-                                    <MudText Typo="Typo.h6" Class="state-title">No messages yet</MudText>
-                                    <MudText Typo="Typo.body2" Class="state-sub mt-2">Say hi 👋</MudText>
+                                <MudPaper Elevation="0" Class="pa-4 sg-empty-messages">
+                                    <MudText Typo="Typo.h6" Class="fw-bold">No messages yet</MudText>
+                                    <MudText Color="Color.Secondary">Say hi 👋</MudText>
                                 </MudPaper>
                             }
                             else
                             {
-                                <div class="sg-chat-list">
+                                <div class="sg-message-list">
                                     @{
                                         DateOnly? currentDay = null;
                                     }
@@ -119,7 +120,7 @@
                                         {
                                             currentDay = day;
 
-                                            <div class="sg-day-divider-wrap">
+                                            <div class="sg-day-chip-wrap">
                                                 <MudChip T="string"
                                                          Size="Size.Small"
                                                          Variant="Variant.Outlined"
@@ -133,23 +134,38 @@
                                             <div class="sg-message-row-inner @(mine ? "mine" : "other")">
                                                 @if (!mine)
                                                 {
-                                                    <MudAvatar Size="Size.Small" Class="sg-message-side-avatar">
-                                                        @_otherInitials
-                                                    </MudAvatar>
+                                                    @if (!string.IsNullOrWhiteSpace(_otherAvatarUrl))
+                                                    {
+                                                        <img src="@_otherAvatarUrl" alt="@_otherDisplay" class="sg-message-avatar-image" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudAvatar Size="Size.Small" Class="sg-message-avatar">
+                                                            @_otherInitials
+                                                        </MudAvatar>
+                                                    }
                                                 }
                                                 else
                                                 {
-                                                    <div class="sg-message-side-spacer"></div>
+                                                    @if (!string.IsNullOrWhiteSpace(_myAvatarUrl))
+                                                    {
+                                                        <img src="@_myAvatarUrl" alt="Me" class="sg-message-avatar-image" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudAvatar Size="Size.Small" Class="sg-message-avatar sg-message-avatar-mine">
+                                                            @_myInitials
+                                                        </MudAvatar>
+                                                    }
                                                 }
 
-                                                <div class="sg-message-main">
+                                                <div class="sg-message-content-wrap">
                                                     @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && !HasVisibleContent(m))
                                                     {
-                                                        <div class="sg-order-only-wrap">
+                                                        <div class="sg-order-row">
                                                             <OrderMessageCard Order="m.Order"
                                                                               CurrentUserId="@(_meId ?? "")"
-                                                                              OnChanged="ReloadAsync"
-                                                                              OnDeliver="OpenDeliveryForOrder" />
+                                                                              OnChanged="ReloadAsync" />
 
                                                             @if (!mine && !m.IsDeleted)
                                                             {
@@ -158,7 +174,7 @@
                                                                         <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
                                                                                        Size="Size.Small"
                                                                                        Color="Color.Default"
-                                                                                       Class="sg-message-menu-btn" />
+                                                                                       Style="opacity:.78;" />
                                                                     </ActivatorContent>
 
                                                                     <ChildContent>
@@ -170,14 +186,14 @@
                                                             }
                                                         </div>
 
-                                                        <div class="sg-message-time-row">
+                                                        <div class="sg-bubble-meta">
                                                             <span>@local.ToString("HH:mm")</span>
                                                         </div>
                                                     }
                                                     else
                                                     {
-                                                        <div class="sg-bubble-wrap">
-                                                            <div class="sg-bubble @(mine ? "mine" : "other")">
+                                                        <div class="sg-bubble-with-menu">
+                                                            <div class="sg-message-bubble @(mine ? "mine" : "other")">
                                                                 @if (m.IsOrderDelivery)
                                                                 {
                                                                     <div class="sg-delivery-head">
@@ -225,11 +241,10 @@
 
                                                                     @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && HasVisibleContent(m))
                                                                     {
-                                                                        <div class="sg-order-card-wrap">
+                                                                        <div style="margin-top:10px;">
                                                                             <OrderMessageCard Order="m.Order"
                                                                                               CurrentUserId="@(_meId ?? "")"
-                                                                                              OnChanged="ReloadAsync"
-                                                                                              OnDeliver="OpenDeliveryForOrder" />
+                                                                                              OnChanged="ReloadAsync" />
                                                                         </div>
                                                                     }
                                                                 }
@@ -240,7 +255,7 @@
                                                                     </div>
                                                                 }
 
-                                                                <div class="sg-message-time-row">
+                                                                <div class="sg-bubble-meta">
                                                                     <span>@local.ToString("HH:mm")</span>
                                                                     @if (m.EditedAtUtc.HasValue && !m.IsDeleted)
                                                                     {
@@ -250,7 +265,7 @@
 
                                                                 @if (_editingId == m.Id)
                                                                 {
-                                                                    <div class="sg-edit-box">
+                                                                    <div style="margin-top:10px;">
                                                                         <MudTextField @bind-Value="_editingText"
                                                                                       Variant="Variant.Outlined"
                                                                                       Margin="Margin.Dense"
@@ -258,9 +273,9 @@
                                                                                       Immediate="true"
                                                                                       FullWidth="true"
                                                                                       Disabled="_savingEdit"
-                                                                                      Class="sg-edit-field" />
+                                                                                      Style="border-radius:12px; background: rgba(255,255,255,.75);" />
 
-                                                                        <div class="sg-edit-actions">
+                                                                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
                                                                             <MudButton Variant="Variant.Text"
                                                                                        Color="Color.Default"
                                                                                        Disabled="_savingEdit"
@@ -272,7 +287,7 @@
                                                                                        Color="Color.Primary"
                                                                                        Disabled="_savingEdit || string.IsNullOrWhiteSpace(_editingText)"
                                                                                        OnClick="@(() => SaveEditAsync(m.Id))"
-                                                                                       Class="sg-edit-save-btn">
+                                                                                       Style="border-radius:12px;">
                                                                                 Save
                                                                             </MudButton>
                                                                         </div>
@@ -287,7 +302,7 @@
                                                                         <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
                                                                                        Size="Size.Small"
                                                                                        Color="Color.Default"
-                                                                                       Class="sg-message-menu-btn" />
+                                                                                       Style="opacity:.78;" />
                                                                     </ActivatorContent>
 
                                                                     <ChildContent>
@@ -308,7 +323,7 @@
                                                                         <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
                                                                                        Size="Size.Small"
                                                                                        Color="Color.Default"
-                                                                                       Class="sg-message-menu-btn" />
+                                                                                       Style="opacity:.78;" />
                                                                     </ActivatorContent>
 
                                                                     <ChildContent>
@@ -335,14 +350,6 @@
                             {
                                 <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined">
                                     @_error
-                                </MudAlert>
-                            }
-
-                            @if (_deliveryOrderId.HasValue)
-                            {
-                                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
-                                    Delivery mode for order #@_deliveryOrderId
-                                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelDeliveryMode">Cancel</MudButton>
                                 </MudAlert>
                             }
 
@@ -387,7 +394,7 @@
                                 </MudButton>
 
                                 <MudTextField @bind-Value="_text"
-                                              Placeholder="@(_deliveryOrderId.HasValue ? "Write a delivery note..." : "Write a message...")"
+                                              Placeholder="Write a message..."
                                               Variant="Variant.Outlined"
                                               Margin="Margin.Dense"
                                               Immediate="true"
@@ -395,7 +402,7 @@
                                               Lines="2"
                                               Disabled="_sending || _editingId.HasValue"
                                               @onkeydown="OnComposerKeyDownRaw"
-                                              Class="sg-composer-field" />
+                                              Style="border-radius:14px; background: rgba(255,255,255,.90);" />
 
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Primary"
@@ -405,7 +412,6 @@
                                     @SendButtonContent()
                                 </MudButton>
                             </div>
-
                         </MudStack>
                     </div>
                 </MudPaper>
@@ -492,10 +498,6 @@
         margin: -34px -32px -32px -32px;
         height: calc(100vh - 78px);
         overflow: hidden;
-        background:
-            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
-            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
-            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
     .sg-chat-shell {
@@ -510,28 +512,16 @@
 
     .sg-chat-paper {
         height: 100%;
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 0;
         overflow: hidden;
     }
 
-    .sg-chat-paper-loading,
-    .sg-chat-paper-main,
-    .sg-chat-state-paper {
-        border-radius: 0;
-        border: none;
-        background: transparent;
-    }
-
-    .sg-chat-paper-main {
-        display: flex;
-        flex-direction: column;
-    }
-
     .sg-chat-header {
-        padding: 14px 16px 12px 16px;
-        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
-        border-bottom: 1px solid rgba(255,255,255,.10);
+        padding: 12px 14px 10px 14px;
+        background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,0));
+        border-bottom: 1px solid rgba(0,0,0,.06);
         flex: 0 0 auto;
-        box-shadow: 0 18px 40px rgba(76,29,149,.14);
     }
 
     .sg-chat-header-row {
@@ -549,16 +539,29 @@
     }
 
     .sg-back-btn {
-        border: 1px solid rgba(255,255,255,.14) !important;
-        border-radius: 12px !important;
-        background: rgba(255,255,255,.10) !important;
-        color: #fff !important;
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 12px;
     }
 
-    .sg-chat-avatar {
-        background: rgba(255,255,255,.14) !important;
-        color: #fff !important;
-        border: 1px solid rgba(255,255,255,.14);
+    .sg-header-avatar,
+    .sg-header-avatar-image {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        flex: 0 0 auto;
+    }
+
+    .sg-header-avatar {
+        background: rgba(99,102,241,.16);
+        color: rgba(17,24,39,1);
+        border: 1px solid rgba(0,0,0,.06);
+    }
+
+    .sg-header-avatar-image {
+        object-fit: cover;
+        display: block;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
     }
 
     .sg-chat-title-wrap {
@@ -566,16 +569,14 @@
     }
 
     .sg-chat-title {
-        line-height: 1.1 !important;
-        margin: 0 !important;
+        line-height: 1.1;
+        margin: 0;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: #fff;
-        font-weight: 900;
     }
 
-    .sg-chat-meta-row {
+    .sg-chat-title-sub {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -583,32 +584,18 @@
         flex-wrap: wrap;
     }
 
-    .sg-online-wrap {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .sg-online-dot {
+    .sg-chat-status-dot {
         width: 8px;
         height: 8px;
         border-radius: 999px;
         display: inline-block;
     }
 
-    .sg-chat-meta-text {
-        margin: 0 !important;
-        color: rgba(255,255,255,.74) !important;
-    }
-
     .sg-chat-messages {
         flex: 1 1 auto;
         overflow: auto;
         min-height: 0;
-        background:
-            radial-gradient(circle at top left, rgba(124,58,237,.08), transparent 24%),
-            radial-gradient(circle at top right, rgba(99,102,241,.05), transparent 24%),
-            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
+        background: radial-gradient(1200px 400px at 20% 0%, rgba(99,102,241,.08), transparent), linear-gradient(180deg, rgba(2,6,23,.02), rgba(2,6,23,0));
     }
 
     .sg-chat-messages-inner {
@@ -616,31 +603,29 @@
         padding: 14px 16px 12px 16px;
     }
 
-    .sg-chat-list {
+    .sg-empty-messages {
+        border: 1px dashed rgba(0,0,0,.12);
+        border-radius: 12px;
+        background: rgba(255,255,255,.70);
+        max-width: 520px;
+    }
+
+    .sg-message-list {
         display: flex;
         flex-direction: column;
         gap: 12px;
     }
 
-    .sg-empty-chat-card {
-        border: 1px dashed rgba(109,40,217,.16);
-        border-radius: 18px;
-        background: rgba(255,255,255,.82);
-        max-width: 520px;
-    }
-
-    .sg-day-divider-wrap {
+    .sg-day-chip-wrap {
         display: flex;
         justify-content: center;
         padding: 8px 0 2px 0;
     }
 
     .sg-day-chip {
-        background: rgba(255,255,255,.88) !important;
-        border-color: rgba(109,40,217,.12) !important;
-        border-radius: 999px !important;
-        color: #6b5f8d !important;
-        font-weight: 800;
+        background: rgba(255,255,255,.80);
+        border-color: rgba(0,0,0,.10);
+        border-radius: 999px;
     }
 
     .sg-message-row {
@@ -671,59 +656,154 @@
         flex-direction: row;
     }
 
-    .sg-message-side-avatar {
-        background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%) !important;
-        border: 1px solid rgba(109,40,217,.10);
-        color: #6d28d9 !important;
-    }
-
-    .sg-message-side-spacer {
+    .sg-message-avatar,
+    .sg-message-avatar-image {
         width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        flex: 0 0 auto;
     }
 
-    .sg-message-main {
+    .sg-message-avatar {
+        background: rgba(15,23,42,.06);
+        border: 1px solid rgba(0,0,0,.06);
+        color: #111827;
+    }
+
+    .sg-message-avatar-mine {
+        background: rgba(99,102,241,.16);
+    }
+
+    .sg-message-avatar-image {
+        object-fit: cover;
+        display: block;
+        border: 1px solid rgba(0,0,0,.08);
+        background: #fff;
+    }
+
+    .sg-message-content-wrap {
         max-width: min(760px, 78vw);
         width: fit-content;
     }
 
-    .sg-order-only-wrap {
+    .sg-order-row {
         display: flex;
         align-items: flex-start;
         gap: 6px;
     }
 
-    .sg-bubble-wrap {
+    .sg-bubble-with-menu {
         display: flex;
         align-items: flex-start;
         gap: 6px;
     }
 
-    .sg-bubble {
+    .sg-message-bubble {
         padding: 10px 12px;
         border-radius: 18px;
         box-shadow: 0 14px 30px rgba(2,6,23,.06);
         max-width: 100%;
     }
 
-    .sg-bubble.mine {
-        background: linear-gradient(180deg, #6366f1, #4f46e5);
+    .sg-message-bubble.mine {
+        background: linear-gradient(180deg,#6366f1,#4f46e5);
         color: white;
         box-shadow: 0 14px 30px rgba(79,70,229,.18);
         border: 1px solid rgba(255,255,255,.12);
     }
 
-    .sg-bubble.other {
-        background: rgba(255,255,255,.94);
-        border: 1px solid rgba(109,40,217,.10);
-        color: #1f1147;
-        box-shadow: 0 14px 30px rgba(88,28,135,.06);
+    .sg-message-bubble.other {
+        background: rgba(255,255,255,.92);
+        border: 1px solid rgba(0,0,0,.08);
+        color: #0f172a;
+    }
+
+    .sg-chat-composer {
+        padding: 12px 14px;
+        background: rgba(255,255,255,.78);
+        border-top: 1px solid rgba(0,0,0,.06);
+        flex: 0 0 auto;
+    }
+
+    .sg-hidden-file-input {
+        display: none;
+    }
+
+    .sg-chat-composer-row {
+        display: grid;
+        grid-template-columns: auto minmax(0,1fr) auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .sg-attach-btn {
+        min-width: 124px;
+        height: 40px;
+        border-radius: 14px;
+        white-space: nowrap;
+    }
+
+    .sg-send-btn {
+        min-width: 148px;
+        height: 40px;
+        border-radius: 14px;
+        white-space: nowrap;
+    }
+
+    .sg-pending-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .sg-pending-file {
+        min-width: 220px;
+        max-width: 340px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(99,102,241,.08);
+        border: 1px solid rgba(99,102,241,.10);
+    }
+
+    .sg-pending-file-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(79,70,229,.12);
+        color: #4338ca;
+        flex: 0 0 auto;
+    }
+
+    .sg-pending-file-copy {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .sg-pending-file-name {
+        font-weight: 800;
+        color: #111827;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sg-pending-file-meta {
+        color: rgba(17,24,39,.56);
+        font-size: .78rem;
+        font-weight: 700;
     }
 
     .sg-message-body {
         white-space: pre-wrap;
         word-break: break-word;
         font-size: 1.02rem;
-        line-height: 1.4;
+        line-height: 1.28;
     }
 
     .sg-delivery-head {
@@ -757,7 +837,7 @@
         width: auto;
         height: auto;
         border-radius: 14px;
-        border: 1px solid rgba(109,40,217,.10);
+        border: 1px solid rgba(0,0,0,.08);
         object-fit: cover;
         background: #fff;
     }
@@ -771,8 +851,8 @@
         border-radius: 14px;
         text-decoration: none;
         background: rgba(255,255,255,.88);
-        border: 1px solid rgba(109,40,217,.10);
-        color: #1f1147;
+        border: 1px solid rgba(0,0,0,.08);
+        color: #111827;
     }
 
     .sg-file-attachment-icon {
@@ -804,45 +884,13 @@
         font-weight: 700;
     }
 
-    .sg-order-card-wrap {
-        margin-top: 10px;
-    }
-
-    .sg-message-time-row {
+    .sg-bubble-meta {
         display: flex;
         justify-content: flex-end;
         gap: 8px;
         margin-top: 7px;
-        opacity: .72;
+        opacity: .70;
         font-size: .75rem;
-    }
-
-    .sg-bubble.mine .sg-message-time-row {
-        color: rgba(255,255,255,.84);
-    }
-
-    .sg-bubble.other .sg-message-time-row {
-        color: #6b5f8d;
-    }
-
-    .sg-edit-box {
-        margin-top: 10px;
-    }
-
-    .sg-edit-field {
-        border-radius: 12px;
-        background: rgba(255,255,255,.75);
-    }
-
-    .sg-edit-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-top: 8px;
-    }
-
-    .sg-edit-save-btn {
-        border-radius: 12px !important;
     }
 
     .sg-deleted-text {
@@ -851,105 +899,10 @@
         font-size: 0.98rem;
     }
 
-    .sg-message-menu-btn {
-        opacity: .78;
-    }
-
-    .sg-chat-composer {
-        padding: 12px 14px;
-        background: rgba(255,255,255,.82);
-        border-top: 1px solid rgba(109,40,217,.08);
-        backdrop-filter: blur(10px);
-        flex: 0 0 auto;
-    }
-
-    .sg-hidden-file-input {
-        display: none;
-    }
-
-    .sg-chat-composer-row {
-        display: grid;
-        grid-template-columns: auto minmax(0,1fr) auto;
-        gap: 10px;
-        align-items: end;
-    }
-
-    .sg-composer-field {
-        border-radius: 14px;
-        background: rgba(255,255,255,.94);
-    }
-
-    .sg-attach-btn {
-        min-width: 124px;
-        height: 40px;
-        border-radius: 14px;
-        white-space: nowrap;
-        text-transform: none;
-        font-weight: 800;
-    }
-
-    .sg-send-btn {
-        min-width: 148px;
-        height: 40px;
-        border-radius: 14px;
-        white-space: nowrap;
-        text-transform: none;
-        font-weight: 800;
-    }
-
-    .sg-pending-files {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-
-    .sg-pending-file {
-        min-width: 220px;
-        max-width: 340px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 10px;
-        border-radius: 14px;
-        background: rgba(109,40,217,.08);
-        border: 1px solid rgba(109,40,217,.10);
-    }
-
-    .sg-pending-file-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(79,70,229,.12);
-        color: #4338ca;
-        flex: 0 0 auto;
-    }
-
-    .sg-pending-file-copy {
-        min-width: 0;
-        flex: 1 1 auto;
-    }
-
-    .sg-pending-file-name {
-        font-weight: 800;
-        color: #1f1147;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .sg-pending-file-meta {
-        color: #6b5f8d;
-        font-size: .78rem;
-        font-weight: 700;
-    }
-
     .sg-report-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(31,17,71,.42);
+        background: rgba(15,23,42,.48);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
@@ -962,8 +915,8 @@
         width: min(100%, 520px);
         border-radius: 24px;
         background: #ffffff;
-        border: 1px solid rgba(109,40,217,.10);
-        box-shadow: 0 30px 80px rgba(31,17,71,.24);
+        border: 1px solid rgba(15,23,42,.08);
+        box-shadow: 0 30px 80px rgba(15,23,42,.24);
         padding: 20px;
     }
 
@@ -984,7 +937,7 @@
 
     .sg-report-title {
         margin-top: 4px;
-        color: #1f1147;
+        color: #111827;
         font-size: 1.25rem;
         font-weight: 950;
         line-height: 1.1;
@@ -994,12 +947,12 @@
         margin-top: 10px;
         padding: 14px;
         border-radius: 18px;
-        background: #faf7ff;
-        border: 1px solid rgba(109,40,217,.08);
+        background: #f8fafc;
+        border: 1px solid rgba(15,23,42,.06);
     }
 
     .sg-report-preview-label {
-        color: #6b5f8d;
+        color: rgba(17,24,39,.56);
         font-size: .75rem;
         font-weight: 800;
         text-transform: uppercase;
@@ -1008,8 +961,8 @@
 
     .sg-report-preview-text {
         margin-top: 8px;
-        color: #1f1147;
-        line-height: 1.45;
+        color: #111827;
+        line-height: 1.4;
         white-space: pre-wrap;
         word-break: break-word;
     }
@@ -1019,15 +972,6 @@
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-    }
-
-    .state-title {
-        color: #1f1147;
-        font-weight: 900;
-    }
-
-    .state-sub {
-        color: #6b5f8d;
     }
 
     @@media (max-width: 900px) {
@@ -1050,18 +994,6 @@
             padding: 16px;
             border-radius: 20px;
         }
-
-        .sg-chat-header {
-            padding: 12px 12px 10px 12px;
-        }
-
-        .sg-chat-messages-inner {
-            padding: 12px;
-        }
-
-        .sg-chat-composer {
-            padding: 10px 12px;
-        }
     }
 </style>
 
@@ -1077,9 +1009,12 @@
     private string _title = "Chat";
     private string _otherDisplay = "User";
     private string _otherInitials = "?";
+    private string _myInitials = "M";
 
     private string? _meId;
     private string? _otherId;
+    private string? _myAvatarUrl;
+    private string? _otherAvatarUrl;
 
     private string? _text;
     private string? _error;
@@ -1096,7 +1031,6 @@
     private int? _editingId;
     private string? _editingText;
     private bool _savingEdit;
-    private int? _deliveryOrderId;
 
     private bool _reportPopupOpen;
     private bool _reportSubmitting;
@@ -1120,7 +1054,6 @@
         _editingText = null;
         _savingEdit = false;
         _pendingScrollToBottom = false;
-        _deliveryOrderId = null;
         _pendingFiles.Clear();
         _reportPopupOpen = false;
         _reportSubmitting = false;
@@ -1150,6 +1083,8 @@
             await LoadConversationAndMessagesAsync();
             if (_forbidden) return;
 
+            await MarkConversationAsReadAsync();
+
             _pendingScrollToBottom = true;
 
             _msgSub = Broadcast.SubscribeMessages(ConversationId, dto =>
@@ -1165,8 +1100,12 @@
                         _messages.Add(dto);
                 }
 
-                _pendingScrollToBottom = true;
-                _ = InvokeAsync(StateHasChanged);
+                _ = InvokeAsync(async () =>
+                {
+                    await MarkConversationAsReadAsync();
+                    _pendingScrollToBottom = true;
+                    StateHasChanged();
+                });
             });
 
             _presenceSub = PresenceBroadcast.Subscribe(dto =>
@@ -1198,6 +1137,29 @@
         }
     }
 
+    private async Task MarkConversationAsReadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_meId))
+            return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        var conv = await db.Conversations.FirstOrDefaultAsync(x => x.Id == ConversationId);
+        if (conv == null)
+            return;
+
+        var now = DateTime.UtcNow;
+
+        if (conv.UserAId == _meId)
+            conv.LastReadByUserAAtUtc = now;
+        else if (conv.UserBId == _meId)
+            conv.LastReadByUserBAtUtc = now;
+        else
+            return;
+
+        await db.SaveChangesAsync();
+    }
+
     private void RefreshOtherPresence()
     {
         if (string.IsNullOrWhiteSpace(_otherId))
@@ -1225,7 +1187,8 @@
     {
         await using var db = await DbFactory.CreateDbContextAsync();
 
-        var conv = await db.Conversations.AsNoTracking()
+        var conv = await db.Conversations
+            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == ConversationId);
 
         if (conv == null)
@@ -1243,16 +1206,39 @@
 
         _otherId = conv.UserAId == _meId ? conv.UserBId : conv.UserAId;
 
-        var otherUser = await db.Users.AsNoTracking()
-            .Where(x => x.Id == _otherId)
-            .Select(x => x.UserName)
-            .FirstOrDefaultAsync();
+        var users = await db.Users
+            .AsNoTracking()
+            .Where(x => x.Id == _otherId || x.Id == _meId)
+            .Select(x => new
+            {
+                x.Id,
+                x.UserName,
+                x.DisplayName,
+                x.AvatarUrl
+            })
+            .ToListAsync();
 
-        _otherDisplay = string.IsNullOrWhiteSpace(otherUser) ? "User" : otherUser;
-        _otherInitials = _otherDisplay.Substring(0, 1).ToUpperInvariant();
+        var otherUser = users.FirstOrDefault(x => x.Id == _otherId);
+        var myUser = users.FirstOrDefault(x => x.Id == _meId);
+
+        _otherDisplay = !string.IsNullOrWhiteSpace(otherUser?.DisplayName)
+            ? otherUser.DisplayName!
+            : (!string.IsNullOrWhiteSpace(otherUser?.UserName) ? otherUser.UserName! : "User");
+
+        _otherAvatarUrl = otherUser?.AvatarUrl;
+        _otherInitials = string.IsNullOrWhiteSpace(_otherDisplay) ? "U" : _otherDisplay.Substring(0, 1).ToUpperInvariant();
+
+        var myName = !string.IsNullOrWhiteSpace(myUser?.DisplayName)
+            ? myUser.DisplayName!
+            : (!string.IsNullOrWhiteSpace(myUser?.UserName) ? myUser.UserName! : "Me");
+
+        _myAvatarUrl = myUser?.AvatarUrl;
+        _myInitials = string.IsNullOrWhiteSpace(myName) ? "M" : myName.Substring(0, 1).ToUpperInvariant();
+
         _title = $"@{_otherDisplay}";
 
-        var list = await db.Messages.AsNoTracking()
+        var list = await db.Messages
+            .AsNoTracking()
             .Include(x => x.Order)
             .ThenInclude(x => x.ServiceOffer)
             .Include(x => x.Attachments)
@@ -1301,6 +1287,7 @@
         try
         {
             await LoadConversationAndMessagesAsync();
+            await MarkConversationAsReadAsync();
             RefreshOtherPresence();
             _pendingScrollToBottom = true;
             StateHasChanged();
@@ -1349,57 +1336,12 @@
         _pendingFiles.RemoveAt(index);
     }
 
-    private async Task OpenDeliveryForOrder(int orderId)
-    {
-        if (string.IsNullOrWhiteSpace(_meId))
-            return;
-
-        await using var db = await DbFactory.CreateDbContextAsync();
-
-        var order = await db.Orders.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == orderId && x.ConversationId == ConversationId);
-
-        if (order == null)
-        {
-            Snackbar.Add("Order not found", Severity.Error);
-            return;
-        }
-
-        if (order.SellerId != _meId)
-        {
-            Snackbar.Add("Only freelancer can send delivery files", Severity.Error);
-            return;
-        }
-
-        if (order.Status != OrderStatus.InProgress)
-        {
-            Snackbar.Add("Delivery is available only for active orders", Severity.Warning);
-            return;
-        }
-
-        _deliveryOrderId = orderId;
-        _text = null;
-        Snackbar.Add($"Delivery mode enabled for order #{orderId}", Severity.Success);
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private void CancelDeliveryMode()
-    {
-        _deliveryOrderId = null;
-    }
-
     private async Task SendAsync()
     {
         if (_sending) return;
         if (_editingId.HasValue) return;
         if (string.IsNullOrWhiteSpace(_meId)) return;
         if (!HasTextToSend() && !_pendingFiles.Any()) return;
-
-        if (_deliveryOrderId.HasValue && !_pendingFiles.Any())
-        {
-            Snackbar.Add("Attach at least one file for delivery", Severity.Warning);
-            return;
-        }
 
         var body = string.IsNullOrWhiteSpace(_text) ? null : _text.Trim();
 
@@ -1425,40 +1367,11 @@
                 return;
             }
 
-            Order? deliveryOrder = null;
-
-            if (_deliveryOrderId.HasValue)
-            {
-                deliveryOrder = await db.Orders
-                    .Include(x => x.ServiceOffer)
-                    .FirstOrDefaultAsync(x => x.Id == _deliveryOrderId.Value && x.ConversationId == ConversationId);
-
-                if (deliveryOrder == null)
-                {
-                    _error = "Order not found.";
-                    return;
-                }
-
-                if (deliveryOrder.SellerId != _meId)
-                {
-                    _error = "Only freelancer can send delivery files.";
-                    return;
-                }
-
-                if (deliveryOrder.Status != OrderStatus.InProgress)
-                {
-                    _error = "Order is not active.";
-                    return;
-                }
-            }
-
             var msg = new Message
             {
                 ConversationId = ConversationId,
                 SenderId = _meId!,
                 Body = body,
-                OrderId = _deliveryOrderId,
-                IsOrderDelivery = _deliveryOrderId.HasValue,
                 CreatedAtUtc = DateTime.UtcNow
             };
 
@@ -1469,7 +1382,7 @@
 
             if (_pendingFiles.Any())
             {
-                var saved = await SaveUploadedFilesAsync(msg.Id, _pendingFiles, _deliveryOrderId.HasValue);
+                var saved = await SaveUploadedFilesAsync(msg.Id, _pendingFiles);
 
                 if (saved.Any())
                 {
@@ -1481,7 +1394,6 @@
 
             _text = null;
             _pendingFiles.Clear();
-            _deliveryOrderId = null;
 
             var dto = new MessageDto
             {
@@ -1490,7 +1402,7 @@
                 SenderId = msg.SenderId,
                 Body = msg.Body,
                 OrderId = msg.OrderId,
-                Order = deliveryOrder,
+                Order = null,
                 IsOrderDelivery = msg.IsOrderDelivery,
                 CreatedAtUtc = msg.CreatedAtUtc,
                 EditedAtUtc = msg.EditedAtUtc,
@@ -1517,6 +1429,7 @@
 
             _pendingScrollToBottom = true;
             Broadcast.PublishMessage(dto);
+            await MarkConversationAsReadAsync();
         }
         finally
         {
@@ -1525,7 +1438,7 @@
         }
     }
 
-    private async Task<List<MessageAttachment>> SaveUploadedFilesAsync(int messageId, List<PendingUploadFile> files, bool isDelivery)
+    private async Task<List<MessageAttachment>> SaveUploadedFilesAsync(int messageId, List<PendingUploadFile> files)
     {
         var result = new List<MessageAttachment>();
 
@@ -1534,7 +1447,7 @@
         var root = Path.Combine(
             Env.WebRootPath,
             "uploads",
-            isDelivery ? "deliveries" : "chat",
+            "chat",
             now.ToString("yyyy"),
             now.ToString("MM"));
 
@@ -1542,7 +1455,7 @@
 
         var relativeFolder = Path.Combine(
             "uploads",
-            isDelivery ? "deliveries" : "chat",
+            "chat",
             now.ToString("yyyy"),
             now.ToString("MM"))
             .Replace("\\", "/");
@@ -1681,6 +1594,7 @@
 
             _editingId = null;
             _editingText = null;
+            await MarkConversationAsReadAsync();
         }
         catch (Exception ex)
         {
@@ -1755,6 +1669,8 @@
 
             if (_editingId == messageId)
                 CancelEdit();
+
+            await MarkConversationAsReadAsync();
         }
         catch (Exception ex)
         {
@@ -1898,15 +1814,15 @@
             builder.AddAttribute(seq++, "Indeterminate", true);
             builder.AddAttribute(seq++, "Class", "me-2");
             builder.CloseComponent();
-            builder.AddContent(seq++, _deliveryOrderId.HasValue ? "Delivering" : "Sending");
+            builder.AddContent(seq++, "Sending");
         }
         else
         {
             builder.OpenComponent<MudIcon>(seq++);
-            builder.AddAttribute(seq++, "Icon", _deliveryOrderId.HasValue ? Icons.Material.Filled.Inventory2 : Icons.Material.Filled.Send);
+            builder.AddAttribute(seq++, "Icon", Icons.Material.Filled.Send);
             builder.AddAttribute(seq++, "Class", "me-2");
             builder.CloseComponent();
-            builder.AddContent(seq++, _deliveryOrderId.HasValue ? "Send delivery" : "Send");
+            builder.AddContent(seq++, "Send");
         }
     };
 

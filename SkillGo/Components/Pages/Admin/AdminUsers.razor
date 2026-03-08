@@ -16,152 +16,200 @@
 
 <PageTitle>Admin Users</PageTitle>
 
-<MudPaper Class="admin-users-panel" Elevation="0">
-    <MudStack Spacing="2">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="admin-users-head">
-            <MudText Typo="Typo.h6" Class="fw-bold">Users management</MudText>
+<MudStack Spacing="3">
+    <MudPaper Class="au-hero" Elevation="0">
+        <div class="au-hero-top">
+            <div>
+                <div class="au-kicker">Administration</div>
+                <div class="au-title">Users management</div>
+                <div class="au-subtitle">Manage roles, moderation status and access for all platform users.</div>
+            </div>
 
             <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
+                       Color="Color.Inherit"
                        StartIcon="@Icons.Material.Filled.Refresh"
                        OnClick="LoadUsers">
                 Refresh
             </MudButton>
-        </MudStack>
+        </div>
 
-        <MudTextField T="string"
-                      Variant="Variant.Outlined"
-                      Placeholder="Search by username or email"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true"
-                      Value="@_search"
-                      ValueChanged="OnSearchChanged" />
+        <div class="au-stats">
+            <div class="au-stat">
+                <div class="au-stat-label">Total users</div>
+                <div class="au-stat-value">@_users.Count</div>
+            </div>
 
-        @if (_loading)
-        {
-            <MudProgressCircular Indeterminate="true" />
-        }
-        else if (_pagedUsers.Count == 0)
-        {
-            <MudText Color="Color.Secondary">No users found</MudText>
-        }
-        else
-        {
-            <MudTable Items="@_pagedUsers"
-                      Hover="true"
-                      Dense="true"
-                      Bordered="false"
-                      Striped="false"
-                      Class="admin-users-table">
-                <HeaderContent>
-                    <MudTh>User</MudTh>
-                    <MudTh>Email</MudTh>
-                    <MudTh>Balance</MudTh>
-                    <MudTh>Roles</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh Align="Align.Right">Actions</MudTh>
-                </HeaderContent>
+            <div class="au-stat">
+                <div class="au-stat-label">Admins</div>
+                <div class="au-stat-value">@_users.Count(x => x.HasAdminRole)</div>
+            </div>
 
-                <RowTemplate>
-                    <MudTd DataLabel="User">
-                        <div class="admin-user-cell">
-                            <a class="admin-user-avatar-link" href="@ProfileUrl(context)">
-                                <img class="admin-user-avatar" src="@Avatar(context)" />
-                            </a>
+            <div class="au-stat">
+                <div class="au-stat-label">Freelancers</div>
+                <div class="au-stat-value">@_users.Count(x => x.HasFreelancerRole)</div>
+            </div>
 
-                            <div class="admin-user-copy">
-                                <a class="admin-user-name-link" href="@ProfileUrl(context)">
-                                    <div class="admin-user-name">@context.UserName</div>
-                                </a>
+            <div class="au-stat">
+                <div class="au-stat-label">Blocked</div>
+                <div class="au-stat-value">@_users.Count(x => x.IsBlocked)</div>
+            </div>
+        </div>
+    </MudPaper>
 
-                                <div class="admin-user-id">@context.Id</div>
+    <MudPaper Class="au-panel" Elevation="0">
+        <MudStack Spacing="2">
+            <MudTextField T="string"
+                          Variant="Variant.Outlined"
+                          Placeholder="Search by username or email"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          Value="@_search"
+                          ValueChanged="OnSearchChanged" />
+
+            @if (_loading)
+            {
+                <div class="au-loading">
+                    <MudProgressCircular Indeterminate="true" />
+                </div>
+            }
+            else if (_pagedUsers.Count == 0)
+            {
+                <div class="au-empty">
+                    <MudIcon Icon="@Icons.Material.Filled.PeopleAlt" Size="Size.Large" />
+                    <div class="au-empty-title">No users found</div>
+                    <div class="au-empty-sub">Try another search query.</div>
+                </div>
+            }
+            else
+            {
+                <div class="au-list">
+                    @foreach (var context in _pagedUsers)
+                    {
+                        <div class="au-card">
+                            <div class="au-card-top">
+                                <div class="au-user-cell">
+                                    <a class="au-user-avatar-link" href="@ProfileUrl(context)">
+                                        <img class="au-user-avatar" src="@Avatar(context)" />
+                                    </a>
+
+                                    <div class="au-user-copy">
+                                        <a class="au-user-name-link" href="@ProfileUrl(context)">
+                                            <div class="au-user-name">@context.UserName</div>
+                                        </a>
+
+                                        <div class="au-user-email">@context.Email</div>
+                                        <div class="au-user-id">@context.Id</div>
+                                    </div>
+                                </div>
+
+                                <div class="au-status-wrap">
+                                    @if (context.IsBlocked)
+                                    {
+                                        <MudTooltip Text="@BlockedTooltip(context)">
+                                            <span class="au-status-badge au-status-badge-blocked">Blocked</span>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <span class="au-status-badge au-status-badge-active">Active</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="au-grid">
+                                <div class="au-box">
+                                    <div class="au-label">Balance</div>
+                                    <div class="au-value">@($"{context.Balance:0.##} zł")</div>
+                                </div>
+
+                                <div class="au-box">
+                                    <div class="au-label">Roles</div>
+                                    <div class="au-role-list">
+                                        @foreach (var role in context.Roles)
+                                        {
+                                            <span class="au-role-badge">@role</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="au-actions">
+                                @if (context.HasAdminRole)
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Warning"
+                                               OnClick="() => RemoveAdmin(context)">
+                                        Remove admin
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               OnClick="() => MakeAdmin(context)">
+                                        Make admin
+                                    </MudButton>
+                                }
+
+                                @if (context.HasFreelancerRole)
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Warning"
+                                               OnClick="() => RemoveFreelancer(context)">
+                                        Remove freelancer
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               OnClick="() => MakeFreelancer(context)">
+                                        Make freelancer
+                                    </MudButton>
+                                }
+
+                                @if (context.IsBlocked)
+                                {
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Success"
+                                               OnClick="() => UnblockUser(context)">
+                                        Unblock
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Error"
+                                               OnClick="() => OpenBlockModal(context)">
+                                        Block
+                                    </MudButton>
+                                }
                             </div>
                         </div>
-                    </MudTd>
+                    }
+                </div>
 
-                    <MudTd DataLabel="Email">
-                        @context.Email
-                    </MudTd>
-
-                    <MudTd DataLabel="Balance">
-                        @($"{context.Balance:0.##} zł")
-                    </MudTd>
-
-                    <MudTd DataLabel="Roles">
-                        <div class="admin-role-list">
-                            @foreach (var role in context.Roles)
-                            {
-                                <span class="admin-role-badge">@role</span>
-                            }
-                        </div>
-                    </MudTd>
-
-                    <MudTd DataLabel="Status">
-                        @if (context.IsBlocked)
-                        {
-                            <MudTooltip Text="@BlockedTooltip(context)">
-                                <span class="admin-status-badge admin-status-badge-blocked">Blocked</span>
-                            </MudTooltip>
-                        }
-                        else
-                        {
-                            <span class="admin-status-badge admin-status-badge-active">Active</span>
-                        }
-                    </MudTd>
-
-                    <MudTd DataLabel="Actions" Align="Align.Right">
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true">
-                            @if (context.HasAdminRole)
-                            {
-                                <MudMenuItem OnClick="() => RemoveAdmin(context)">Remove admin</MudMenuItem>
-                            }
-                            else
-                            {
-                                <MudMenuItem OnClick="() => MakeAdmin(context)">Make admin</MudMenuItem>
-                            }
-
-                            @if (context.HasFreelancerRole)
-                            {
-                                <MudMenuItem OnClick="() => RemoveFreelancer(context)">Remove freelancer</MudMenuItem>
-                            }
-                            else
-                            {
-                                <MudMenuItem OnClick="() => MakeFreelancer(context)">Make freelancer</MudMenuItem>
-                            }
-
-                            @if (context.IsBlocked)
-                            {
-                                <MudMenuItem OnClick="() => UnblockUser(context)">Unblock</MudMenuItem>
-                            }
-                            else
-                            {
-                                <MudMenuItem OnClick="() => OpenBlockModal(context)">Block</MudMenuItem>
-                            }
-                        </MudMenu>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
-
-            <div class="admin-users-pagination">
-                <MudPagination Count="@_totalPages"
-                               Selected="@_page"
-                               SelectedChanged="OnPageChanged"
-                               Color="Color.Primary"
-                               Variant="Variant.Outlined" />
-            </div>
-        }
-    </MudStack>
-</MudPaper>
+                <div class="au-pagination">
+                    <MudPagination Count="@_totalPages"
+                                   Selected="@_page"
+                                   SelectedChanged="OnPageChanged"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Outlined" />
+                </div>
+            }
+        </MudStack>
+    </MudPaper>
+</MudStack>
 
 @if (_blockModalOpen && _blockTarget is not null)
 {
-    <div class="sg-block-overlay" @onclick="CloseBlockModal">
-        <div class="sg-block-modal" @onclick:stopPropagation="true">
-            <div class="sg-block-head">
+    <div class="au-block-overlay" @onclick="CloseBlockModal">
+        <div class="au-block-modal" @onclick:stopPropagation="true">
+            <div class="au-block-head">
                 <div>
-                    <div class="sg-block-kicker">Moderation</div>
-                    <div class="sg-block-title">Block @(_blockTarget.UserName)</div>
+                    <div class="au-block-kicker">Moderation</div>
+                    <div class="au-block-title">Block @(_blockTarget.UserName)</div>
                 </div>
 
                 <MudIconButton Icon="@Icons.Material.Filled.Close"
@@ -169,11 +217,11 @@
                                OnClick="CloseBlockModal" />
             </div>
 
-            <div class="sg-block-user">
-                <img class="sg-block-user-avatar" src="@Avatar(_blockTarget)" />
-                <div class="sg-block-user-copy">
-                    <div class="sg-block-user-name">@_blockTarget.UserName</div>
-                    <div class="sg-block-user-email">@_blockTarget.Email</div>
+            <div class="au-block-user">
+                <img class="au-block-user-avatar" src="@Avatar(_blockTarget)" />
+                <div class="au-block-user-copy">
+                    <div class="au-block-user-name">@_blockTarget.UserName</div>
+                    <div class="au-block-user-email">@_blockTarget.Email</div>
                 </div>
             </div>
 
@@ -198,7 +246,7 @@
                           MaxLength="500"
                           Class="mt-4" />
 
-            <div class="sg-block-actions">
+            <div class="au-block-actions">
                 <MudButton Variant="Variant.Text"
                            Color="Color.Default"
                            Disabled="_blockSaving"
@@ -218,73 +266,250 @@
 }
 
 <style>
-    .admin-users-panel {
-        padding: 22px;
-        border-radius: 24px;
-        background: rgba(255,255,255,.94);
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 18px 36px rgba(15,23,42,.05);
+    .au-hero {
+        border-radius: 30px;
+        padding: 28px;
+        background: linear-gradient(135deg, #1f1147 0%, #4c1d95 42%, #6d28d9 100%);
+        color: #fff;
+        box-shadow: 0 24px 48px rgba(31,17,71,.16);
     }
 
-    .admin-users-head {
+    .au-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .au-kicker {
+        color: rgba(255,255,255,.68);
+        font-size: .78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .16em;
+    }
+
+    .au-title {
+        margin-top: 8px;
+        font-size: 2rem;
+        line-height: 1.04;
+        font-weight: 950;
+    }
+
+    .au-subtitle {
+        margin-top: 8px;
+        color: rgba(255,255,255,.78);
+        font-weight: 700;
+        max-width: 760px;
+    }
+
+    .au-stats {
+        margin-top: 20px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
     }
 
-    .admin-user-cell {
+    .au-stat {
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.14);
+        backdrop-filter: blur(8px);
+    }
+
+    .au-stat-label {
+        color: rgba(255,255,255,.64);
+        font-size: .74rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .au-stat-value {
+        margin-top: 6px;
+        color: #fff;
+        font-weight: 950;
+        font-size: 1.3rem;
+        line-height: 1;
+    }
+
+    .au-panel {
+        padding: 22px;
+        border-radius: 26px;
+        background: rgba(255,255,255,.95);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 18px 38px rgba(88,28,135,.06);
+    }
+
+    .au-loading,
+    .au-empty {
+        min-height: 260px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .au-empty-title {
+        color: #111827;
+        font-size: 1.08rem;
+        font-weight: 900;
+    }
+
+    .au-empty-sub {
+        color: rgba(17,24,39,.62);
+        font-weight: 700;
+    }
+
+    .au-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .au-card {
+        border-radius: 24px;
+        border: 1px solid rgba(109,40,217,.10);
+        background: linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
+        box-shadow: 0 14px 34px rgba(88,28,135,.05);
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .au-card-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .au-user-cell {
         display: flex;
         align-items: center;
         gap: 12px;
         min-width: 0;
     }
 
-    .admin-user-avatar-link {
+    .au-user-avatar-link {
         display: inline-flex;
         text-decoration: none;
         flex: 0 0 auto;
     }
 
-    .admin-user-avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
+    .au-user-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
         object-fit: cover;
         background: #fff;
-        border: 1px solid rgba(0,0,0,.08);
+        border: 1px solid rgba(109,40,217,.12);
         flex: 0 0 auto;
     }
 
-    .admin-user-copy {
+    .au-user-copy {
         min-width: 0;
     }
 
-    .admin-user-name-link {
+    .au-user-name-link {
         text-decoration: none;
         color: inherit;
     }
 
-    .admin-user-name {
-        color: #111827;
-        font-weight: 900;
+    .au-user-name {
+        color: #1f1147;
+        font-weight: 950;
         line-height: 1.05;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    .admin-user-id {
+    .au-user-email {
+        margin-top: 4px;
+        color: #6b5f8d;
+        font-size: .88rem;
+        font-weight: 700;
+        word-break: break-word;
+    }
+
+    .au-user-id {
         margin-top: 4px;
         color: rgba(17,24,39,.46);
         font-size: .75rem;
         font-weight: 700;
+        word-break: break-all;
     }
 
-    .admin-role-list {
+    .au-status-wrap {
+        flex: 0 0 auto;
+    }
+
+    .au-status-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0 12px;
+        border-radius: 999px;
+        font-size: .78rem;
+        font-weight: 850;
+    }
+
+    .au-status-badge-active {
+        background: rgba(5,150,105,.10);
+        color: #047857;
+        border: 1px solid rgba(5,150,105,.12);
+    }
+
+    .au-status-badge-blocked {
+        background: rgba(220,38,38,.10);
+        color: #b91c1c;
+        border: 1px solid rgba(220,38,38,.12);
+    }
+
+    .au-grid {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 12px;
+    }
+
+    .au-box {
+        border-radius: 18px;
+        border: 1px solid rgba(15,23,42,.06);
+        background: #f8fafc;
+        padding: 14px;
+        min-width: 0;
+    }
+
+    .au-label {
+        color: rgba(17,24,39,.56);
+        font-size: .72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .au-value {
+        margin-top: 6px;
+        color: #111827;
+        font-weight: 900;
+        line-height: 1.35;
+    }
+
+    .au-role-list {
+        margin-top: 6px;
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
     }
 
-    .admin-role-badge {
+    .au-role-badge {
         display: inline-flex;
         align-items: center;
         min-height: 28px;
@@ -297,35 +522,19 @@
         border: 1px solid rgba(79,70,229,.10);
     }
 
-    .admin-status-badge {
-        display: inline-flex;
-        align-items: center;
-        min-height: 28px;
-        padding: 0 10px;
-        border-radius: 999px;
-        font-size: .76rem;
-        font-weight: 850;
+    .au-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
-    .admin-status-badge-active {
-        background: rgba(5,150,105,.10);
-        color: #047857;
-        border: 1px solid rgba(5,150,105,.12);
-    }
-
-    .admin-status-badge-blocked {
-        background: rgba(220,38,38,.10);
-        color: #b91c1c;
-        border: 1px solid rgba(220,38,38,.12);
-    }
-
-    .admin-users-pagination {
+    .au-pagination {
         margin-top: 18px;
         display: flex;
         justify-content: center;
     }
 
-    .sg-block-overlay {
+    .au-block-overlay {
         position: fixed;
         inset: 0;
         background: rgba(15,23,42,.48);
@@ -337,7 +546,7 @@
         z-index: 1600;
     }
 
-    .sg-block-modal {
+    .au-block-modal {
         width: min(100%, 540px);
         border-radius: 24px;
         background: #ffffff;
@@ -346,14 +555,14 @@
         padding: 20px;
     }
 
-    .sg-block-head {
+    .au-block-head {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 12px;
     }
 
-    .sg-block-kicker {
+    .au-block-kicker {
         color: rgba(17,24,39,.46);
         font-size: .75rem;
         font-weight: 900;
@@ -361,7 +570,7 @@
         text-transform: uppercase;
     }
 
-    .sg-block-title {
+    .au-block-title {
         margin-top: 4px;
         color: #111827;
         font-size: 1.25rem;
@@ -369,7 +578,7 @@
         line-height: 1.1;
     }
 
-    .sg-block-user {
+    .au-block-user {
         margin-top: 14px;
         display: flex;
         align-items: center;
@@ -380,7 +589,7 @@
         border: 1px solid rgba(15,23,42,.06);
     }
 
-    .sg-block-user-avatar {
+    .au-block-user-avatar {
         width: 52px;
         height: 52px;
         border-radius: 16px;
@@ -390,17 +599,17 @@
         flex: 0 0 auto;
     }
 
-    .sg-block-user-copy {
+    .au-block-user-copy {
         min-width: 0;
     }
 
-    .sg-block-user-name {
+    .au-block-user-name {
         color: #111827;
         font-weight: 900;
         line-height: 1.1;
     }
 
-    .sg-block-user-email {
+    .au-block-user-email {
         margin-top: 4px;
         color: rgba(17,24,39,.58);
         font-size: .88rem;
@@ -408,11 +617,31 @@
         word-break: break-word;
     }
 
-    .sg-block-actions {
+    .au-block-actions {
         margin-top: 18px;
         display: flex;
         justify-content: flex-end;
         gap: 10px;
+    }
+
+    @@media (max-width: 900px) {
+        .au-stats {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .au-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 760px) {
+        .au-title {
+            font-size: 1.6rem;
+        }
+
+        .au-stats {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
@@ -488,24 +717,24 @@
             activeBanMap.TryGetValue(user.Id, out var ban);
 
             list.Add(new AdminUserRow
-                {
-                    Id = user.Id,
-                    UserName = user.UserName ?? "-",
-                    Email = user.Email ?? "-",
-                    AvatarUrl = user.AvatarUrl,
-                    Balance = user.Balance,
-                    Roles = roles.ToList(),
-                    HasAdminRole = roles.Contains("Admin"),
-                    HasFreelancerRole = roles.Contains("Freelancer"),
-                    IsBlocked = ban is not null,
-                    ActiveBanReason = ban?.Reason,
-                    ActiveBanEndsAtUtc = ban?.EndsAtUtc,
-                    ActiveBanCreatedBy = ban?.CreatedByUser is null
-                        ? null
-                        : (!string.IsNullOrWhiteSpace(ban.CreatedByUser.DisplayName)
-                            ? ban.CreatedByUser.DisplayName
-                            : ban.CreatedByUser.UserName ?? ban.CreatedByUser.Email ?? ban.CreatedByUser.Id)
-                });
+            {
+                Id = user.Id,
+                UserName = user.UserName ?? "-",
+                Email = user.Email ?? "-",
+                AvatarUrl = user.AvatarUrl,
+                Balance = user.Balance,
+                Roles = roles.ToList(),
+                HasAdminRole = roles.Contains("Admin"),
+                HasFreelancerRole = roles.Contains("Freelancer"),
+                IsBlocked = ban is not null,
+                ActiveBanReason = ban?.Reason,
+                ActiveBanEndsAtUtc = ban?.EndsAtUtc,
+                ActiveBanCreatedBy = ban?.CreatedByUser is null
+                    ? null
+                    : (!string.IsNullOrWhiteSpace(ban.CreatedByUser.DisplayName)
+                        ? ban.CreatedByUser.DisplayName
+                        : ban.CreatedByUser.UserName ?? ban.CreatedByUser.Email ?? ban.CreatedByUser.Id)
+            });
         }
 
         _users = list;
@@ -617,13 +846,13 @@
             else
             {
                 db.UserBans.Add(new UserBan
-                    {
-                        UserId = _blockTarget.Id,
-                        CreatedByUserId = adminId,
-                        Reason = _blockReason.Trim(),
-                        StartsAtUtc = now,
-                        EndsAtUtc = endsAt
-                    });
+                {
+                    UserId = _blockTarget.Id,
+                    CreatedByUserId = adminId,
+                    Reason = _blockReason.Trim(),
+                    StartsAtUtc = now,
+                    EndsAtUtc = endsAt
+                });
             }
 
             await db.SaveChangesAsync();

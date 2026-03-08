@@ -1,7 +1,9 @@
 ﻿@using MudBlazor
 @using Microsoft.EntityFrameworkCore
 @using SkillGo.Data
+@using SkillGo.Data.Models
 @using SkillGo.Data.Models.Orders
+@using SkillGo.Data.Models.Reports
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject ISnackbar Snackbar
 
@@ -127,24 +129,45 @@
         {
             await using var db = await DbFactory.CreateDbContextAsync();
 
-            var orderExists = await db.Orders.AnyAsync(x => x.Id == OrderId);
-            if (!orderExists)
+            var order = await db.Orders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == OrderId);
+
+            if (order == null)
             {
                 Snackbar.Add("Order not found", Severity.Error);
                 return;
             }
 
-            db.OrderDisputes.Add(new OrderDispute
-                {
-                    OrderId = OrderId,
-                    ReporterId = ReporterId,
-                    Subject = (_subject ?? "").Trim(),
-                    Description = (_description ?? "").Trim(),
-                    Status = OrderDisputeStatus.Open,
-                    CreatedAtUtc = DateTime.UtcNow
-                });
+            var targetUserId = order.BuyerId == ReporterId
+                ? order.SellerId
+                : order.BuyerId;
+
+            var dispute = new OrderDispute
+            {
+                OrderId = OrderId,
+                ReporterId = ReporterId,
+                Subject = (_subject ?? "").Trim(),
+                Description = (_description ?? "").Trim(),
+                Status = OrderDisputeStatus.Open,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            db.OrderDisputes.Add(dispute);
+
+            db.Reports.Add(new Report
+            {
+                ReporterUserId = ReporterId,
+                TargetUserId = targetUserId,
+                TargetType = ReportTargetType.Order,
+                OrderId = OrderId,
+                Reason = $"{_subject.Trim()}\n\n{_description.Trim()}",
+                CreatedAt = DateTime.UtcNow,
+                Status = ReportStatus.Open
+            });
 
             await db.SaveChangesAsync();
+
             MudDialog.Close(DialogResult.Ok(true));
         }
         finally

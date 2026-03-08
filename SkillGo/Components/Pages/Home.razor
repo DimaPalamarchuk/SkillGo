@@ -3,7 +3,7 @@
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
 
 <PageTitle>Home</PageTitle>
@@ -377,28 +377,33 @@
         backdrop-filter: blur(10px);
     }
 
-    .hero-paper .search-input,
-    .hero-paper .search-input ::deep .mud-input-control,
-    .hero-paper .search-input ::deep .mud-input-slot,
-    .hero-paper .search-input ::deep .mud-input-root,
-    .hero-paper .search-input ::deep div.mud-input-slot.mud-input-root,
-    .hero-paper .search-input ::deep .mud-input > input.mud-input-root,
-    .hero-paper .search-input ::deep input,
-    .hero-paper .search-input ::deep input.mud-input-slot {
+    .search-input ::deep .mud-input-control {
         color: #fff !important;
     }
 
-    .hero-paper .search-input ::deep input::placeholder,
-    .hero-paper .search-input ::deep input.mud-input-slot::placeholder {
+    .search-input ::deep .mud-input-outlined-border {
+        border-color: rgba(255,255,255,.92) !important;
+    }
+
+    .search-input ::deep .mud-input-slot,
+    .search-input ::deep .mud-input-root,
+    .search-input ::deep input,
+    .search-input ::deep input.mud-input-slot,
+    .search-input ::deep .mud-input > input.mud-input-root,
+    .search-input ::deep div.mud-input-slot.mud-input-root {
+        color: #fff !important;
+        -webkit-text-fill-color: #fff !important;
+        caret-color: #fff !important;
+    }
+
+    .search-input ::deep input::placeholder {
         color: rgba(255,255,255,.72) !important;
+        -webkit-text-fill-color: rgba(255,255,255,.72) !important;
+        opacity: 1 !important;
     }
 
-    .hero-paper .search-input ::deep .mud-input-adornment {
+    .search-input ::deep .mud-input-adornment {
         color: #fff !important;
-    }
-
-    .hero-paper .search-input ::deep .mud-input-outlined-border {
-        border-color: rgba(255,255,255,.9) !important;
     }
 
     .search-button {
@@ -646,12 +651,16 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _categories = await Db.Categories
+        _loading = true;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        _categories = await db.Categories
             .AsNoTracking()
             .OrderBy(x => x.Name)
             .ToListAsync();
 
-        _services = await Db.ServiceOffers
+        _services = await db.ServiceOffers
             .AsNoTracking()
             .Include(x => x.Category)
             .OrderByDescending(x => x.Id)

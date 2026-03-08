@@ -1,5 +1,6 @@
 ﻿@page "/admin/reports/{Id:int}"
 @attribute [Authorize(Roles = "Admin")]
+@layout SkillGo.Components.Layout.AdminLayout
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
@@ -16,34 +17,37 @@
 
 <PageTitle>Report Details</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.False" Class="mt-6">
+<MudStack Spacing="3">
     @if (_loading)
     {
-        <MudPaper Class="details-loading" Elevation="0">
-            <MudProgressCircular Indeterminate="true" />
+        <MudPaper Class="ard-loading" Elevation="0">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Loading report...</MudText>
         </MudPaper>
     }
     else if (_report is null)
     {
-        <MudPaper Class="details-empty" Elevation="0">
+        <MudPaper Class="ard-empty" Elevation="0">
             <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" />
-            <div class="details-empty-title">Report not found</div>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="GoBack">
+            <div class="ard-empty-title">Report not found</div>
+            <div class="ard-empty-sub">The report may have been removed or does not exist.</div>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoBack">
                 Back to reports
             </MudButton>
         </MudPaper>
     }
     else
     {
-        <div class="details-hero">
-            <div class="details-hero-left">
-                <div class="details-kicker">Administration</div>
-                <div class="details-title">Report #@_report.Id</div>
-                <div class="details-subtitle">Inspect the reported violation and related object.</div>
-            </div>
+        <MudPaper Class="ard-hero" Elevation="0">
+            <div class="ard-hero-top">
+                <div>
+                    <div class="ard-kicker">Administration</div>
+                    <div class="ard-title">Report #@_report.Id</div>
+                    <div class="ard-subtitle">Review the violation, inspect the related entity and take moderation action.</div>
+                </div>
 
-            <div class="details-hero-right">
-                <MudStack Row="true" Spacing="1">
+                <div class="ard-hero-badges">
                     <MudChip T="string" Variant="Variant.Filled" Color="@TargetTypeColor(_report.TargetType)">
                         @_report.TargetType
                     </MudChip>
@@ -51,93 +55,89 @@
                     <MudChip T="string" Variant="Variant.Outlined" Color="@StatusColor(_report.Status)">
                         @_report.Status
                     </MudChip>
-                </MudStack>
+                </div>
             </div>
-        </div>
 
-        <div class="details-grid mt-4">
-            <MudPaper Class="details-main" Elevation="0">
-                <div class="details-section">
-                    <div class="details-section-title">Report information</div>
-
-                    <div class="details-info-grid">
-                        <div class="details-info-card">
-                            <div class="details-info-label">Reporter</div>
-                            <div class="details-info-value">@DisplayUser(_report.ReporterUser)</div>
-                        </div>
-
-                        <div class="details-info-card">
-                            <div class="details-info-label">Target user</div>
-                            <div class="details-info-value">@DisplayUser(_report.TargetUser)</div>
-                        </div>
-
-                        <div class="details-info-card">
-                            <div class="details-info-label">Created</div>
-                            <div class="details-info-value">@_report.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
-                        </div>
-
-                        <div class="details-info-card">
-                            <div class="details-info-label">Type</div>
-                            <div class="details-info-value">@_report.TargetType</div>
-                        </div>
-                    </div>
+            <div class="ard-hero-grid">
+                <div class="ard-stat">
+                    <div class="ard-stat-label">Reporter</div>
+                    <div class="ard-stat-value">@DisplayUser(_report.ReporterUser)</div>
                 </div>
 
-                <div class="details-section">
-                    <div class="details-section-title">Reason</div>
-                    <div class="details-reason">@_report.Reason</div>
+                <div class="ard-stat">
+                    <div class="ard-stat-label">Target user</div>
+                    <div class="ard-stat-value">@DisplayUser(_report.TargetUser)</div>
+                </div>
+
+                <div class="ard-stat">
+                    <div class="ard-stat-label">Created</div>
+                    <div class="ard-stat-value">@_report.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                </div>
+
+                <div class="ard-stat">
+                    <div class="ard-stat-label">Object</div>
+                    <div class="ard-stat-value">@ObjectText()</div>
+                </div>
+            </div>
+        </MudPaper>
+
+        <div class="ard-grid">
+            <MudPaper Class="ard-main" Elevation="0">
+                <div class="ard-section">
+                    <div class="ard-section-title">Reason</div>
+                    <div class="ard-reason-box">@_report.Reason</div>
                 </div>
 
                 @if (_report.Status != ReportStatus.Open)
                 {
-                    <div class="details-section">
-                        <div class="details-section-title">Resolution</div>
+                    <div class="ard-section">
+                        <div class="ard-section-title">Resolution</div>
 
-                        <div class="details-info-grid">
-                            <div class="details-info-card">
-                                <div class="details-info-label">Closed by</div>
-                                <div class="details-info-value">@DisplayUser(_report.ResolvedByUser)</div>
+                        <div class="ard-info-grid">
+                            <div class="ard-info-card">
+                                <div class="ard-info-label">Closed by</div>
+                                <div class="ard-info-value">@DisplayUser(_report.ResolvedByUser)</div>
                             </div>
 
-                            <div class="details-info-card">
-                                <div class="details-info-label">Closed at</div>
-                                <div class="details-info-value">@(_report.ResolvedAtUtc.HasValue ? _report.ResolvedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-")</div>
+                            <div class="ard-info-card">
+                                <div class="ard-info-label">Closed at</div>
+                                <div class="ard-info-value">@(_report.ResolvedAtUtc.HasValue ? _report.ResolvedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-")</div>
                             </div>
 
-                            <div class="details-info-card">
-                                <div class="details-info-label">Result</div>
-                                <div class="details-info-value">@(_report.ResolutionResult ?? "-")</div>
+                            <div class="ard-info-card">
+                                <div class="ard-info-label">Result</div>
+                                <div class="ard-info-value">@(_report.ResolutionResult ?? "-")</div>
                             </div>
 
-                            <div class="details-info-card">
-                                <div class="details-info-label">Status</div>
-                                <div class="details-info-value">@_report.Status</div>
+                            <div class="ard-info-card">
+                                <div class="ard-info-label">Status</div>
+                                <div class="ard-info-value">@_report.Status</div>
                             </div>
                         </div>
 
                         @if (!string.IsNullOrWhiteSpace(_report.ResolutionNote))
                         {
-                            <div class="details-reason">@_report.ResolutionNote</div>
+                            <div class="ard-resolution-note">@_report.ResolutionNote</div>
                         }
                     </div>
                 }
 
                 @if (_report.TargetType == ReportTargetType.Message)
                 {
-                    <div class="details-section">
-                        <div class="details-section-title">Reported message</div>
+                    <div class="ard-section">
+                        <div class="ard-section-title">Reported message</div>
 
                         @if (_message is null)
                         {
-                            <div class="details-note">Message was not found.</div>
+                            <div class="ard-note-box">Message not found.</div>
                         }
                         else
                         {
-                            <div class="message-card">
-                                <div class="message-top">
-                                    <div class="message-top-left">
-                                        <div class="message-user">@DisplayUser(_messageSender)</div>
-                                        <div class="message-time">@_message.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                            <div class="ard-object-card">
+                                <div class="ard-object-head">
+                                    <div>
+                                        <div class="ard-object-title">@DisplayUser(_messageSender)</div>
+                                        <div class="ard-object-sub">@_message.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                                     </div>
 
                                     @if (_message.ConversationId > 0)
@@ -152,21 +152,21 @@
 
                                 @if (_message.IsDeleted)
                                 {
-                                    <div class="details-note">Message deleted</div>
+                                    <div class="ard-note-box mt-3">Message deleted.</div>
                                 }
                                 else
                                 {
                                     @if (!string.IsNullOrWhiteSpace(_message.Body))
                                     {
-                                        <div class="message-body">@_message.Body</div>
+                                        <div class="ard-message-body">@_message.Body</div>
                                     }
 
                                     @if (_message.Attachments.Any())
                                     {
-                                        <div class="attachments-list">
+                                        <div class="ard-attachments">
                                             @foreach (var att in _message.Attachments)
                                             {
-                                                <a class="attachment-item" href="@att.Url" target="_blank">
+                                                <a class="ard-attachment" href="@att.Url" target="_blank">
                                                     <MudIcon Icon="@(att.IsImage ? Icons.Material.Filled.Image : Icons.Material.Filled.AttachFile)" />
                                                     <span>@att.FileName</span>
                                                 </a>
@@ -181,46 +181,52 @@
 
                 @if (_report.TargetType == ReportTargetType.Order)
                 {
-                    <div class="details-section">
-                        <div class="details-section-title">Reported order</div>
+                    <div class="ard-section">
+                        <div class="ard-section-title">Reported order</div>
 
                         @if (_order is null)
                         {
-                            <div class="details-note">Order was not found.</div>
+                            <div class="ard-note-box">Order not found.</div>
                         }
                         else
                         {
-                            <div class="object-card">
-                                <div class="object-title">Order #@_order.Id</div>
-                                <div class="object-subtitle">@(_order.ServiceOffer?.Title ?? "Service")</div>
+                            <div class="ard-object-card">
+                                <div class="ard-object-title">Order #@_order.Id</div>
+                                <div class="ard-object-sub">@(_order.ServiceOffer?.Title ?? "Service")</div>
 
-                                <div class="details-info-grid mt-4">
-                                    <div class="details-info-card">
-                                        <div class="details-info-label">Buyer</div>
-                                        <div class="details-info-value">@DisplayUser(_buyer)</div>
+                                <div class="ard-info-grid mt-4">
+                                    <div class="ard-info-card">
+                                        <div class="ard-info-label">Buyer</div>
+                                        <div class="ard-info-value">@DisplayUser(_buyer)</div>
                                     </div>
 
-                                    <div class="details-info-card">
-                                        <div class="details-info-label">Seller</div>
-                                        <div class="details-info-value">@DisplayUser(_seller)</div>
+                                    <div class="ard-info-card">
+                                        <div class="ard-info-label">Seller</div>
+                                        <div class="ard-info-value">@DisplayUser(_seller)</div>
                                     </div>
 
-                                    <div class="details-info-card">
-                                        <div class="details-info-label">Amount</div>
-                                        <div class="details-info-value">@_order.Amount.ToString("0.00") zł</div>
+                                    <div class="ard-info-card">
+                                        <div class="ard-info-label">Amount</div>
+                                        <div class="ard-info-value">@_order.Amount.ToString("0.00") zł</div>
                                     </div>
 
-                                    <div class="details-info-card">
-                                        <div class="details-info-label">Status</div>
-                                        <div class="details-info-value">@_order.Status</div>
+                                    <div class="ard-info-card">
+                                        <div class="ard-info-label">Status</div>
+                                        <div class="ard-info-value">@_order.Status</div>
                                     </div>
                                 </div>
 
-                                <div class="object-actions">
+                                <div class="ard-object-actions">
                                     <MudButton Variant="Variant.Outlined"
                                                Color="Color.Primary"
                                                OnClick="@(() => Nav.NavigateTo($"/orders/{_order.Id}"))">
                                         Open order
+                                    </MudButton>
+
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => Nav.NavigateTo($"/chat/{_order.ConversationId}"))">
+                                        Open chat
                                     </MudButton>
                                 </div>
                             </div>
@@ -230,32 +236,32 @@
 
                 @if (_report.TargetType == ReportTargetType.Service)
                 {
-                    <div class="details-section">
-                        <div class="details-section-title">Reported service</div>
+                    <div class="ard-section">
+                        <div class="ard-section-title">Reported service</div>
 
                         @if (_service is null)
                         {
-                            <div class="details-note">Service was not found or removed.</div>
+                            <div class="ard-note-box">Service not found.</div>
                         }
                         else
                         {
-                            <div class="object-card">
-                                <div class="object-title">@_service.Title</div>
-                                <div class="object-subtitle">@TrimText(_service.Description, 280)</div>
+                            <div class="ard-object-card">
+                                <div class="ard-object-title">@_service.Title</div>
+                                <div class="ard-object-sub">@TrimText(_service.Description, 280)</div>
 
-                                <div class="details-info-grid mt-4">
-                                    <div class="details-info-card">
-                                        <div class="details-info-label">Owner</div>
-                                        <div class="details-info-value">@DisplayUser(_serviceOwner)</div>
+                                <div class="ard-info-grid mt-4">
+                                    <div class="ard-info-card">
+                                        <div class="ard-info-label">Owner</div>
+                                        <div class="ard-info-value">@DisplayUser(_serviceOwner)</div>
                                     </div>
 
-                                    <div class="details-info-card">
-                                        <div class="details-info-label">Price</div>
-                                        <div class="details-info-value">@_service.Price.ToString("0.00") zł</div>
+                                    <div class="ard-info-card">
+                                        <div class="ard-info-label">Price</div>
+                                        <div class="ard-info-value">@_service.Price.ToString("0.00") zł</div>
                                     </div>
                                 </div>
 
-                                <div class="object-actions">
+                                <div class="ard-object-actions">
                                     <MudButton Variant="Variant.Outlined"
                                                Color="Color.Primary"
                                                OnClick="@(() => Nav.NavigateTo($"/services/{_service.Id}"))">
@@ -269,14 +275,14 @@
 
                 @if (_report.TargetType == ReportTargetType.Profile)
                 {
-                    <div class="details-section">
-                        <div class="details-section-title">Reported profile</div>
+                    <div class="ard-section">
+                        <div class="ard-section-title">Reported profile</div>
 
-                        <div class="object-card">
-                            <div class="object-title">@DisplayUser(_report.TargetUser)</div>
-                            <div class="object-subtitle">@(_report.TargetUser?.UserName is null ? "-" : "@" + _report.TargetUser.UserName)</div>
+                        <div class="ard-object-card">
+                            <div class="ard-object-title">@DisplayUser(_report.TargetUser)</div>
+                            <div class="ard-object-sub">@(_report.TargetUser?.UserName is null ? "-" : "@" + _report.TargetUser.UserName)</div>
 
-                            <div class="object-actions">
+                            <div class="ard-object-actions">
                                 @if (!string.IsNullOrWhiteSpace(_report.TargetUser?.UserName))
                                 {
                                     <MudButton Variant="Variant.Outlined"
@@ -291,8 +297,8 @@
                 }
             </MudPaper>
 
-            <MudPaper Class="details-side" Elevation="0">
-                <div class="details-side-title">Quick actions</div>
+            <MudPaper Class="ard-side" Elevation="0">
+                <div class="ard-side-title">Quick actions</div>
 
                 <MudStack Spacing="2" Class="mt-4">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoBack">
@@ -320,16 +326,17 @@
 
                 @if (_report.Status == ReportStatus.Open)
                 {
-                    <div class="details-side-title mt-6">Close report</div>
+                    <div class="ard-side-title mt-6">Close report</div>
 
                     <MudStack Spacing="2" Class="mt-4">
-                        <MudSelect T="string" @bind-Value="_resolutionResult">
+                        <MudSelect T="string" @bind-Value="_resolutionResult" Variant="Variant.Outlined">
                             <MudSelectItem T="string" Value="@("Violation confirmed")">Violation confirmed</MudSelectItem>
                             <MudSelectItem T="string" Value="@("False report")">False report</MudSelectItem>
                             <MudSelectItem T="string" Value="@("No action required")">No action required</MudSelectItem>
                             <MudSelectItem T="string" Value="@("User warned")">User warned</MudSelectItem>
                             <MudSelectItem T="string" Value="@("Content removed")">Content removed</MudSelectItem>
                             <MudSelectItem T="string" Value="@("User banned")">User banned</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Refund issued to client")">Refund issued to client</MudSelectItem>
                         </MudSelect>
 
                         <MudTextField @bind-Value="_resolutionNote"
@@ -356,7 +363,7 @@
                     </MudStack>
                 }
 
-                <div class="details-side-title mt-6">User restriction</div>
+                <div class="ard-side-title mt-6">User restriction</div>
 
                 @if (_activeBan is not null)
                 {
@@ -375,7 +382,7 @@
                 else
                 {
                     <MudStack Spacing="2" Class="mt-4">
-                        <MudSelect T="string" @bind-Value="_banDuration">
+                        <MudSelect T="string" @bind-Value="_banDuration" Variant="Variant.Outlined">
                             <MudSelectItem T="string" Value="@("1d")">1 day</MudSelectItem>
                             <MudSelectItem T="string" Value="@("7d")">7 days</MudSelectItem>
                             <MudSelectItem T="string" Value="@("30d")">30 days</MudSelectItem>
@@ -401,7 +408,7 @@
 
                 @if (_report.TargetType == ReportTargetType.Message && _message is not null && !_message.IsDeleted)
                 {
-                    <div class="details-side-title mt-6">Message moderation</div>
+                    <div class="ard-side-title mt-6">Message moderation</div>
 
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Error"
@@ -414,7 +421,7 @@
 
                 @if (_report.TargetType == ReportTargetType.Service && _service is not null)
                 {
-                    <div class="details-side-title mt-6">Service moderation</div>
+                    <div class="ard-side-title mt-6">Service moderation</div>
 
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Error"
@@ -424,46 +431,68 @@
                         Delete service
                     </MudButton>
                 }
+
+                @if (_report.TargetType == ReportTargetType.Order && _order is not null)
+                {
+                    <div class="ard-side-title mt-6">Order refund</div>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Warning"
+                               Class="mt-4"
+                               Disabled="_moderating"
+                               OnClick="RefundOrderAsync">
+                        @(_moderating ? "Saving..." : "Refund client")
+                    </MudButton>
+                }
             </MudPaper>
         </div>
     }
-</MudContainer>
+</MudStack>
 
 <style>
-    .details-loading,
-    .details-empty {
-        min-height: 320px;
+    .ard-loading,
+    .ard-empty {
+        min-height: 360px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 14px;
-        border-radius: 24px;
-        background: rgba(255,255,255,.96);
+        border-radius: 28px;
+        background: rgba(255,255,255,.94);
         border: 1px solid rgba(15,23,42,.06);
+        box-shadow: 0 18px 36px rgba(15,23,42,.05);
         text-align: center;
     }
 
-    .details-empty-title {
-        font-size: 1.08rem;
-        font-weight: 900;
+    .ard-empty-title {
         color: #111827;
+        font-size: 1.08rem;
+        font-weight: 950;
     }
 
-    .details-hero {
-        border-radius: 26px;
+    .ard-empty-sub {
+        color: rgba(17,24,39,.62);
+        font-weight: 700;
+    }
+
+    .ard-hero {
+        border-radius: 30px;
         padding: 28px;
-        background: linear-gradient(135deg, #111827 0%, #1f2937 45%, #312e81 100%);
+        background: linear-gradient(135deg, #1f1147 0%, #4c1d95 42%, #6d28d9 100%);
         color: #fff;
-        box-shadow: 0 24px 56px rgba(15,23,42,.18);
+        box-shadow: 0 24px 48px rgba(31,17,71,.16);
+    }
+
+    .ard-hero-top {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 16px;
+        gap: 18px;
         flex-wrap: wrap;
     }
 
-    .details-kicker {
+    .ard-kicker {
         color: rgba(255,255,255,.68);
         font-size: .78rem;
         font-weight: 900;
@@ -471,66 +500,119 @@
         letter-spacing: .16em;
     }
 
-    .details-title {
+    .ard-title {
         margin-top: 8px;
         font-size: 2rem;
-        font-weight: 950;
         line-height: 1.04;
+        font-weight: 950;
     }
 
-    .details-subtitle {
+    .ard-subtitle {
         margin-top: 8px;
         color: rgba(255,255,255,.78);
         font-weight: 700;
+        max-width: 760px;
     }
 
-    .details-grid {
+    .ard-hero-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .ard-hero-grid {
+        margin-top: 20px;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 320px;
-        gap: 16px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .ard-stat {
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.14);
+        backdrop-filter: blur(8px);
+    }
+
+    .ard-stat-label {
+        color: rgba(255,255,255,.64);
+        font-size: .74rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+    }
+
+    .ard-stat-value {
+        margin-top: 6px;
+        color: #fff;
+        font-weight: 900;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .ard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 18px;
         align-items: start;
     }
 
-    .details-main,
-    .details-side {
-        border-radius: 24px;
-        background: rgba(255,255,255,.96);
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 18px 40px rgba(15,23,42,.05);
+    .ard-main,
+    .ard-side {
+        border-radius: 26px;
+        background: rgba(255,255,255,.95);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 18px 38px rgba(88,28,135,.06);
     }
 
-    .details-main {
+    .ard-main {
+        padding: 24px;
+    }
+
+    .ard-side {
         padding: 22px;
-    }
-
-    .details-side {
-        padding: 20px;
         position: sticky;
         top: 92px;
     }
 
-    .details-side-title,
-    .details-section-title {
-        color: #111827;
-        font-size: 1.02rem;
-        font-weight: 950;
+    .ard-section + .ard-section {
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(109,40,217,.08);
+    }
+
+    .ard-section-title,
+    .ard-side-title {
+        color: #1f1147;
+        font-size: 1.04rem;
+        font-weight: 900;
         line-height: 1.1;
     }
 
-    .details-section + .details-section {
-        margin-top: 22px;
-        padding-top: 22px;
-        border-top: 1px solid rgba(15,23,42,.06);
+    .ard-reason-box,
+    .ard-resolution-note,
+    .ard-note-box,
+    .ard-message-body {
+        margin-top: 14px;
+        padding: 16px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
+        border: 1px solid rgba(109,40,217,.10);
+        color: #1f1147;
+        white-space: pre-wrap;
+        line-height: 1.55;
+        word-break: break-word;
     }
 
-    .details-info-grid {
+    .ard-info-grid {
         margin-top: 14px;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
     }
 
-    .details-info-card {
+    .ard-info-card {
         padding: 14px;
         border-radius: 18px;
         background: #f8fafc;
@@ -538,7 +620,7 @@
         min-width: 0;
     }
 
-    .details-info-label {
+    .ard-info-label {
         color: rgba(17,24,39,.56);
         font-size: .72rem;
         font-weight: 900;
@@ -546,7 +628,7 @@
         letter-spacing: .08em;
     }
 
-    .details-info-value {
+    .ard-info-value {
         margin-top: 6px;
         color: #111827;
         font-weight: 900;
@@ -554,35 +636,16 @@
         word-break: break-word;
     }
 
-    .details-reason {
-        margin-top: 14px;
-        padding: 16px;
-        border-radius: 18px;
-        background: #fff7ed;
-        border: 1px solid rgba(251,146,60,.18);
-        color: #111827;
-        white-space: pre-wrap;
-        line-height: 1.5;
-        word-break: break-word;
-    }
-
-    .details-note {
-        margin-top: 14px;
-        color: rgba(17,24,39,.62);
-        font-weight: 700;
-    }
-
-    .message-card,
-    .object-card {
+    .ard-object-card {
         margin-top: 14px;
         padding: 18px;
-        border-radius: 20px;
-        background: #fff;
-        border: 1px solid rgba(15,23,42,.08);
-        box-shadow: 0 12px 30px rgba(15,23,42,.05);
+        border-radius: 22px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 28px rgba(88,28,135,.05);
     }
 
-    .message-top {
+    .ard-object-head {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
@@ -590,81 +653,79 @@
         flex-wrap: wrap;
     }
 
-    .message-user,
-    .object-title {
-        color: #111827;
+    .ard-object-title {
+        color: #1f1147;
         font-size: 1.05rem;
         font-weight: 950;
         line-height: 1.1;
     }
 
-    .message-time,
-    .object-subtitle {
+    .ard-object-sub {
         margin-top: 6px;
-        color: rgba(17,24,39,.58);
+        color: #6b5f8d;
         font-weight: 700;
-        line-height: 1.4;
+        line-height: 1.45;
         white-space: pre-wrap;
         word-break: break-word;
     }
 
-    .message-body {
-        margin-top: 14px;
-        padding: 14px;
-        border-radius: 16px;
-        background: #f8fafc;
-        border: 1px solid rgba(15,23,42,.06);
-        color: #111827;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
-
-    .attachments-list {
+    .ard-attachments {
         margin-top: 14px;
         display: flex;
         flex-direction: column;
         gap: 10px;
     }
 
-    .attachment-item {
+    .ard-attachment {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         width: fit-content;
+        max-width: 100%;
         padding: 10px 12px;
         border-radius: 14px;
         text-decoration: none;
-        color: #111827;
+        color: #1f1147;
         background: #f8fafc;
         border: 1px solid rgba(15,23,42,.06);
         font-weight: 800;
+        word-break: break-word;
     }
 
-    .object-actions {
+    .ard-object-actions {
         margin-top: 16px;
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
     }
 
-    @@media (max-width: 1080px) {
-        .details-grid {
+    @@media (max-width: 1100px) {
+        .ard-grid {
             grid-template-columns: 1fr;
         }
 
-        .details-side {
+        .ard-side {
             position: static;
+        }
+
+        .ard-hero-grid {
+            grid-template-columns: 1fr 1fr;
         }
     }
 
     @@media (max-width: 760px) {
-        .details-title {
+        .ard-title {
             font-size: 1.6rem;
         }
 
-        .details-info-grid {
+        .ard-hero-grid,
+        .ard-info-grid {
             grid-template-columns: 1fr;
+        }
+
+        .ard-main,
+        .ard-side {
+            border-radius: 22px;
         }
     }
 </style>
@@ -914,13 +975,13 @@
             else
             {
                 db.UserBans.Add(new UserBan
-                    {
-                        UserId = _report.TargetUserId,
-                        CreatedByUserId = adminId,
-                        Reason = _banReason.Trim(),
-                        StartsAtUtc = now,
-                        EndsAtUtc = endsAt
-                    });
+                {
+                    UserId = _report.TargetUserId,
+                    CreatedByUserId = adminId,
+                    Reason = _banReason.Trim(),
+                    StartsAtUtc = now,
+                    EndsAtUtc = endsAt
+                });
             }
 
             await db.SaveChangesAsync();
@@ -1070,9 +1131,104 @@
         }
     }
 
+    private async Task RefundOrderAsync()
+    {
+        if (_moderating || _report is null || _order is null)
+            return;
+
+        _moderating = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var order = await db.Orders.FirstOrDefaultAsync(x => x.Id == _order.Id);
+            if (order is null)
+            {
+                Snackbar.Add("Order not found", Severity.Error);
+                return;
+            }
+
+            if (order.Status == OrderStatus.Cancelled)
+            {
+                Snackbar.Add("Order already cancelled", Severity.Warning);
+                return;
+            }
+
+            var buyer = await db.Users.FirstOrDefaultAsync(x => x.Id == order.BuyerId);
+            if (buyer is null)
+            {
+                Snackbar.Add("Buyer not found", Severity.Error);
+                return;
+            }
+
+            var refundAmount = order.EscrowAmount > 0 ? order.EscrowAmount : order.Amount;
+
+            buyer.Balance += refundAmount;
+
+            db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = buyer.Id,
+                Amount = refundAmount,
+                Type = WalletTransactionType.Refund,
+                Note = $"Admin refund for order #{order.Id}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            order.Status = OrderStatus.Cancelled;
+            order.CompletedAtUtc = DateTime.UtcNow;
+
+            var disputes = await db.OrderDisputes
+                .Where(x => x.OrderId == order.Id && x.Status == OrderDisputeStatus.Open)
+                .ToListAsync();
+
+            foreach (var dispute in disputes)
+                dispute.Status = OrderDisputeStatus.Resolved;
+
+            var report = await db.Reports.FirstOrDefaultAsync(x => x.Id == _report.Id);
+            if (report is not null && report.Status == ReportStatus.Open)
+            {
+                report.Status = ReportStatus.Resolved;
+                report.ResolvedAtUtc = DateTime.UtcNow;
+                report.ResolutionResult = "Refund issued to client";
+                report.ResolutionNote = $"Refund amount: {refundAmount:0.##} zł";
+            }
+
+            await db.SaveChangesAsync();
+
+            Snackbar.Add($"Refunded {refundAmount:0.##} zł to client", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _moderating = false;
+            StateHasChanged();
+        }
+    }
+
     private void GoBack()
     {
         Nav.NavigateTo("/admin/reports");
+    }
+
+    private string ObjectText()
+    {
+        if (_report is null)
+            return "-";
+
+        return _report.TargetType switch
+        {
+            ReportTargetType.Profile => "Profile",
+            ReportTargetType.Service => _report.ServiceOfferId.HasValue ? $"Service #{_report.ServiceOfferId.Value}" : "Service",
+            ReportTargetType.Order => _report.OrderId.HasValue ? $"Order #{_report.OrderId.Value}" : "Order",
+            ReportTargetType.Message => _report.MessageId.HasValue ? $"Message #{_report.MessageId.Value}" : "Message",
+            _ => "-"
+        };
     }
 
     private static string DisplayUser(ApplicationUser? user)

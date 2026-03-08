@@ -2,68 +2,148 @@
 @using MudBlazor
 @using SkillGo.Components.Pages.WalletPage
 
-<MudDialog>
+<MudDialog Class="wallet-dialog">
     <DialogContent>
-        <MudStack Spacing="2">
-            <MudText Typo="Typo.h6" Style="font-weight:900;">Top up balance</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">Pay by card</MudText>
+        <div class="dialog-shell">
+            <div class="dialog-hero">
+                <div class="dialog-badge">
+                    <MudIcon Icon="@Icons.Material.Filled.CreditCard" Size="Size.Small" />
+                    <span>Secure payment</span>
+                </div>
 
-            <MudNumericField T="decimal"
-                             Label="Amount (zł)"
-                             Variant="Variant.Outlined"
-                             Min="1"
-                             Immediate="true"
-                             @bind-Value="_amount" />
+                <MudText Typo="Typo.h5" Class="dialog-title mt-4">Top up balance</MudText>
+                <MudText Typo="Typo.body2" Class="dialog-sub mt-2">Pay by card and add funds to your wallet.</MudText>
+            </div>
 
-            <MudTextField Label="Card number"
-                          Variant="Variant.Outlined"
-                          Immediate="true"
-                          @bind-Value="_cardNumber"
-                          Placeholder="1234 5678 9012 3456" />
+            <MudPaper Class="dialog-card pa-4 mt-4" Elevation="0">
+                <MudStack Spacing="2">
+                    <MudNumericField T="decimal"
+                                     Label="Amount (zł)"
+                                     Variant="Variant.Outlined"
+                                     Min="1"
+                                     Immediate="true"
+                                     @bind-Value="_amount" />
 
-            <MudGrid Spacing="2">
-                <MudItem xs="6">
-                    <MudTextField Label="Expiry (MM/YY)"
+                    <MudTextField Label="Card number"
                                   Variant="Variant.Outlined"
                                   Immediate="true"
-                                  @bind-Value="_expiry"
-                                  Placeholder="05/29" />
-                </MudItem>
-                <MudItem xs="6">
-                    <MudTextField Label="CVC"
+                                  @bind-Value="_cardNumber"
+                                  Placeholder="1234 5678 9012 3456" />
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudTextField Label="Expiry (MM/YY)"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          @bind-Value="_expiry"
+                                          Placeholder="05/29" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTextField Label="CVC"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          @bind-Value="_cvc"
+                                          Placeholder="123" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudTextField Label="Name on card"
                                   Variant="Variant.Outlined"
                                   Immediate="true"
-                                  @bind-Value="_cvc"
-                                  Placeholder="123" />
-                </MudItem>
-            </MudGrid>
+                                  @bind-Value="_nameOnCard"
+                                  Placeholder="JOHN DOE" />
 
-            <MudTextField Label="Name on card"
-                          Variant="Variant.Outlined"
-                          Immediate="true"
-                          @bind-Value="_nameOnCard"
-                          Placeholder="JOHN DOE" />
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+                    }
 
-            @if (!string.IsNullOrWhiteSpace(_error))
-            {
-                <MudText Color="Color.Error">@_error</MudText>
-            }
-
-            @if (_busy)
-            {
-                <MudProgressLinear Indeterminate="true" />
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Processing payment...</MudText>
-            }
-        </MudStack>
+                    @if (_busy)
+                    {
+                        <MudProgressLinear Indeterminate="true" Class="mt-2" />
+                        <MudText Typo="Typo.caption" Class="processing-text">Processing payment...</MudText>
+                    }
+                </MudStack>
+            </MudPaper>
+        </div>
     </DialogContent>
 
     <DialogActions>
-        <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="Cancel">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="PayAsync">
-            @(_busy ? "Processing..." : "Pay")
-        </MudButton>
+        <div class="dialog-actions">
+            <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="Cancel" Class="dialog-btn">
+                Cancel
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="PayAsync" Class="dialog-btn">
+                @(_busy ? "Processing..." : "Pay")
+            </MudButton>
+        </div>
     </DialogActions>
 </MudDialog>
+
+<style>
+    .dialog-shell {
+        padding: 4px;
+    }
+
+    .dialog-hero {
+        border-radius: 24px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 18px 42px rgba(76,29,149,.18);
+        padding: 22px;
+    }
+
+    .dialog-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .dialog-title {
+        font-weight: 900;
+        line-height: 1.05;
+        letter-spacing: -.02em;
+    }
+
+    .dialog-sub {
+        color: rgba(255,255,255,.82);
+        line-height: 1.6;
+    }
+
+    .dialog-card {
+        border-radius: 24px;
+        background: rgba(255,255,255,.96);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
+    }
+
+    .dialog-actions {
+        padding: 8px 24px 24px 24px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .dialog-btn {
+        border-radius: 14px;
+        font-weight: 900;
+        text-transform: none;
+        padding: 10px 16px;
+    }
+
+    .processing-text {
+        color: #6b5f8d;
+    }
+</style>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
@@ -134,10 +214,10 @@
             var last4 = digits.Length >= 4 ? digits[^4..] : "0000";
 
             MudDialog.Close(DialogResult.Ok(new TopUpDialogResult
-                {
-                    Amount = _amount,
-                    Last4 = last4
-                }));
+            {
+                Amount = _amount,
+                Last4 = last4
+            }));
         }
         finally
         {

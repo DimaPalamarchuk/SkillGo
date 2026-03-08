@@ -12,148 +12,190 @@
 
 <PageTitle>Create service</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+<MudContainer MaxWidth="MaxWidth.False" Class="create-shell pa-0">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-8">
+        <MudPaper Class="create-hero pa-6 pa-md-8" Elevation="0">
+            <MudGrid Spacing="3" AlignItems="AlignItems.Stretch">
+                <MudItem xs="12" md="8">
+                    <div class="hero-badge">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" />
+                        <span>Publish a new offer</span>
+                    </div>
 
-    <div class="hero">
-        <div class="hero-inner">
-            <div class="hero-title">Create service</div>
-            <div class="hero-sub">Publish your offer so clients can find you.</div>
-        </div>
-    </div>
+                    <MudText Typo="Typo.h3" Class="hero-title mt-4">Create service</MudText>
 
-    <div class="grid mt-4">
-        <div class="card">
-            <AuthorizeView>
-                <NotAuthorized>
-                    <MudPaper Class="pa-4" Elevation="0" Style="border-radius:18px;border:1px solid rgba(0,0,0,.08);">
-                        You must be logged in to create a service.
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong mt-3" Href="/Account/Login">
-                            Login
-                        </MudButton>
+                    <MudText Typo="Typo.body1" Class="hero-sub mt-4">
+                        Publish your offer so clients can find you and place orders faster.
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="hero-side pa-5 h-100" Elevation="0">
+                        <MudText Typo="Typo.h6" Class="side-title">Quick notes</MudText>
+                        <MudText Typo="Typo.body2" Class="side-sub mt-2">
+                            Clear title, strong description and fair pricing usually perform better.
+                        </MudText>
                     </MudPaper>
-                </NotAuthorized>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
 
-                <Authorized Context="authContext">
-                    <EditForm Model="_input" OnValidSubmit="CreateAsync">
-                        <DataAnnotationsValidator />
-
-                        <div class="section-head">
-                            <div class="section-title">Details</div>
-                            <div class="section-sub">Category, title, description, and price.</div>
-                        </div>
-
-                        <div class="form-grid">
-                            <div class="col-12">
-                                <MudSelect T="int" @bind-Value="_input.CategoryId" Label="Category" Variant="Variant.Outlined" FullWidth="true">
-                                    @foreach (var c in _categories)
-                                    {
-                                        <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </div>
-
-                            <div class="col-12">
-                                <MudTextField T="string" @bind-Value="_input.Title" Label="Title" Variant="Variant.Outlined" FullWidth="true" />
-                            </div>
-
-                            <div class="col-12">
-                                <MudTextField T="string" @bind-Value="_input.Description" Label="Description" Variant="Variant.Outlined" Lines="7" FullWidth="true" />
-                            </div>
-
-                            <div class="col-12">
-                                <MudNumericField T="decimal" @bind-Value="_input.Price" Label="Price (zł)" Variant="Variant.Outlined" Min="0" FullWidth="true" />
-                            </div>
-                        </div>
-
-                        @if (!string.IsNullOrWhiteSpace(_error))
-                        {
-                            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-4">@_error</MudAlert>
-                        }
-
-                        <div class="actions mt-4">
-                            <MudButton Variant="Variant.Outlined" Class="btn-strong" OnClick="@Cancel">
-                                Cancel
+        <div class="grid mt-4">
+            <div class="card">
+                <AuthorizeView>
+                    <NotAuthorized>
+                        <MudPaper Class="login-box pa-4" Elevation="0">
+                            You must be logged in to create a service.
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong mt-3" Href="/Account/Login">
+                                Login
                             </MudButton>
+                        </MudPaper>
+                    </NotAuthorized>
 
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong" ButtonType="ButtonType.Submit">
-                                Publish
-                            </MudButton>
-                        </div>
-                    </EditForm>
-                </Authorized>
-            </AuthorizeView>
-        </div>
+                    <Authorized Context="authContext">
+                        <EditForm Model="_input" OnValidSubmit="CreateAsync">
+                            <DataAnnotationsValidator />
 
-        <div class="side">
-            <div class="side-card">
-                <div class="side-title">Publishing tips</div>
-                <div class="side-sub">A good service converts better.</div>
+                            <div class="section-head">
+                                <div class="section-title">Details</div>
+                                <div class="section-sub">Category, title, description, and price.</div>
+                            </div>
 
-                <ul class="tips">
-                    <li><span class="dot"></span><span><b>Title:</b> clear and specific (max 120 chars)</span></li>
-                    <li><span class="dot"></span><span><b>Description:</b> include deliverables and timeline</span></li>
-                    <li><span class="dot"></span><span><b>Price:</b> start competitive, adjust later</span></li>
-                    <li><span class="dot"></span><span><b>Category:</b> pick the closest match</span></li>
-                </ul>
+                            <div class="form-grid">
+                                <div class="col-12">
+                                    <MudSelect T="int" @bind-Value="_input.CategoryId" Label="Category" Variant="Variant.Outlined" FullWidth="true">
+                                        @foreach (var c in _categories)
+                                        {
+                                            <MudSelectItem T="int" Value="@c.Id">@c.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </div>
+
+                                <div class="col-12">
+                                    <MudTextField T="string" @bind-Value="_input.Title" Label="Title" Variant="Variant.Outlined" FullWidth="true" />
+                                </div>
+
+                                <div class="col-12">
+                                    <MudTextField T="string" @bind-Value="_input.Description" Label="Description" Variant="Variant.Outlined" Lines="7" FullWidth="true" />
+                                </div>
+
+                                <div class="col-12">
+                                    <MudNumericField T="decimal" @bind-Value="_input.Price" Label="Price (zł)" Variant="Variant.Outlined" Min="0" FullWidth="true" />
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(_error))
+                            {
+                                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-4">@_error</MudAlert>
+                            }
+
+                            <div class="actions mt-4">
+                                <MudButton Variant="Variant.Outlined" Class="btn-strong" OnClick="@Cancel">
+                                    Cancel
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong" ButtonType="ButtonType.Submit">
+                                    Publish
+                                </MudButton>
+                            </div>
+                        </EditForm>
+                    </Authorized>
+                </AuthorizeView>
             </div>
 
-            <div class="side-card mt-3">
-                <div class="side-title">Preview</div>
-                <div class="side-sub">How it may look in the list.</div>
+            <div class="side">
+                <div class="side-card">
+                    <div class="side-title">Publishing tips</div>
+                    <div class="side-sub">A good service converts better.</div>
 
-                <div class="preview">
-                    <div class="preview-title">@PreviewTitle</div>
-                    <div class="preview-desc">@PreviewDesc</div>
-                    <div class="preview-row">
-                        <div class="pill">@PreviewCategory</div>
-                        <div class="preview-price">@_input.Price.ToString("0.##") zł</div>
+                    <ul class="tips">
+                        <li><span class="dot"></span><span><b>Title:</b> clear and specific (max 120 chars)</span></li>
+                        <li><span class="dot"></span><span><b>Description:</b> include deliverables and timeline</span></li>
+                        <li><span class="dot"></span><span><b>Price:</b> start competitive, adjust later</span></li>
+                        <li><span class="dot"></span><span><b>Category:</b> pick the closest match</span></li>
+                    </ul>
+                </div>
+
+                <div class="side-card mt-3">
+                    <div class="side-title">Preview</div>
+                    <div class="side-sub">How it may look in the list.</div>
+
+                    <div class="preview">
+                        <div class="preview-title">@PreviewTitle</div>
+                        <div class="preview-desc">@PreviewDesc</div>
+                        <div class="preview-row">
+                            <div class="pill">@PreviewCategory</div>
+                            <div class="preview-price">@_input.Price.ToString("0.##") zł</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
+    </MudContainer>
 </MudContainer>
 
 <style>
-    .hero {
-        border-radius: 22px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        position: relative;
-        overflow: hidden;
+    .create-shell {
+        min-height: calc(100vh - 78px);
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
+            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
-        .hero::before {
-            content: "";
-            position: absolute;
-            inset: -40% -60%;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 55%);
-            transform: rotate(12deg);
-            opacity: .9;
-            pointer-events: none;
-        }
+    .create-hero {
+        border-radius: 32px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 22px 60px rgba(76,29,149,.18);
+    }
 
-    .hero-inner {
-        position: relative;
-        z-index: 1;
-        padding: 26px;
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+        font-size: 13px;
+        font-weight: 700;
     }
 
     .hero-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.65rem;
-        letter-spacing: .2px;
-        line-height: 1.12;
-        margin-bottom: 6px;
+        font-weight: 900;
+        line-height: 1.02;
+        letter-spacing: -.03em;
     }
 
     .hero-sub {
-        color: rgba(17,24,39,.65);
-        font-size: 1rem;
-        line-height: 1.35;
+        color: rgba(255,255,255,.82);
+        line-height: 1.8;
+        font-size: 16px;
+        max-width: 760px;
+    }
+
+    .hero-side,
+    .card,
+    .side-card,
+    .preview,
+    .login-box {
+        border-radius: 26px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
+    }
+
+    .hero-side {
+        background: rgba(255,255,255,.16);
+        border-color: rgba(255,255,255,.12);
+        box-shadow: none;
+    }
+
+    .hero-side .side-title,
+    .hero-side .side-sub {
+        color: #fff;
     }
 
     .grid {
@@ -164,10 +206,6 @@
     }
 
     .card {
-        border-radius: 22px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
         overflow: hidden;
         padding: 22px;
     }
@@ -179,15 +217,19 @@
         margin-bottom: 14px;
     }
 
-    .section-title {
-        font-weight: 950;
-        color: #111827;
+    .section-title,
+    .side-title,
+    .preview-title {
+        font-weight: 900;
+        color: #1f1147;
         font-size: 1.05rem;
         letter-spacing: .2px;
     }
 
-    .section-sub {
-        color: rgba(17,24,39,.6);
+    .section-sub,
+    .side-sub,
+    .preview-desc {
+        color: #6b5f8d;
         font-size: .95rem;
     }
 
@@ -213,6 +255,7 @@
         font-weight: 900;
         letter-spacing: .2px;
         padding: 10px 14px;
+        text-transform: none;
     }
 
     .side {
@@ -224,25 +267,8 @@
     }
 
     .side-card {
-        border-radius: 22px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
         padding: 18px;
         overflow: hidden;
-    }
-
-    .side-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.02rem;
-        letter-spacing: .2px;
-    }
-
-    .side-sub {
-        color: rgba(17,24,39,.6);
-        margin-top: 4px;
-        font-size: .95rem;
     }
 
     .tips {
@@ -254,44 +280,33 @@
         gap: 10px;
     }
 
-        .tips li {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-            color: rgba(17,24,39,.78);
-            line-height: 1.25;
-            font-size: .95rem;
-        }
+    .tips li {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        color: rgba(31,17,71,.78);
+        line-height: 1.35;
+        font-size: .95rem;
+    }
 
     .dot {
         width: 10px;
         height: 10px;
         border-radius: 999px;
-        background: rgba(99,102,241,.5);
+        background: rgba(109,40,217,.45);
         margin-top: 4px;
         flex: 0 0 auto;
     }
 
     .preview {
         margin-top: 14px;
-        border-radius: 18px;
-        border: 1px solid rgba(0,0,0,.08);
         padding: 14px;
-        background: linear-gradient(135deg, rgba(99,102,241,.06), rgba(99,102,241,.02));
-    }
-
-    .preview-title {
-        font-weight: 950;
-        color: #111827;
-        letter-spacing: .2px;
-        line-height: 1.15;
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
     }
 
     .preview-desc {
         margin-top: 6px;
-        color: rgba(17,24,39,.65);
-        font-size: .92rem;
-        line-height: 1.25;
+        line-height: 1.45;
         white-space: pre-wrap;
     }
 
@@ -307,9 +322,9 @@
         display: inline-flex;
         padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(99,102,241,.10);
-        border: 1px solid rgba(99,102,241,.22);
-        color: rgba(17,24,39,.75);
+        background: rgba(109,40,217,.08);
+        border: 1px solid rgba(109,40,217,.18);
+        color: #5b21b6;
         font-weight: 800;
         font-size: .85rem;
         max-width: 190px;
@@ -319,8 +334,8 @@
     }
 
     .preview-price {
-        font-weight: 950;
-        color: #111827;
+        font-weight: 900;
+        color: #1f1147;
         white-space: nowrap;
     }
 
@@ -332,6 +347,21 @@
         .side {
             position: static;
             top: auto;
+        }
+    }
+
+    @@media (max-width: 700px) {
+        .create-hero,
+        .hero-side,
+        .card,
+        .side-card,
+        .preview,
+        .login-box {
+            border-radius: 22px;
+        }
+
+        .hero-title {
+            font-size: 2rem !important;
         }
     }
 </style>
@@ -351,6 +381,7 @@
     }
 
     private string PreviewTitle => string.IsNullOrWhiteSpace(_input.Title) ? "Service title" : _input.Title.Trim();
+
     private string PreviewDesc
     {
         get
@@ -391,14 +422,14 @@
         }
 
         var offer = new ServiceOffer
-            {
-                CategoryId = _input.CategoryId,
-                OwnerUserId = me.Id,
-                Title = (_input.Title ?? "").Trim(),
-                Description = (_input.Description ?? "").Trim(),
-                Price = _input.Price,
-                CreatedAt = DateTime.UtcNow
-            };
+        {
+            CategoryId = _input.CategoryId,
+            OwnerUserId = me.Id,
+            Title = (_input.Title ?? "").Trim(),
+            Description = (_input.Description ?? "").Trim(),
+            Price = _input.Price,
+            CreatedAt = DateTime.UtcNow
+        };
 
         if (string.IsNullOrWhiteSpace(offer.Title) || string.IsNullOrWhiteSpace(offer.Description))
         {

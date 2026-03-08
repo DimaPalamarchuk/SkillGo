@@ -19,473 +19,617 @@
 
 <PageTitle>Service</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
-    @if (_loading)
-    {
-        <MudGrid Spacing="4">
-            <MudItem xs="12" md="8">
-                <div class="card-shell skeleton"></div>
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <div class="side-shell skeleton"></div>
-            </MudItem>
-        </MudGrid>
-    }
-    else if (service is null)
-    {
-        <MudPaper Class="pa-5" Elevation="0" Style="border-radius:20px;border:1px solid rgba(0,0,0,.08);">
-            Service not found.
-        </MudPaper>
-    }
-    else
-    {
-        <div class="hero">
-            <div class="hero-inner">
-                <div class="hero-title">@service.Title</div>
-                <div class="hero-sub">@Trim(service.Description, 180)</div>
+<MudContainer MaxWidth="MaxWidth.False" Class="service-page-shell pa-0">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-8">
+        @if (_loading)
+        {
+            <MudGrid Spacing="3">
+                <MudItem xs="12">
+                    <div class="hero-skeleton skeleton"></div>
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <div class="card-shell skeleton"></div>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <div class="side-shell skeleton"></div>
+                </MudItem>
+            </MudGrid>
+        }
+        else if (service is null)
+        {
+            <MudPaper Class="empty-paper pa-8 text-center" Elevation="0">
+                <MudText Typo="Typo.h5" Class="empty-title">Service not found</MudText>
+                <MudText Typo="Typo.body2" Class="empty-sub mt-2">The service may have been removed or does not exist.</MudText>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Class="hero-paper pa-6 pa-md-8" Elevation="0">
+                <MudGrid Spacing="3" AlignItems="AlignItems.Stretch">
+                    <MudItem xs="12" md="8">
+                        <div class="hero-badge">
+                            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" />
+                            <span>@DisplayName(service.OwnerUser)</span>
+                        </div>
 
-                <div class="hero-meta">
-                    <div class="meta-chip">
-                        <span class="stars">@Stars(avgRating)</span>
-                        <span class="meta-muted">@avgRating.ToString("0.0")</span>
-                        <span class="meta-muted">(@reviewsCount)</span>
-                    </div>
+                        <MudText Typo="Typo.h3" Class="hero-title mt-4">
+                            @service.Title
+                        </MudText>
 
-                    <div class="meta-chip">
-                        <span class="meta-muted">Price</span>
-                        <span class="price">@service.Price.ToString("0.##") zł</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        <MudText Typo="Typo.body1" Class="hero-sub mt-4">
+                            @Trim(service.Description, 220)
+                        </MudText>
 
-        <MudGrid Spacing="4" Class="mt-4">
-            <MudItem xs="12" md="8">
-                <div class="card-shell">
-                    <div class="card-head">
-                        <div class="card-head-title">Service description</div>
-                        <div class="card-head-sub">Details and scope of work</div>
-                    </div>
+                        <MudStack Row="true" Spacing="1" Class="mt-5 hero-tags">
+                            <MudChip T="string" Variant="Variant.Outlined" Class="hero-chip">@GetCategoryName(service)</MudChip>
+                            <MudChip T="string" Variant="Variant.Outlined" Class="hero-chip">Fast response</MudChip>
+                            <MudChip T="string" Variant="Variant.Outlined" Class="hero-chip">@reviewsCount review(s)</MudChip>
+                        </MudStack>
+                    </MudItem>
 
-                    <div class="card-body">
-                        <div class="desc">@service.Description</div>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="hero-side pa-5 h-100" Elevation="0">
+                            <MudText Typo="Typo.h6" Class="side-box-title">Offer summary</MudText>
 
-                        <div class="divider"></div>
+                            <MudGrid Spacing="2" Class="mt-2">
+                                <MudItem xs="6">
+                                    <MudPaper Class="stat-card pa-4" Elevation="0">
+                                        <MudText Typo="Typo.h5" Class="stat-value">@avgRating.ToString("0.0")</MudText>
+                                        <MudText Typo="Typo.body2" Class="stat-label">Rating</MudText>
+                                    </MudPaper>
+                                </MudItem>
 
-                        <div class="actions">
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong"
+                                <MudItem xs="6">
+                                    <MudPaper Class="stat-card pa-4" Elevation="0">
+                                        <MudText Typo="Typo.h5" Class="stat-value">@reviewsCount</MudText>
+                                        <MudText Typo="Typo.body2" Class="stat-label">Reviews</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
+
+                            <MudPaper Class="price-box pa-4 mt-3" Elevation="0">
+                                <MudText Typo="Typo.caption" Class="price-label">Starting at</MudText>
+                                <MudText Typo="Typo.h4" Class="price-value mt-1">@service.Price.ToString("0.##") zł</MudText>
+                            </MudPaper>
+
+                            <MudButton FullWidth="true"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Class="btn-strong mt-4"
+                                       Disabled="_ordering"
+                                       OnClick="PlaceOrderAsync">
+                                @(_ordering ? "Creating..." : "Place order")
+                            </MudButton>
+
+                            <MudButton FullWidth="true"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       Class="btn-strong mt-2"
                                        OnClick="@(() => NavToProfile(service.OwnerUser))">
                                 View freelancer profile
                             </MudButton>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
 
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Error"
-                                       Class="btn-strong"
-                                       Href="@($"/reports/create?type=service&targetUserId={service.OwnerUserId}&serviceOfferId={service.Id}")">
-                                Report service
-                            </MudButton>
+            <MudGrid Spacing="3" Class="mt-4">
+                <MudItem xs="12" md="8">
+                    <MudPaper Class="content-paper" Elevation="0">
+                        <div class="content-head">
+                            <MudText Typo="Typo.h5" Class="content-title">Service description</MudText>
+                            <MudText Typo="Typo.body2" Class="content-sub">Details and scope of work</MudText>
                         </div>
-                    </div>
-                </div>
 
-                <div class="reviews-shell mt-4">
-                    <div class="reviews-head">
-                        <div class="reviews-title">Rating</div>
-                        <div class="reviews-sub">@avgRating.ToString("0.0") from @reviewsCount review(s)</div>
-                    </div>
+                        <div class="content-body">
+                            <div class="desc">@service.Description</div>
 
-                    <div class="reviews-body">
-                        @if (_topReviews is null)
-                        {
-                            <div class="meta-muted">Loading...</div>
-                        }
-                        else if (_topReviews.Count == 0)
-                        {
-                            <div class="meta-muted">No reviews yet.</div>
-                        }
-                        else
-                        {
-                            <MudStack Spacing="2">
-                                @foreach (var r in _topReviews)
-                                {
-                                    <MudPaper Class="pa-3" Elevation="0" Style="border-radius:16px;border:1px solid rgba(0,0,0,.08);">
-                                        <div class="review-row">
-                                            <div class="stars">@Stars(r.Stars)</div>
-                                            <div class="meta-muted">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
-                                        </div>
-                                        @if (!string.IsNullOrWhiteSpace(r.Comment))
-                                        {
-                                            <div class="review-text">@r.Comment</div>
-                                        }
-                                    </MudPaper>
-                                }
+                            <MudDivider Class="my-4" />
+
+                            <MudStack Row="true" Spacing="2" Class="action-row">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Class="btn-strong"
+                                           OnClick="@(() => NavToProfile(service.OwnerUser))">
+                                    View freelancer profile
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           Class="btn-strong"
+                                           Href="@($"/reports/create?type=service&targetUserId={service.OwnerUserId}&serviceOfferId={service.Id}")">
+                                    Report service
+                                </MudButton>
                             </MudStack>
+                        </div>
+                    </MudPaper>
+
+                    <MudPaper Class="reviews-paper mt-4" Elevation="0">
+                        <div class="reviews-head">
+                            <div>
+                                <MudText Typo="Typo.h5" Class="reviews-title">Rating</MudText>
+                                <MudText Typo="Typo.body2" Class="reviews-sub">@avgRating.ToString("0.0") from @reviewsCount review(s)</MudText>
+                            </div>
+
+                            @if (reviewsCount > 0 && !string.IsNullOrWhiteSpace(service.OwnerUser?.UserName))
+                            {
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Class="btn-strong"
+                                           Href="@($"/profile/{service.OwnerUser.UserName}/reviews")">
+                                    View all reviews
+                                </MudButton>
+                            }
+                        </div>
+
+                        <div class="reviews-body">
+                            @if (_reviewsLoading)
+                            {
+                                <MudStack Spacing="2">
+                                    @for (var i = 0; i < 3; i++)
+                                    {
+                                        <div class="review-card skeleton review-skeleton"></div>
+                                    }
+                                </MudStack>
+                            }
+                            else if (_reviews.Count == 0)
+                            {
+                                <div class="meta-muted">No reviews yet.</div>
+                            }
+                            else
+                            {
+                                <MudStack Spacing="2">
+                                    @foreach (var r in _reviews)
+                                    {
+                                        <MudPaper Class="review-card pa-4" Elevation="0">
+                                            <div class="review-top">
+                                                <div class="review-author-block">
+                                                    <img class="review-avatar" src="@GetReviewAvatar(r.AuthorAvatarUrl)" alt="@r.AuthorName" />
+                                                    <div class="review-author-copy">
+                                                        <div class="review-author-name">@r.AuthorName</div>
+                                                        <div class="review-author-date">@r.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="review-rating-block">
+                                                    <div class="stars">@Stars(r.Stars)</div>
+                                                    <div class="meta-muted">@r.Stars.ToString("0.0")</div>
+                                                </div>
+                                            </div>
+
+                                            @if (!string.IsNullOrWhiteSpace(r.Comment))
+                                            {
+                                                <div class="review-text">@r.Comment</div>
+                                            }
+                                        </MudPaper>
+                                    }
+                                </MudStack>
+                            }
+                        </div>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="side-paper" Elevation="0">
+                        <MudText Typo="Typo.h6" Class="side-title">Freelancer</MudText>
+                        <MudText Typo="Typo.body2" Class="side-sub">Service provider</MudText>
+
+                        <div class="profile-card mt-4" @onclick="@(() => NavToProfile(service.OwnerUser))">
+                            <img class="avatar" src="@(service.OwnerUser.AvatarUrl ?? "/images/default-avatar.png")" />
+                            <div class="profile-name">@DisplayName(service.OwnerUser)</div>
+                            <div class="profile-muted">@("@" + (service.OwnerUser.UserName ?? ""))</div>
+                        </div>
+
+                        <div class="side-info mt-4">
+                            <div class="info-row">
+                                <div class="meta-muted">Category</div>
+                                <div class="info-strong">@GetCategoryName(service)</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="meta-muted">Rating</div>
+                                <div class="info-strong">@avgRating.ToString("0.0")</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="meta-muted">Reviews</div>
+                                <div class="info-strong">@reviewsCount</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="meta-muted">Price</div>
+                                <div class="info-strong">@service.Price.ToString("0.##") zł</div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_orderError))
+                        {
+                            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-4">
+                                @_orderError
+                            </MudAlert>
                         }
-                    </div>
-                </div>
-            </MudItem>
 
-            <MudItem xs="12" md="4">
-                <div class="side-shell">
-                    <div class="side-title">Freelancer</div>
-                    <div class="side-sub">Service provider</div>
+                        <MudButton FullWidth="true"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Class="btn-strong mt-4"
+                                   Disabled="_ordering"
+                                   OnClick="PlaceOrderAsync">
+                            @(_ordering ? "Creating..." : "Place order")
+                        </MudButton>
 
-                    <div class="profile-card mt-4" @onclick="@(() => NavToProfile(service.OwnerUser))">
-                        <img class="avatar" src="@(service.OwnerUser.AvatarUrl ?? "/images/default-avatar.png")" />
-                        <div class="profile-name">@DisplayName(service.OwnerUser)</div>
-                        <div class="profile-muted">@("@" + (service.OwnerUser.UserName ?? ""))</div>
-                    </div>
+                        <MudButton FullWidth="true"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   Class="btn-strong mt-2"
+                                   OnClick="@(() => NavToProfile(service.OwnerUser))">
+                            View freelancer profile
+                        </MudButton>
 
-                    <div class="side-info mt-4">
-                        <div class="info-row">
-                            <div class="meta-muted">Rating</div>
-                            <div class="info-strong">@avgRating.ToString("0.0")</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="meta-muted">Reviews</div>
-                            <div class="info-strong">@reviewsCount</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="meta-muted">Price</div>
-                            <div class="info-strong">@service.Price.ToString("0.##") zł</div>
-                        </div>
-                    </div>
-
-                    <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" Class="btn-strong mt-4"
-                               Disabled="_ordering" OnClick="PlaceOrderAsync">
-                        @(_ordering ? "Creating..." : "Place order")
-                    </MudButton>
-
-                    @if (!string.IsNullOrWhiteSpace(_orderError))
-                    {
-                        <MudText Color="Color.Error" Class="mt-2">@_orderError</MudText>
-                    }
-
-                    <MudButton FullWidth="true" Variant="Variant.Outlined" Color="Color.Primary" Class="btn-strong mt-2"
-                               OnClick="@(() => NavToProfile(service.OwnerUser))">
-                        View freelancer profile
-                    </MudButton>
-
-                    <MudButton FullWidth="true"
-                               Variant="Variant.Outlined"
-                               Color="Color.Error"
-                               Class="btn-strong mt-2"
-                               Href="@($"/reports/create?type=service&targetUserId={service.OwnerUserId}&serviceOfferId={service.Id}")">
-                        Report service
-                    </MudButton>
-                </div>
-            </MudItem>
-        </MudGrid>
-    }
+                        <MudButton FullWidth="true"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   Class="btn-strong mt-2"
+                                   Href="@($"/reports/create?type=service&targetUserId={service.OwnerUserId}&serviceOfferId={service.Id}")">
+                            Report service
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    </MudContainer>
 </MudContainer>
 
 <style>
-    .meta-muted {
-        color: rgba(17,24,39,.65)
+    .service-page-shell {
+        min-height: calc(100vh - 78px);
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
+            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
-    .stars {
-        font-weight: 900;
-        letter-spacing: .6px;
-        color: #111827
+    .hero-paper {
+        border-radius: 32px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 22px 60px rgba(76,29,149,.18);
     }
 
-    .price {
-        font-weight: 950;
-        color: #111827
-    }
-
-    .hero {
-        border-radius: 22px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: linear-gradient(135deg,#eef2ff,#e0e7ff);
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        position: relative;
-        overflow: hidden;
-    }
-
-        .hero::before {
-            content: "";
-            position: absolute;
-            inset: -40% -60%;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 55%);
-            transform: rotate(12deg);
-            opacity: .9;
-            pointer-events: none;
-        }
-
-    .hero-inner {
-        position: relative;
-        z-index: 1;
-        padding: 26px 26px 22px 26px
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+        font-size: 13px;
+        font-weight: 700;
     }
 
     .hero-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.65rem;
-        letter-spacing: .2px;
-        line-height: 1.12;
-        margin-bottom: 8px
+        font-weight: 900;
+        line-height: 1.02;
+        letter-spacing: -.03em;
+        max-width: 900px;
     }
 
     .hero-sub {
-        color: rgba(17,24,39,.65);
-        font-size: 1rem;
-        line-height: 1.35;
-        max-width: 900px
+        color: rgba(255,255,255,.82);
+        max-width: 860px;
+        line-height: 1.8;
+        font-size: 16px;
     }
 
-    .hero-meta {
-        margin-top: 14px;
-        display: flex;
+    .hero-tags {
         flex-wrap: wrap;
-        gap: 10px
     }
 
-    .meta-chip {
+    .hero-chip {
+        color: #fff !important;
+        border-color: rgba(255,255,255,.24) !important;
+        background: rgba(255,255,255,.06) !important;
+        font-weight: 700;
+    }
+
+    .hero-side,
+    .stat-card,
+    .price-box,
+    .content-paper,
+    .reviews-paper,
+    .side-paper,
+    .empty-paper,
+    .review-card {
+        border-radius: 26px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
+    }
+
+    .side-box-title,
+    .content-title,
+    .reviews-title,
+    .side-title {
+        font-weight: 800;
+        color: #1f1147;
+    }
+
+    .stat-card {
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
+    }
+
+    .stat-value {
+        font-weight: 900;
+        color: #4c1d95;
+        line-height: 1;
+    }
+
+    .stat-label,
+    .content-sub,
+    .reviews-sub,
+    .side-sub,
+    .meta-muted,
+    .profile-muted,
+    .price-label,
+    .review-author-date {
+        color: #6b5f8d;
+    }
+
+    .price-value,
+    .stars,
+    .info-strong,
+    .review-author-name {
+        color: #1f1147;
+        font-weight: 900;
+    }
+
+    .content-head,
+    .reviews-head {
+        padding: 22px 24px 18px 24px;
+        border-bottom: 1px solid rgba(109,40,217,.08);
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: rgba(255,255,255,.7);
-        backdrop-filter: blur(6px);
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
     }
 
-    .card-shell {
-        border-radius: 20px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        overflow: hidden;
-    }
-
-    .card-head {
-        padding: 20px 22px 16px 22px;
-        border-bottom: 1px solid rgba(0,0,0,.06)
-    }
-
-    .card-head-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.05rem;
-        letter-spacing: .2px
-    }
-
-    .card-head-sub {
-        color: rgba(17,24,39,.6);
-        font-size: .95rem;
-        margin-top: 4px
-    }
-
-    .card-body {
-        padding: 22px
+    .content-body,
+    .reviews-body {
+        padding: 24px;
     }
 
     .desc {
-        color: rgba(17,24,39,.8);
+        color: rgba(31,17,71,.86);
         font-size: 1rem;
-        line-height: 1.45;
-        white-space: pre-wrap
+        line-height: 1.7;
+        white-space: pre-wrap;
     }
 
-    .divider {
-        height: 1px;
-        background: rgba(0,0,0,.06);
-        margin: 18px 0
-    }
-
-    .actions {
-        display: flex;
+    .action-row {
         flex-wrap: wrap;
-        gap: 10px
     }
 
     .btn-strong {
         border-radius: 14px;
         font-weight: 900;
         letter-spacing: .2px;
-        padding: 10px 14px
+        padding: 10px 14px;
+        text-transform: none;
     }
 
-    .side-shell {
-        border-radius: 20px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        padding: 22px;
-    }
-
-    .side-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.05rem;
-        letter-spacing: .2px;
-        margin-bottom: 4px
-    }
-
-    .side-sub {
-        color: rgba(17,24,39,.6);
-        font-size: .95rem
+    .side-paper {
+        padding: 24px;
     }
 
     .profile-card {
-        border-radius: 18px;
-        border: 1px solid rgba(0,0,0,.08);
-        padding: 16px;
-        box-shadow: 0 12px 28px rgba(0,0,0,.06);
+        border-radius: 22px;
+        border: 1px solid rgba(109,40,217,.10);
+        padding: 18px;
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 8px;
         cursor: pointer;
-        transition: transform .18s ease, box-shadow .18s ease;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+    .profile-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(109,40,217,.22);
+        box-shadow: 0 18px 42px rgba(88,28,135,.10);
+    }
+
+    .avatar {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid rgba(109,40,217,.14);
         background: #fff;
     }
 
-        .profile-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 48px rgba(0,0,0,.10)
-        }
-
-    .avatar {
-        width: 86px;
-        height: 86px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 1px solid rgba(0,0,0,.12);
-        background: #fff
-    }
-
     .profile-name {
-        font-weight: 950;
-        color: #111827;
+        font-weight: 900;
+        color: #1f1147;
         letter-spacing: .2px;
         text-align: center;
         max-width: 240px;
         white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis
-    }
-
-    .profile-muted {
-        color: rgba(17,24,39,.6);
-        font-weight: 800;
-        font-size: .92rem
+        text-overflow: ellipsis;
     }
 
     .side-info {
         border-radius: 18px;
-        border: 1px dashed rgba(0,0,0,.14);
+        border: 1px dashed rgba(109,40,217,.16);
         padding: 14px;
-        background: rgba(99,102,241,.04)
+        background: rgba(109,40,217,.04);
     }
 
     .info-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 0
+        gap: 14px;
+        padding: 7px 0;
     }
 
-    .info-strong {
-        font-weight: 950;
-        color: #111827
+    .review-card {
+        border-radius: 18px;
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
     }
 
-    .reviews-shell {
-        border-radius: 20px;
-        border: 1px solid rgba(0,0,0,.08);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(0,0,0,.06);
-        overflow: hidden;
-    }
-
-    .reviews-head {
-        padding: 18px 22px 14px 22px;
-        border-bottom: 1px solid rgba(0,0,0,.06);
+    .review-top {
         display: flex;
-        align-items: baseline;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 12px;
+        gap: 14px;
         flex-wrap: wrap;
     }
 
-    .reviews-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.02rem;
-        letter-spacing: .2px
-    }
-
-    .reviews-sub {
-        color: rgba(17,24,39,.6);
-        font-size: .95rem
-    }
-
-    .reviews-body {
-        padding: 18px 22px 22px 22px
-    }
-
-    .review-row {
+    .review-author-block {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 10px
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .review-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid rgba(109,40,217,.14);
+        background: #fff;
+        flex: 0 0 auto;
+    }
+
+    .review-author-copy {
+        min-width: 0;
+    }
+
+    .review-author-name {
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 260px;
+    }
+
+    .review-author-date {
+        margin-top: 4px;
+        font-size: .88rem;
+        font-weight: 700;
+    }
+
+    .review-rating-block {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 0 0 auto;
     }
 
     .review-text {
-        margin-top: 8px;
-        color: rgba(17,24,39,.78);
-        line-height: 1.35;
-        white-space: pre-wrap
+        margin-top: 12px;
+        color: rgba(31,17,71,.82);
+        line-height: 1.55;
+        white-space: pre-wrap;
     }
 
+    .hero-skeleton,
     .skeleton {
         background: #fff;
-        border-radius: 20px;
+        border-radius: 26px;
         position: relative;
         overflow: hidden;
-        height: 320px;
-        border: 1px solid rgba(0,0,0,.08)
+        min-height: 320px;
+        border: 1px solid rgba(109,40,217,.10);
     }
 
-        .skeleton::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
-            background-size: 200% 100%;
-            animation: shimmer 1.2s infinite linear
-        }
+    .hero-skeleton {
+        min-height: 240px;
+    }
+
+    .review-skeleton {
+        min-height: 140px;
+    }
+
+    .skeleton::before,
+    .hero-skeleton::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite linear;
+    }
+
+    .empty-paper {
+        text-align: center;
+    }
+
+    .empty-title {
+        color: #1f1147;
+        font-weight: 900;
+    }
+
+    .empty-sub {
+        color: #6b5f8d;
+    }
 
     @@keyframes shimmer {
         0% {
-            background-position: 0% 0
+            background-position: 0% 0;
         }
 
         100% {
-            background-position: 200% 0
+            background-position: 200% 0;
         }
     }
 
     @@media (max-width: 960px) {
-        .hero-inner {
-            padding: 22px
+        .content-body,
+        .reviews-body,
+        .side-paper {
+            padding: 18px;
         }
 
-        .card-body {
-            padding: 18px
+        .content-head,
+        .reviews-head {
+            padding: 18px 18px 16px 18px;
+        }
+    }
+
+    @@media (max-width: 700px) {
+        .hero-paper,
+        .hero-side,
+        .stat-card,
+        .price-box,
+        .content-paper,
+        .reviews-paper,
+        .side-paper,
+        .empty-paper,
+        .review-card {
+            border-radius: 22px;
         }
 
-        .side-shell {
-            padding: 18px
+        .hero-title {
+            font-size: 2rem !important;
         }
 
-        .reviews-body {
-            padding: 16px 18px 18px 18px
+        .action-row {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+
+        .review-top {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .review-rating-block {
+            justify-content: flex-start;
         }
     }
 </style>
@@ -496,6 +640,7 @@
     [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     private bool _loading = true;
+    private bool _reviewsLoading;
     private bool _ordering;
     private string? _orderError;
 
@@ -504,7 +649,7 @@
     private double avgRating;
     private int reviewsCount;
 
-    private List<Review>? _topReviews;
+    private List<ReviewVm> _reviews = new();
 
     private CancellationTokenSource? _cts;
     private int _loadVersion;
@@ -528,11 +673,12 @@
 
             service = await db.ServiceOffers
                 .Include(x => x.OwnerUser)
+                .Include(x => x.Category)
                 .FirstOrDefaultAsync(x => x.Id == ServiceId, ct);
 
             if (service is null)
             {
-                _topReviews = new List<Review>();
+                _reviews = new List<ReviewVm>();
                 avgRating = 0;
                 reviewsCount = 0;
                 return;
@@ -543,11 +689,7 @@
             reviewsCount = await q.CountAsync(ct);
             avgRating = reviewsCount == 0 ? 0 : await q.AverageAsync(r => (double)r.Stars, ct);
 
-            _topReviews = await db.Reviews.AsNoTracking()
-                .Where(r => r.TargetUserId == service.OwnerUserId)
-                .OrderByDescending(r => r.CreatedAt)
-                .Take(3)
-                .ToListAsync(ct);
+            await LoadPreviewReviewsAsync(ct);
 
             if (ct.IsCancellationRequested || myVersion != _loadVersion)
                 return;
@@ -563,6 +705,47 @@
                 _loading = false;
                 StateHasChanged();
             }
+        }
+    }
+
+    private async Task LoadPreviewReviewsAsync(CancellationToken ct = default)
+    {
+        if (service is null)
+        {
+            _reviews = new List<ReviewVm>();
+            return;
+        }
+
+        _reviewsLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync(ct);
+
+            _reviews = await db.Reviews
+                .AsNoTracking()
+                .Include(r => r.AuthorUser)
+                .Where(r => r.TargetUserId == service.OwnerUserId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(3)
+                .Select(r => new ReviewVm
+                {
+                    Id = r.Id,
+                    Stars = r.Stars,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt,
+                    AuthorName = r.AuthorUser != null
+                        ? (!string.IsNullOrWhiteSpace(r.AuthorUser.DisplayName) ? r.AuthorUser.DisplayName : (r.AuthorUser.UserName ?? "User"))
+                        : "User",
+                    AuthorAvatarUrl = r.AuthorUser != null ? r.AuthorUser.AvatarUrl : null
+                })
+                .ToListAsync(ct);
+        }
+        finally
+        {
+            _reviewsLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -661,5 +844,21 @@
         var full = (int)Math.Round(rating);
         full = Math.Clamp(full, 0, 5);
         return new string('★', full) + new string('☆', 5 - full);
+    }
+
+    private static string GetCategoryName(ServiceOffer service)
+        => service.Category?.Name ?? "Service";
+
+    private static string GetReviewAvatar(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "/images/default-avatar.png" : value;
+
+    private sealed class ReviewVm
+    {
+        public int Id { get; set; }
+        public double Stars { get; set; }
+        public string? Comment { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string AuthorName { get; set; } = "User";
+        public string? AuthorAvatarUrl { get; set; }
     }
 }

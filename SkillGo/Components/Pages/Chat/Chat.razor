@@ -36,7 +36,7 @@
         <MudContainer MaxWidth="MaxWidth.False" Class="pa-0 sg-chat-container">
             @if (_loading)
             {
-                <MudPaper Elevation="0" Class="pa-4 sg-chat-paper">
+                <MudPaper Elevation="0" Class="sg-chat-paper sg-chat-paper-loading">
                     <MudStack Spacing="2">
                         <MudSkeleton Height="42px" Width="40%" />
                         <MudStack Spacing="2" Style="flex:1; height: calc(100% - 120px); overflow:hidden;">
@@ -51,41 +51,40 @@
             }
             else if (_forbidden)
             {
-                <MudPaper Class="pa-4 sg-chat-paper" Elevation="0">
-                    <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
-                    <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
+                <MudPaper Class="sg-chat-paper sg-chat-state-paper pa-6" Elevation="0">
+                    <MudText Typo="Typo.h5" Class="state-title">Access denied</MudText>
+                    <MudText Typo="Typo.body2" Class="state-sub mt-2">You don’t have access to this conversation.</MudText>
                 </MudPaper>
             }
             else
             {
-                <MudPaper Elevation="0" Class="sg-chat-paper" Style="display:flex; flex-direction:column;">
+                <MudPaper Elevation="0" Class="sg-chat-paper sg-chat-paper-main">
                     <div class="sg-chat-header">
-                        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                        <div class="sg-chat-header-row">
+                            <div class="sg-chat-header-left">
                                 <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
                                                Color="Color.Default"
                                                OnClick="GoBack"
-                                               Style="border:1px solid rgba(0,0,0,.08); border-radius:12px;" />
+                                               Class="sg-back-btn" />
 
-                                <MudAvatar Size="Size.Medium"
-                                           Style="background: rgba(99,102,241,.16); color: rgba(17,24,39,1); border:1px solid rgba(0,0,0,.06);">
+                                <MudAvatar Size="Size.Medium" Class="sg-chat-avatar">
                                     @_otherInitials
                                 </MudAvatar>
 
-                                <div style="min-width:0;">
-                                    <MudText Typo="Typo.h6" Class="fw-bold" Style="line-height:1.1; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                <div class="sg-chat-title-wrap">
+                                    <MudText Typo="Typo.h6" Class="sg-chat-title">
                                         @_title
                                     </MudText>
 
-                                    <div style="display:flex; align-items:center; gap:10px; margin-top:3px;">
-                                        <span style="display:inline-flex; align-items:center; gap:6px;">
-                                            <span style="width:8px; height:8px; border-radius:999px; background:@(_otherOnline ? "#22c55e" : "#94a3b8"); display:inline-block;"></span>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                    <div class="sg-chat-meta-row">
+                                        <span class="sg-online-wrap">
+                                            <span class="sg-online-dot" style="@($"background:{(_otherOnline ? "#22c55e" : "#94a3b8")};")"></span>
+                                            <MudText Typo="Typo.caption" Class="sg-chat-meta-text">
                                                 @(_otherOnline ? "Online" : _otherLastSeenText)
                                             </MudText>
                                         </span>
 
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                        <MudText Typo="Typo.caption" Class="sg-chat-meta-text">
                                             • #@ConversationId
                                         </MudText>
                                     </div>
@@ -95,18 +94,17 @@
                     </div>
 
                     <div class="sg-chat-messages" id="sg-chat-messages-host">
-                        <div style="min-height:100%; padding:14px 16px 12px 16px;">
+                        <div class="sg-chat-messages-inner">
                             @if (_messages.Count == 0)
                             {
-                                <MudPaper Elevation="0" Class="pa-4"
-                                          Style="border:1px dashed rgba(0,0,0,.12); border-radius:12px; background: rgba(255,255,255,.70); max-width:520px;">
-                                    <MudText Typo="Typo.h6" Class="fw-bold">No messages yet</MudText>
-                                    <MudText Color="Color.Secondary">Say hi 👋</MudText>
+                                <MudPaper Elevation="0" Class="sg-empty-chat-card pa-5">
+                                    <MudText Typo="Typo.h6" Class="state-title">No messages yet</MudText>
+                                    <MudText Typo="Typo.body2" Class="state-sub mt-2">Say hi 👋</MudText>
                                 </MudPaper>
                             }
                             else
                             {
-                                <div style="display:flex; flex-direction:column; gap:12px;">
+                                <div class="sg-chat-list">
                                     @{
                                         DateOnly? currentDay = null;
                                     }
@@ -121,34 +119,33 @@
                                         {
                                             currentDay = day;
 
-                                            <div style="display:flex; justify-content:center; padding:8px 0 2px 0;">
+                                            <div class="sg-day-divider-wrap">
                                                 <MudChip T="string"
                                                          Size="Size.Small"
                                                          Variant="Variant.Outlined"
-                                                         Style="background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); border-radius:999px;">
+                                                         Class="sg-day-chip">
                                                     @FormatDayChip(day)
                                                 </MudChip>
                                             </div>
                                         }
 
-                                        <div style="width:100%; display:flex; @(mine ? "justify-content:flex-end;" : "justify-content:flex-start;")">
-                                            <div style="display:flex; gap:10px; align-items:flex-end; max-width:100%; @(mine ? "flex-direction:row-reverse;" : "flex-direction:row;")">
+                                        <div class="sg-message-row @(mine ? "mine" : "other")">
+                                            <div class="sg-message-row-inner @(mine ? "mine" : "other")">
                                                 @if (!mine)
                                                 {
-                                                    <MudAvatar Size="Size.Small"
-                                                               Style="background: rgba(15,23,42,.06); border:1px solid rgba(0,0,0,.06); color:#111827;">
+                                                    <MudAvatar Size="Size.Small" Class="sg-message-side-avatar">
                                                         @_otherInitials
                                                     </MudAvatar>
                                                 }
                                                 else
                                                 {
-                                                    <div style="width:32px;"></div>
+                                                    <div class="sg-message-side-spacer"></div>
                                                 }
 
-                                                <div style="max-width: min(760px, 78vw); width:fit-content;">
+                                                <div class="sg-message-main">
                                                     @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && !HasVisibleContent(m))
                                                     {
-                                                        <div style="display:flex; align-items:flex-start; gap:6px;">
+                                                        <div class="sg-order-only-wrap">
                                                             <OrderMessageCard Order="m.Order"
                                                                               CurrentUserId="@(_meId ?? "")"
                                                                               OnChanged="ReloadAsync"
@@ -161,7 +158,7 @@
                                                                         <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
                                                                                        Size="Size.Small"
                                                                                        Color="Color.Default"
-                                                                                       Style="opacity:.78;" />
+                                                                                       Class="sg-message-menu-btn" />
                                                                     </ActivatorContent>
 
                                                                     <ChildContent>
@@ -173,14 +170,14 @@
                                                             }
                                                         </div>
 
-                                                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
+                                                        <div class="sg-message-time-row">
                                                             <span>@local.ToString("HH:mm")</span>
                                                         </div>
                                                     }
                                                     else
                                                     {
-                                                        <div style="display:flex; align-items:flex-start; gap:6px;">
-                                                            <div style="@BubbleShellStyle(mine)">
+                                                        <div class="sg-bubble-wrap">
+                                                            <div class="sg-bubble @(mine ? "mine" : "other")">
                                                                 @if (m.IsOrderDelivery)
                                                                 {
                                                                     <div class="sg-delivery-head">
@@ -228,7 +225,7 @@
 
                                                                     @if (m.OrderId != null && m.Order != null && !m.IsOrderDelivery && HasVisibleContent(m))
                                                                     {
-                                                                        <div style="margin-top:10px;">
+                                                                        <div class="sg-order-card-wrap">
                                                                             <OrderMessageCard Order="m.Order"
                                                                                               CurrentUserId="@(_meId ?? "")"
                                                                                               OnChanged="ReloadAsync"
@@ -238,12 +235,12 @@
                                                                 }
                                                                 else
                                                                 {
-                                                                    <div style="font-style:italic; opacity:.70; font-size:0.98rem;">
+                                                                    <div class="sg-deleted-text">
                                                                         message deleted
                                                                     </div>
                                                                 }
 
-                                                                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:7px; opacity:.70; font-size:.75rem;">
+                                                                <div class="sg-message-time-row">
                                                                     <span>@local.ToString("HH:mm")</span>
                                                                     @if (m.EditedAtUtc.HasValue && !m.IsDeleted)
                                                                     {
@@ -253,7 +250,7 @@
 
                                                                 @if (_editingId == m.Id)
                                                                 {
-                                                                    <div style="margin-top:10px;">
+                                                                    <div class="sg-edit-box">
                                                                         <MudTextField @bind-Value="_editingText"
                                                                                       Variant="Variant.Outlined"
                                                                                       Margin="Margin.Dense"
@@ -261,9 +258,9 @@
                                                                                       Immediate="true"
                                                                                       FullWidth="true"
                                                                                       Disabled="_savingEdit"
-                                                                                      Style="border-radius:12px; background: rgba(255,255,255,.75);" />
+                                                                                      Class="sg-edit-field" />
 
-                                                                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+                                                                        <div class="sg-edit-actions">
                                                                             <MudButton Variant="Variant.Text"
                                                                                        Color="Color.Default"
                                                                                        Disabled="_savingEdit"
@@ -275,7 +272,7 @@
                                                                                        Color="Color.Primary"
                                                                                        Disabled="_savingEdit || string.IsNullOrWhiteSpace(_editingText)"
                                                                                        OnClick="@(() => SaveEditAsync(m.Id))"
-                                                                                       Style="border-radius:12px;">
+                                                                                       Class="sg-edit-save-btn">
                                                                                 Save
                                                                             </MudButton>
                                                                         </div>
@@ -290,7 +287,7 @@
                                                                         <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
                                                                                        Size="Size.Small"
                                                                                        Color="Color.Default"
-                                                                                       Style="opacity:.78;" />
+                                                                                       Class="sg-message-menu-btn" />
                                                                     </ActivatorContent>
 
                                                                     <ChildContent>
@@ -311,7 +308,7 @@
                                                                         <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
                                                                                        Size="Size.Small"
                                                                                        Color="Color.Default"
-                                                                                       Style="opacity:.78;" />
+                                                                                       Class="sg-message-menu-btn" />
                                                                     </ActivatorContent>
 
                                                                     <ChildContent>
@@ -398,7 +395,7 @@
                                               Lines="2"
                                               Disabled="_sending || _editingId.HasValue"
                                               @onkeydown="OnComposerKeyDownRaw"
-                                              Style="border-radius:14px; background: rgba(255,255,255,.90);" />
+                                              Class="sg-composer-field" />
 
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Primary"
@@ -495,6 +492,10 @@
         margin: -34px -32px -32px -32px;
         height: calc(100vh - 78px);
         overflow: hidden;
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
+            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
     .sg-chat-shell {
@@ -509,111 +510,220 @@
 
     .sg-chat-paper {
         height: 100%;
-        border: 1px solid rgba(0,0,0,.08);
-        border-radius: 0;
         overflow: hidden;
     }
 
+    .sg-chat-paper-loading,
+    .sg-chat-paper-main,
+    .sg-chat-state-paper {
+        border-radius: 0;
+        border: none;
+        background: transparent;
+    }
+
+    .sg-chat-paper-main {
+        display: flex;
+        flex-direction: column;
+    }
+
     .sg-chat-header {
-        padding: 12px 14px 10px 14px;
-        background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,0));
-        border-bottom: 1px solid rgba(0,0,0,.06);
+        padding: 14px 16px 12px 16px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        border-bottom: 1px solid rgba(255,255,255,.10);
         flex: 0 0 auto;
+        box-shadow: 0 18px 40px rgba(76,29,149,.14);
+    }
+
+    .sg-chat-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .sg-chat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .sg-back-btn {
+        border: 1px solid rgba(255,255,255,.14) !important;
+        border-radius: 12px !important;
+        background: rgba(255,255,255,.10) !important;
+        color: #fff !important;
+    }
+
+    .sg-chat-avatar {
+        background: rgba(255,255,255,.14) !important;
+        color: #fff !important;
+        border: 1px solid rgba(255,255,255,.14);
+    }
+
+    .sg-chat-title-wrap {
+        min-width: 0;
+    }
+
+    .sg-chat-title {
+        line-height: 1.1 !important;
+        margin: 0 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #fff;
+        font-weight: 900;
+    }
+
+    .sg-chat-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 3px;
+        flex-wrap: wrap;
+    }
+
+    .sg-online-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sg-online-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        display: inline-block;
+    }
+
+    .sg-chat-meta-text {
+        margin: 0 !important;
+        color: rgba(255,255,255,.74) !important;
     }
 
     .sg-chat-messages {
         flex: 1 1 auto;
         overflow: auto;
         min-height: 0;
-        background: radial-gradient(1200px 400px at 20% 0%, rgba(99,102,241,.08), transparent), linear-gradient(180deg, rgba(2,6,23,.02), rgba(2,6,23,0));
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.08), transparent 24%),
+            radial-gradient(circle at top right, rgba(99,102,241,.05), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
-    .sg-chat-composer {
-        padding: 12px 14px;
-        background: rgba(255,255,255,.78);
-        border-top: 1px solid rgba(0,0,0,.06);
-        flex: 0 0 auto;
+    .sg-chat-messages-inner {
+        min-height: 100%;
+        padding: 14px 16px 12px 16px;
     }
 
-    .sg-hidden-file-input {
-        display: none;
-    }
-
-    .sg-chat-composer-row {
-        display: grid;
-        grid-template-columns: auto minmax(0,1fr) auto;
-        gap: 10px;
-        align-items: end;
-    }
-
-    .sg-attach-btn {
-        min-width: 124px;
-        height: 40px;
-        border-radius: 14px;
-        white-space: nowrap;
-    }
-
-    .sg-send-btn {
-        min-width: 148px;
-        height: 40px;
-        border-radius: 14px;
-        white-space: nowrap;
-    }
-
-    .sg-pending-files {
+    .sg-chat-list {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-direction: column;
+        gap: 12px;
     }
 
-    .sg-pending-file {
-        min-width: 220px;
-        max-width: 340px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 10px;
-        border-radius: 14px;
-        background: rgba(99,102,241,.08);
-        border: 1px solid rgba(99,102,241,.10);
+    .sg-empty-chat-card {
+        border: 1px dashed rgba(109,40,217,.16);
+        border-radius: 18px;
+        background: rgba(255,255,255,.82);
+        max-width: 520px;
     }
 
-    .sg-pending-file-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 12px;
+    .sg-day-divider-wrap {
         display: flex;
-        align-items: center;
         justify-content: center;
-        background: rgba(79,70,229,.12);
-        color: #4338ca;
-        flex: 0 0 auto;
+        padding: 8px 0 2px 0;
     }
 
-    .sg-pending-file-copy {
-        min-width: 0;
-        flex: 1 1 auto;
-    }
-
-    .sg-pending-file-name {
+    .sg-day-chip {
+        background: rgba(255,255,255,.88) !important;
+        border-color: rgba(109,40,217,.12) !important;
+        border-radius: 999px !important;
+        color: #6b5f8d !important;
         font-weight: 800;
-        color: #111827;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
-    .sg-pending-file-meta {
-        color: rgba(17,24,39,.56);
-        font-size: .78rem;
-        font-weight: 700;
+    .sg-message-row {
+        width: 100%;
+        display: flex;
+    }
+
+    .sg-message-row.mine {
+        justify-content: flex-end;
+    }
+
+    .sg-message-row.other {
+        justify-content: flex-start;
+    }
+
+    .sg-message-row-inner {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        max-width: 100%;
+    }
+
+    .sg-message-row-inner.mine {
+        flex-direction: row-reverse;
+    }
+
+    .sg-message-row-inner.other {
+        flex-direction: row;
+    }
+
+    .sg-message-side-avatar {
+        background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%) !important;
+        border: 1px solid rgba(109,40,217,.10);
+        color: #6d28d9 !important;
+    }
+
+    .sg-message-side-spacer {
+        width: 32px;
+    }
+
+    .sg-message-main {
+        max-width: min(760px, 78vw);
+        width: fit-content;
+    }
+
+    .sg-order-only-wrap {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .sg-bubble-wrap {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .sg-bubble {
+        padding: 10px 12px;
+        border-radius: 18px;
+        box-shadow: 0 14px 30px rgba(2,6,23,.06);
+        max-width: 100%;
+    }
+
+    .sg-bubble.mine {
+        background: linear-gradient(180deg, #6366f1, #4f46e5);
+        color: white;
+        box-shadow: 0 14px 30px rgba(79,70,229,.18);
+        border: 1px solid rgba(255,255,255,.12);
+    }
+
+    .sg-bubble.other {
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        color: #1f1147;
+        box-shadow: 0 14px 30px rgba(88,28,135,.06);
     }
 
     .sg-message-body {
         white-space: pre-wrap;
         word-break: break-word;
         font-size: 1.02rem;
-        line-height: 1.28;
+        line-height: 1.4;
     }
 
     .sg-delivery-head {
@@ -647,7 +757,7 @@
         width: auto;
         height: auto;
         border-radius: 14px;
-        border: 1px solid rgba(0,0,0,.08);
+        border: 1px solid rgba(109,40,217,.10);
         object-fit: cover;
         background: #fff;
     }
@@ -661,8 +771,8 @@
         border-radius: 14px;
         text-decoration: none;
         background: rgba(255,255,255,.88);
-        border: 1px solid rgba(0,0,0,.08);
-        color: #111827;
+        border: 1px solid rgba(109,40,217,.10);
+        color: #1f1147;
     }
 
     .sg-file-attachment-icon {
@@ -694,10 +804,152 @@
         font-weight: 700;
     }
 
+    .sg-order-card-wrap {
+        margin-top: 10px;
+    }
+
+    .sg-message-time-row {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 7px;
+        opacity: .72;
+        font-size: .75rem;
+    }
+
+    .sg-bubble.mine .sg-message-time-row {
+        color: rgba(255,255,255,.84);
+    }
+
+    .sg-bubble.other .sg-message-time-row {
+        color: #6b5f8d;
+    }
+
+    .sg-edit-box {
+        margin-top: 10px;
+    }
+
+    .sg-edit-field {
+        border-radius: 12px;
+        background: rgba(255,255,255,.75);
+    }
+
+    .sg-edit-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 8px;
+    }
+
+    .sg-edit-save-btn {
+        border-radius: 12px !important;
+    }
+
+    .sg-deleted-text {
+        font-style: italic;
+        opacity: .70;
+        font-size: 0.98rem;
+    }
+
+    .sg-message-menu-btn {
+        opacity: .78;
+    }
+
+    .sg-chat-composer {
+        padding: 12px 14px;
+        background: rgba(255,255,255,.82);
+        border-top: 1px solid rgba(109,40,217,.08);
+        backdrop-filter: blur(10px);
+        flex: 0 0 auto;
+    }
+
+    .sg-hidden-file-input {
+        display: none;
+    }
+
+    .sg-chat-composer-row {
+        display: grid;
+        grid-template-columns: auto minmax(0,1fr) auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .sg-composer-field {
+        border-radius: 14px;
+        background: rgba(255,255,255,.94);
+    }
+
+    .sg-attach-btn {
+        min-width: 124px;
+        height: 40px;
+        border-radius: 14px;
+        white-space: nowrap;
+        text-transform: none;
+        font-weight: 800;
+    }
+
+    .sg-send-btn {
+        min-width: 148px;
+        height: 40px;
+        border-radius: 14px;
+        white-space: nowrap;
+        text-transform: none;
+        font-weight: 800;
+    }
+
+    .sg-pending-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .sg-pending-file {
+        min-width: 220px;
+        max-width: 340px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(109,40,217,.08);
+        border: 1px solid rgba(109,40,217,.10);
+    }
+
+    .sg-pending-file-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(79,70,229,.12);
+        color: #4338ca;
+        flex: 0 0 auto;
+    }
+
+    .sg-pending-file-copy {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .sg-pending-file-name {
+        font-weight: 800;
+        color: #1f1147;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sg-pending-file-meta {
+        color: #6b5f8d;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
     .sg-report-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(15,23,42,.48);
+        background: rgba(31,17,71,.42);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
@@ -710,8 +962,8 @@
         width: min(100%, 520px);
         border-radius: 24px;
         background: #ffffff;
-        border: 1px solid rgba(15,23,42,.08);
-        box-shadow: 0 30px 80px rgba(15,23,42,.24);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 30px 80px rgba(31,17,71,.24);
         padding: 20px;
     }
 
@@ -732,7 +984,7 @@
 
     .sg-report-title {
         margin-top: 4px;
-        color: #111827;
+        color: #1f1147;
         font-size: 1.25rem;
         font-weight: 950;
         line-height: 1.1;
@@ -742,12 +994,12 @@
         margin-top: 10px;
         padding: 14px;
         border-radius: 18px;
-        background: #f8fafc;
-        border: 1px solid rgba(15,23,42,.06);
+        background: #faf7ff;
+        border: 1px solid rgba(109,40,217,.08);
     }
 
     .sg-report-preview-label {
-        color: rgba(17,24,39,.56);
+        color: #6b5f8d;
         font-size: .75rem;
         font-weight: 800;
         text-transform: uppercase;
@@ -756,8 +1008,8 @@
 
     .sg-report-preview-text {
         margin-top: 8px;
-        color: #111827;
-        line-height: 1.4;
+        color: #1f1147;
+        line-height: 1.45;
         white-space: pre-wrap;
         word-break: break-word;
     }
@@ -767,6 +1019,15 @@
         display: flex;
         justify-content: flex-end;
         gap: 10px;
+    }
+
+    .state-title {
+        color: #1f1147;
+        font-weight: 900;
+    }
+
+    .state-sub {
+        color: #6b5f8d;
     }
 
     @@media (max-width: 900px) {
@@ -788,6 +1049,18 @@
         .sg-report-modal {
             padding: 16px;
             border-radius: 20px;
+        }
+
+        .sg-chat-header {
+            padding: 12px 12px 10px 12px;
+        }
+
+        .sg-chat-messages-inner {
+            padding: 12px;
+        }
+
+        .sg-chat-composer {
+            padding: 10px 12px;
         }
     }
 </style>
@@ -1588,14 +1861,6 @@
     {
         if (e.Key == "Enter" && !e.ShiftKey)
             await SendAsync();
-    }
-
-    private string BubbleShellStyle(bool mine)
-    {
-        if (mine)
-            return "background: linear-gradient(180deg,#6366f1,#4f46e5); color:white; padding:10px 12px; border-radius:18px; box-shadow: 0 14px 30px rgba(79,70,229,.18); border:1px solid rgba(255,255,255,.12);";
-
-        return "background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.08); padding:10px 12px; border-radius:18px; box-shadow: 0 14px 30px rgba(2,6,23,.06); color:#0f172a;";
     }
 
     private string FormatDayChip(DateOnly day)

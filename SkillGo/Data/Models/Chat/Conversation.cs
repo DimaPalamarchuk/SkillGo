@@ -18,4 +18,6 @@ public class Conversation
 
     public List<Message> Messages { get; set; } = new();
     public List<Order> Orders { get; set; } = new();
+    public DateTime? LastReadByUserAAtUtc { get; set; }
+    public DateTime? LastReadByUserBAtUtc { get; set; }
 }

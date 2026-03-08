@@ -1,5 +1,6 @@
 ﻿@page "/services/category"
 
+@using Microsoft.AspNetCore.Components
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
@@ -9,259 +10,292 @@
 
 <PageTitle>Services</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
-    <div class="hero">
-        <div class="hero-inner">
-            <div class="hero-copy">
-                <div class="hero-title">All services</div>
-                <div class="hero-sub">Search and filter by category, price and rating.</div>
-            </div>
+<MudContainer MaxWidth="MaxWidth.False" Class="services-shell pa-0">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-6">
+        <MudPaper Class="hero-paper pa-6 pa-md-8" Elevation="0">
+            <div class="hero-orb hero-orb-left"></div>
+            <div class="hero-orb hero-orb-right"></div>
 
-            <div class="hero-controls">
-                <MudTextField T="string"
-                              Variant="Variant.Outlined"
-                              Placeholder="Search services..."
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Immediate="true"
-                              DebounceInterval="350"
-                              Value="@_search"
-                              ValueChanged="OnSearchChanged"
-                              Class="search-control" />
+            <div class="hero-inner">
+                <div class="hero-copy">
+                    <div class="hero-badge">
+                        <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Small" />
+                        <span>Explore the full marketplace</span>
+                    </div>
 
-                <MudSelect T="string"
-                           Variant="Variant.Outlined"
-                           Placeholder="Sort"
-                           Value="@_sort"
-                           ValueChanged="OnSortChanged"
-                           Class="sort-control">
-                    <MudSelectItem T="string" Value="@("new")">Newest</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("price_asc")">Price: low to high</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("price_desc")">Price: high to low</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("rating_desc")">Rating: high to low</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("reviews_desc")">Most reviews</MudSelectItem>
-                </MudSelect>
-            </div>
-
-            <div class="hero-chips">
-                <span class="chip">Services: @_services.Count</span>
-
-                @if (_categoryId.HasValue)
-                {
-                    <span class="chip">Category: @_categories.FirstOrDefault(x => x.Id == _categoryId)?.Name</span>
-                }
-                @if (_minPrice.HasValue)
-                {
-                    <span class="chip">Min: @_minPrice.Value.ToString("0.##") zł</span>
-                }
-                @if (_maxPrice.HasValue)
-                {
-                    <span class="chip">Max: @_maxPrice.Value.ToString("0.##") zł</span>
-                }
-                @if (_minRating > 0)
-                {
-                    <span class="chip">Rating: @_minRating+</span>
-                }
-                @if (_onlyWithReviews)
-                {
-                    <span class="chip">Only reviewed</span>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="layout mt-4">
-        <aside class="filters-shell">
-            <div class="filters-head">
-                <div>
-                    <div class="filters-title">Filters</div>
-                    <div class="filters-sub">Choose a category, price range and rating.</div>
+                    <div class="hero-title mt-4">All services</div>
+                    <div class="hero-sub">Search, filter and compare offers by category, price and rating.</div>
                 </div>
 
-                <MudButton Variant="Variant.Text" Class="reset-btn" OnClick="@ResetAsync">
-                    Reset
-                </MudButton>
-            </div>
+                <div class="hero-controls mt-6">
+                    <MudTextField T="string"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Search services..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  DebounceInterval="350"
+                                  Value="@_search"
+                                  ValueChanged="OnSearchChanged"
+                                  Class="search-control" />
 
-            <div class="filters-body">
-                <MudSelect T="int?"
-                           Variant="Variant.Outlined"
-                           Label="Category"
-                           Value="@_categoryId"
-                           ValueChanged="OnCategoryChanged"
-                           FullWidth="true">
-                    <MudSelectItem T="int?" Value="@(null)">All categories</MudSelectItem>
-                    @foreach (var c in _categories)
+                    <MudSelect T="string"
+                               Variant="Variant.Outlined"
+                               Placeholder="Sort"
+                               Value="@_sort"
+                               ValueChanged="OnSortChanged"
+                               Class="sort-control">
+                        <MudSelectItem T="string" Value="@("new")">Newest</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("price_asc")">Price: low to high</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("price_desc")">Price: high to low</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("rating_desc")">Rating: high to low</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("reviews_desc")">Most reviews</MudSelectItem>
+                    </MudSelect>
+                </div>
+
+                <div class="hero-chips">
+                    <span class="chip">Services: @_services.Count</span>
+
+                    @if (_categoryId.HasValue)
                     {
-                        <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
+                        <span class="chip">Category: @_categories.FirstOrDefault(x => x.Id == _categoryId)?.Name</span>
                     }
-                </MudSelect>
+                    @if (_minPrice.HasValue)
+                    {
+                        <span class="chip">Min: @_minPrice.Value.ToString("0.##") zł</span>
+                    }
+                    @if (_maxPrice.HasValue)
+                    {
+                        <span class="chip">Max: @_maxPrice.Value.ToString("0.##") zł</span>
+                    }
+                    @if (_minRating > 0)
+                    {
+                        <span class="chip">Rating: @_minRating+</span>
+                    }
+                    @if (_onlyWithReviews)
+                    {
+                        <span class="chip">Only reviewed</span>
+                    }
+                </div>
+            </div>
+        </MudPaper>
+    </MudContainer>
 
-                <div class="two-cols">
-                    <MudNumericField T="decimal?"
-                                     Variant="Variant.Outlined"
-                                     Label="Min price (zł)"
-                                     Min="0"
-                                     Value="@_minPrice"
-                                     ValueChanged="OnMinPriceChanged" />
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pb-8">
+        <div class="layout">
+            <aside class="filters-shell">
+                <div class="filters-head">
+                    <div>
+                        <div class="filters-title">Filters</div>
+                        <div class="filters-sub">Choose a category, price range and rating.</div>
+                    </div>
 
-                    <MudNumericField T="decimal?"
-                                     Variant="Variant.Outlined"
-                                     Label="Max price (zł)"
-                                     Min="0"
-                                     Value="@_maxPrice"
-                                     ValueChanged="OnMaxPriceChanged" />
+                    <MudButton Variant="Variant.Text" Class="reset-btn" OnClick="@ResetAsync">
+                        Reset
+                    </MudButton>
                 </div>
 
-                <MudSelect T="int"
-                           Variant="Variant.Outlined"
-                           Label="Min rating"
-                           Value="@_minRating"
-                           ValueChanged="OnMinRatingChanged"
-                           FullWidth="true">
-                    <MudSelectItem T="int" Value="0">Any</MudSelectItem>
-                    <MudSelectItem T="int" Value="1">1+</MudSelectItem>
-                    <MudSelectItem T="int" Value="2">2+</MudSelectItem>
-                    <MudSelectItem T="int" Value="3">3+</MudSelectItem>
-                    <MudSelectItem T="int" Value="4">4+</MudSelectItem>
-                    <MudSelectItem T="int" Value="5">5</MudSelectItem>
-                </MudSelect>
+                <div class="filters-body">
+                    <MudSelect T="int?"
+                               Variant="Variant.Outlined"
+                               Label="Category"
+                               Value="@_categoryId"
+                               ValueChanged="OnCategoryChanged"
+                               FullWidth="true">
+                        <MudSelectItem T="int?" Value="@(null)">All categories</MudSelectItem>
+                        @foreach (var c in _categories)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)c.Id)">@c.Name</MudSelectItem>
+                        }
+                    </MudSelect>
 
-                <div class="switch-shell">
-                    <MudSwitch T="bool"
+                    <div class="two-cols">
+                        <MudNumericField T="decimal?"
+                                         Variant="Variant.Outlined"
+                                         Label="Min price (zł)"
+                                         Min="0"
+                                         Value="@_minPrice"
+                                         ValueChanged="OnMinPriceChanged" />
+
+                        <MudNumericField T="decimal?"
+                                         Variant="Variant.Outlined"
+                                         Label="Max price (zł)"
+                                         Min="0"
+                                         Value="@_maxPrice"
+                                         ValueChanged="OnMaxPriceChanged" />
+                    </div>
+
+                    <MudSelect T="int"
+                               Variant="Variant.Outlined"
+                               Label="Min rating"
+                               Value="@_minRating"
+                               ValueChanged="OnMinRatingChanged"
+                               FullWidth="true">
+                        <MudSelectItem T="int" Value="0">Any</MudSelectItem>
+                        <MudSelectItem T="int" Value="1">1+</MudSelectItem>
+                        <MudSelectItem T="int" Value="2">2+</MudSelectItem>
+                        <MudSelectItem T="int" Value="3">3+</MudSelectItem>
+                        <MudSelectItem T="int" Value="4">4+</MudSelectItem>
+                        <MudSelectItem T="int" Value="5">5</MudSelectItem>
+                    </MudSelect>
+
+                    <div class="switch-shell">
+                        <MudSwitch T="bool"
+                                   Color="Color.Primary"
+                                   Label="Only with reviews"
+                                   Checked="@_onlyWithReviews"
+                                   CheckedChanged="OnOnlyWithReviewsChanged" />
+                    </div>
+
+                    <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
-                               Label="Only with reviews"
-                               Checked="@_onlyWithReviews"
-                               CheckedChanged="OnOnlyWithReviewsChanged" />
+                               FullWidth="true"
+                               Class="btn-strong"
+                               OnClick="@LoadAsync">
+                        Apply filters
+                    </MudButton>
                 </div>
+            </aside>
 
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           FullWidth="true"
-                           Class="btn-strong"
-                           OnClick="@LoadAsync">
-                    Apply filters
-                </MudButton>
-            </div>
-        </aside>
+            <main class="results">
+                @if (_loading)
+                {
+                    <MudGrid Spacing="3">
+                        @for (int i = 0; i < 12; i++)
+                        {
+                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                <div class="service-card skeleton"></div>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else if (_services.Count == 0)
+                {
+                    <div class="empty-shell">
+                        <div class="empty-title">No services found</div>
+                        <div class="empty-sub">Try changing your filters or search phrase.</div>
+                    </div>
+                }
+                else
+                {
+                    <MudGrid Spacing="3">
+                        @foreach (var s in _services)
+                        {
+                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                <MudLink Href="@($"/services/{s.Id}")" Class="card-link">
+                                    <div class="service-card">
+                                        <div class="card-top">
+                                            <div class="card-title" title="@s.Title">@s.Title</div>
 
-        <main class="results">
-            @if (_loading)
-            {
-                <MudGrid Spacing="4">
-                    @for (int i = 0; i < 12; i++)
-                    {
-                        <MudItem xs="12" sm="6" md="4" lg="3">
-                            <div class="service-card skeleton"></div>
-                        </MudItem>
-                    }
-                </MudGrid>
-            }
-            else if (_services.Count == 0)
-            {
-                <div class="empty-shell">
-                    <div class="empty-title">No services found</div>
-                    <div class="empty-sub">Try changing your filters or search phrase.</div>
-                </div>
-            }
-            else
-            {
-                <MudGrid Spacing="4">
-                    @foreach (var s in _services)
-                    {
-                        <MudItem xs="12" sm="6" md="4" lg="3">
-                            <MudLink Href="@($"/services/{s.Id}")" Class="card-link">
-                                <div class="service-card">
-                                    <div class="card-top">
-                                        <div class="card-title" title="@s.Title">@s.Title</div>
-
-                                        <div class="pill-row">
-                                            <div class="pill" title="@((s.Category?.Name) ?? "Category")">@((s.Category?.Name) ?? "Category")</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="card-desc">@Trim(s.Description, 120)</div>
-
-                                    <div class="card-bottom">
-                                        <div class="rating-row">
-                                            <span class="stars">@Stars(s.RatingAvg)</span>
-                                            <span class="rating-value">@s.RatingAvg.ToString("0.0")</span>
-                                            <span class="reviews-count">(@s.ReviewsCount)</span>
+                                            <div class="pill-row">
+                                                <div class="pill" title="@((s.Category?.Name) ?? "Category")">@((s.Category?.Name) ?? "Category")</div>
+                                            </div>
                                         </div>
 
-                                        <div class="price">@s.Price.ToString("0.##") zł</div>
-                                    </div>
+                                        <div class="card-desc">@Trim(s.Description, 120)</div>
 
-                                    <div class="card-user">
-                                        <img class="avatar" src="@(s.OwnerUser?.AvatarUrl ?? "/images/default-avatar.png")" />
-                                        <div class="user-name" title="@DisplayName(s.OwnerUser)">@DisplayName(s.OwnerUser)</div>
+                                        <div class="card-bottom">
+                                            <div class="rating-row">
+                                                <span class="stars">@Stars(s.RatingAvg)</span>
+                                                <span class="rating-value">@s.RatingAvg.ToString("0.0")</span>
+                                                <span class="reviews-count">(@s.ReviewsCount)</span>
+                                            </div>
+
+                                            <div class="price">@s.Price.ToString("0.##") zł</div>
+                                        </div>
+
+                                        <div class="card-user">
+                                            <img class="avatar" src="@(s.OwnerUser?.AvatarUrl ?? "/images/default-avatar.png")" />
+                                            <div class="user-name" title="@DisplayName(s.OwnerUser)">@DisplayName(s.OwnerUser)</div>
+                                        </div>
                                     </div>
-                                </div>
-                            </MudLink>
-                        </MudItem>
-                    }
-                </MudGrid>
-            }
-        </main>
-    </div>
+                                </MudLink>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </main>
+        </div>
+    </MudContainer>
 </MudContainer>
 
 <style>
-    .hero {
-        border-radius: 28px;
-        border: 1px solid rgba(99,102,241,.16);
-        background: linear-gradient(135deg,#eef2ff 0%,#e9edff 55%,#e4e9ff 100%);
-        box-shadow: 0 20px 50px rgba(15,23,42,.06);
-        position: relative;
-        overflow: hidden;
+    .services-shell {
+        min-height: calc(100vh - 64px);
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
+            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
-        .hero::before {
-            content: "";
-            position: absolute;
-            inset: auto auto -80px -60px;
-            width: 320px;
-            height: 180px;
-            background: radial-gradient(circle at center, rgba(255,255,255,.6), transparent 70%);
-            pointer-events: none;
-        }
+    .hero-paper {
+        position: relative;
+        overflow: hidden;
+        border-radius: 32px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        border: 1px solid rgba(255,255,255,.08);
+        box-shadow: 0 22px 60px rgba(76,29,149,.18);
+    }
 
-        .hero::after {
-            content: "";
-            position: absolute;
-            right: -40px;
-            top: -40px;
-            width: 220px;
-            height: 220px;
-            background: radial-gradient(circle at center, rgba(255,255,255,.45), transparent 70%);
-            pointer-events: none;
-        }
+    .hero-orb {
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(6px);
+        pointer-events: none;
+    }
+
+    .hero-orb-left {
+        width: 260px;
+        height: 260px;
+        left: -60px;
+        top: -40px;
+        background: radial-gradient(circle, rgba(255,255,255,.16), transparent 68%);
+    }
+
+    .hero-orb-right {
+        width: 320px;
+        height: 320px;
+        right: -90px;
+        top: -90px;
+        background: radial-gradient(circle, rgba(255,255,255,.12), transparent 70%);
+    }
 
     .hero-inner {
         position: relative;
         z-index: 1;
-        padding: 28px;
-        display: grid;
-        gap: 18px;
     }
 
     .hero-copy {
         min-width: 0;
     }
 
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
     .hero-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.9rem;
-        line-height: 1.08;
-        letter-spacing: -.02em;
+        font-weight: 900;
+        color: #fff;
+        font-size: 2.5rem;
+        line-height: 1.02;
+        letter-spacing: -.03em;
     }
 
     .hero-sub {
-        color: rgba(17,24,39,.64);
+        margin-top: 12px;
+        color: rgba(255,255,255,.82);
+        max-width: 720px;
+        line-height: 1.75;
         font-size: 1rem;
-        line-height: 1.4;
-        margin-top: 8px;
     }
 
     .hero-controls {
@@ -282,48 +316,39 @@
         flex: 0 0 auto;
     }
 
-        .search-control .mud-input-control,
-        .sort-control .mud-input-control {
-            margin-top: 0;
-        }
+    .search-control ::deep .mud-input-control,
+    .sort-control ::deep .mud-input-control {
+        margin-top: 0;
+    }
 
-        .search-control .mud-input-root,
-        .sort-control .mud-input-root {
-            min-height: 44px;
-            height: 44px;
-        }
+    .search-control ::deep .mud-input-outlined-border,
+    .sort-control ::deep .mud-input-outlined-border {
+        border-color: rgba(255,255,255,.90) !important;
+    }
 
-        .search-control .mud-input-slot,
-        .sort-control .mud-input-slot {
-            min-height: 44px;
-            font-size: .88rem;
-        }
+    .search-control ::deep input,
+    .search-control ::deep .mud-input-adornment,
+    .sort-control ::deep input,
+    .sort-control ::deep .mud-input-adornment,
+    .sort-control ::deep .mud-select-input {
+        color: #fff !important;
+    }
 
-        .search-control input,
-        .sort-control input {
-            padding-top: 10px;
-            padding-bottom: 10px;
-            font-size: .88rem;
-        }
+    .search-control ::deep input::placeholder {
+        color: rgba(255,255,255,.65) !important;
+    }
 
-            .search-control input::placeholder {
-                font-size: .82rem;
-            }
-
-        .sort-control .mud-input-slot.mud-select-input,
-        .sort-control .mud-select-input {
-            font-size: .82rem !important;
-        }
-
-        .search-control .mud-input-adornment,
-        .sort-control .mud-input-adornment {
-            font-size: .98rem;
-        }
+    .sort-control ::deep .mud-select-input,
+    .sort-control ::deep .mud-input-slot,
+    .sort-control ::deep .mud-svg-icon {
+        color: #fff !important;
+    }
 
     .hero-chips {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+        margin-top: 18px;
     }
 
     .chip {
@@ -332,11 +357,11 @@
         min-height: 34px;
         padding: 6px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(99,102,241,.18);
-        background: rgba(255,255,255,.72);
-        color: rgba(17,24,39,.82);
-        font-weight: 900;
-        font-size: .85rem;
+        border: 1px solid rgba(255,255,255,.18);
+        background: rgba(255,255,255,.10);
+        color: #fff;
+        font-weight: 800;
+        font-size: .84rem;
         letter-spacing: .12px;
         backdrop-filter: blur(4px);
     }
@@ -348,19 +373,24 @@
         align-items: start;
     }
 
+    .filters-shell,
+    .service-card,
+    .empty-shell {
+        border-radius: 26px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
+    }
+
     .filters-shell {
         position: sticky;
         top: 92px;
-        border-radius: 24px;
-        border: 1px solid rgba(0,0,0,.07);
-        background: rgba(255,255,255,.96);
-        box-shadow: 0 18px 44px rgba(15,23,42,.06);
         overflow: hidden;
     }
 
     .filters-head {
-        padding: 18px 20px 16px 20px;
-        border-bottom: 1px solid rgba(0,0,0,.06);
+        padding: 20px 22px 18px 22px;
+        border-bottom: 1px solid rgba(109,40,217,.08);
         display: flex;
         justify-content: space-between;
         gap: 12px;
@@ -368,17 +398,17 @@
     }
 
     .filters-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.06rem;
+        font-weight: 900;
+        color: #1f1147;
+        font-size: 1.08rem;
         letter-spacing: .2px;
     }
 
     .filters-sub {
-        color: rgba(17,24,39,.6);
-        font-size: .93rem;
+        color: #6b5f8d;
+        font-size: .94rem;
         margin-top: 4px;
-        line-height: 1.35;
+        line-height: 1.4;
     }
 
     .reset-btn {
@@ -400,8 +430,8 @@
 
     .switch-shell {
         border-radius: 16px;
-        border: 1px dashed rgba(99,102,241,.18);
-        background: rgba(99,102,241,.04);
+        border: 1px dashed rgba(109,40,217,.18);
+        background: rgba(109,40,217,.04);
         padding: 4px 12px;
     }
 
@@ -423,21 +453,17 @@
         min-width: 0;
     }
 
-        .card-link:hover,
-        .card-link:focus,
-        .card-link:active,
-        .card-link * {
-            text-decoration: none !important;
-        }
+    .card-link:hover,
+    .card-link:focus,
+    .card-link:active,
+    .card-link * {
+        text-decoration: none !important;
+    }
 
     .service-card {
         min-height: 290px;
         height: 100%;
-        border-radius: 24px;
         padding: 18px;
-        background: linear-gradient(180deg,#ffffff 0%,#fcfcff 100%);
-        border: 1px solid rgba(0,0,0,.07);
-        box-shadow: 0 12px 28px rgba(15,23,42,.05);
         transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         display: flex;
         flex-direction: column;
@@ -448,8 +474,8 @@
 
     .card-link:hover .service-card {
         transform: translateY(-6px);
-        box-shadow: 0 22px 48px rgba(15,23,42,.09);
-        border-color: rgba(99,102,241,.18);
+        box-shadow: 0 22px 48px rgba(88,28,135,.10);
+        border-color: rgba(109,40,217,.20);
     }
 
     .card-top {
@@ -459,10 +485,10 @@
     }
 
     .card-title {
-        font-weight: 950;
-        color: #111827;
+        font-weight: 900;
+        color: #1f1147;
         font-size: 1.05rem;
-        line-height: 1.18;
+        line-height: 1.22;
         min-width: 0;
         overflow: hidden;
         display: -webkit-box;
@@ -484,10 +510,10 @@
         min-height: 34px;
         padding: 6px 12px;
         border-radius: 999px;
-        background: rgba(99,102,241,.10);
-        border: 1px solid rgba(99,102,241,.22);
-        color: rgba(55,65,81,.9);
-        font-weight: 900;
+        background: rgba(109,40,217,.08);
+        border: 1px solid rgba(109,40,217,.16);
+        color: #5b21b6;
+        font-weight: 800;
         font-size: .84rem;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -495,9 +521,9 @@
     }
 
     .card-desc {
-        color: rgba(17,24,39,.66);
+        color: #6b5f8d;
         font-size: .93rem;
-        line-height: 1.32;
+        line-height: 1.4;
         flex: 1;
         min-width: 0;
         white-space: pre-wrap;
@@ -527,25 +553,25 @@
     }
 
     .stars {
-        font-weight: 950;
+        font-weight: 900;
         letter-spacing: .45px;
-        color: #111827;
+        color: #1f1147;
         white-space: nowrap;
         flex: 0 0 auto;
     }
 
     .rating-value,
     .reviews-count {
-        color: rgba(17,24,39,.66);
-        font-weight: 900;
+        color: #6b5f8d;
+        font-weight: 800;
         font-size: .9rem;
         white-space: nowrap;
         flex: 0 0 auto;
     }
 
     .price {
-        font-weight: 950;
-        color: #111827;
+        font-weight: 900;
+        color: #1f1147;
         white-space: nowrap;
         flex: 0 0 auto;
         font-size: 1rem;
@@ -564,14 +590,14 @@
         height: 38px;
         border-radius: 50%;
         object-fit: cover;
-        border: 1px solid rgba(0,0,0,.1);
+        border: 1px solid rgba(109,40,217,.12);
         flex: 0 0 auto;
         background: #fff;
     }
 
     .user-name {
-        font-weight: 950;
-        color: #111827;
+        font-weight: 900;
+        color: #1f1147;
         font-size: .93rem;
         min-width: 0;
         overflow: hidden;
@@ -580,43 +606,36 @@
     }
 
     .empty-shell {
-        border-radius: 24px;
-        border: 1px solid rgba(0,0,0,.07);
-        background: #fff;
-        box-shadow: 0 18px 46px rgba(15,23,42,.05);
-        padding: 34px 28px;
+        padding: 36px 28px;
         text-align: center;
     }
 
     .empty-title {
-        font-weight: 950;
-        color: #111827;
-        font-size: 1.12rem;
+        font-weight: 900;
+        color: #1f1147;
+        font-size: 1.14rem;
     }
 
     .empty-sub {
-        color: rgba(17,24,39,.65);
+        color: #6b5f8d;
         margin-top: 8px;
-        line-height: 1.35;
+        line-height: 1.4;
     }
 
     .skeleton {
-        background: #fff;
-        border-radius: 24px;
         position: relative;
         overflow: hidden;
         min-height: 290px;
-        border: 1px solid rgba(0,0,0,.08);
     }
 
-        .skeleton::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
-            background-size: 200% 100%;
-            animation: shimmer 1.2s infinite linear;
-        }
+    .skeleton::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite linear;
+    }
 
     @@keyframes shimmer {
         0% {
@@ -665,17 +684,22 @@
         }
     }
 
+    @@media (max-width: 700px) {
+        .hero-title {
+            font-size: 2rem;
+        }
+
+        .hero-paper,
+        .filters-shell,
+        .service-card,
+        .empty-shell {
+            border-radius: 22px;
+        }
+    }
+
     @@media (max-width: 600px) {
         .hero-inner {
-            padding: 22px;
-        }
-
-        .hero-title {
-            font-size: 1.65rem;
-        }
-
-        .service-card {
-            min-height: 260px;
+            padding: 0;
         }
 
         .card-bottom {
@@ -694,6 +718,9 @@
 </style>
 
 @code {
+    [SupplyParameterFromQuery]
+    public string? Search { get; set; }
+
     private bool _loading = true;
 
     private List<Category> _categories = new();
@@ -710,7 +737,17 @@
     protected override async Task OnInitializedAsync()
     {
         _categories = await Db.Categories.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        _search = Search ?? "";
         await LoadAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if ((Search ?? "") != _search)
+        {
+            _search = Search ?? "";
+            await LoadAsync();
+        }
     }
 
     private async Task LoadAsync()
@@ -728,7 +765,10 @@
         var s = (_search ?? "").Trim();
 
         if (!string.IsNullOrWhiteSpace(s))
-            qBase = qBase.Where(x => x.Title.Contains(s) || x.Description.Contains(s));
+            qBase = qBase.Where(x =>
+                x.Title.Contains(s) ||
+                x.Description.Contains(s) ||
+                (x.Category != null && x.Category.Name.Contains(s)));
 
         if (_minPrice.HasValue)
             qBase = qBase.Where(x => x.Price >= _minPrice.Value);

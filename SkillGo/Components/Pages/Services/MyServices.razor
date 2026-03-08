@@ -16,289 +16,383 @@
 
 <PageTitle>My Services</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
-    <MudStack Spacing="3">
-        <MudPaper Class="my-services-hero">
-            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="3">
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.h4" Class="fw-bold">My Services</MudText>
-                    <MudText Class="my-services-sub">Manage your services, update content, open pages and remove outdated offers.</MudText>
-                </MudStack>
+<MudContainer MaxWidth="MaxWidth.False" Class="my-services-shell pa-0">
+    <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pt-6 pb-8">
+        <MudStack Spacing="3">
+            <MudPaper Class="my-services-hero pa-6 pa-md-8" Elevation="0">
+                <MudGrid Spacing="3" AlignItems="AlignItems.Stretch">
+                    <MudItem xs="12" md="8">
+                        <div class="hero-badge">
+                            <MudIcon Icon="@Icons.Material.Filled.Workspaces" Size="Size.Small" />
+                            <span>Manage your freelance offers</span>
+                        </div>
 
-                <MudButton Href="/services/create"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Add">
-                    Create Service
-                </MudButton>
-            </MudStack>
+                        <MudText Typo="Typo.h3" Class="hero-title mt-4">My Services</MudText>
 
-            <MudGrid Spacing="2" Class="mt-2">
-                <MudItem xs="12" sm="4">
-                    <MudPaper Class="my-stat-card">
-                        <MudText Class="my-stat-label">Total services</MudText>
-                        <MudText Typo="Typo.h5" Class="fw-bold">@_totalItems</MudText>
-                    </MudPaper>
-                </MudItem>
+                        <MudText Typo="Typo.body1" Class="hero-sub mt-4">
+                            Manage your services, update content, open pages and remove outdated offers.
+                        </MudText>
 
-                <MudItem xs="12" sm="4">
-                    <MudPaper Class="my-stat-card">
-                        <MudText Class="my-stat-label">Average price</MudText>
-                        <MudText Typo="Typo.h5" Class="fw-bold">@($"{AveragePrice:0.##} zł")</MudText>
-                    </MudPaper>
-                </MudItem>
-
-                <MudItem xs="12" sm="4">
-                    <MudPaper Class="my-stat-card">
-                        <MudText Class="my-stat-label">Highest price</MudText>
-                        <MudText Typo="Typo.h5" Class="fw-bold">@($"{HighestPrice:0.##} zł")</MudText>
-                    </MudPaper>
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
-
-        <MudPaper Class="my-toolbar">
-            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" AlignItems="AlignItems.Center">
-                <MudTextField T="string"
-                              Placeholder="Search in my services..."
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Immediate="true"
-                              Value="@_search"
-                              ValueChanged="OnSearchChanged" />
-
-                <MudSpacer />
-
-                <MudSelect T="string"
-                           Label="Sort"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Value="@_sort"
-                           ValueChanged="OnSortChanged">
-                    <MudSelectItem T="string" Value="@("newest")">Newest</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("oldest")">Oldest</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("price_desc")">Price: high to low</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("price_asc")">Price: low to high</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("title_asc")">Title: A-Z</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("title_desc")">Title: Z-A</MudSelectItem>
-                </MudSelect>
-            </MudStack>
-        </MudPaper>
-
-        @if (_isLoading)
-        {
-            <MudGrid Spacing="3">
-                @for (var i = 0; i < 4; i++)
-                {
-                    <MudItem xs="12" md="6" xl="4">
-                        <MudSkeleton Height="300px" Animation="Animation.Wave" />
+                        <MudStack Row="true" Spacing="2" Class="mt-5 hero-actions">
+                            <MudButton Href="/services/create"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Class="btn-strong">
+                                Create Service
+                            </MudButton>
+                        </MudStack>
                     </MudItem>
-                }
-            </MudGrid>
-        }
-        else if (!_pagedServices.Any())
-        {
-            <MudPaper Class="my-services-empty">
-                <MudStack AlignItems="AlignItems.Center" Spacing="2">
-                    <MudAvatar Size="Size.Large" Class="my-services-empty-icon">
-                        <MudIcon Icon="@Icons.Material.Filled.Storefront" />
-                    </MudAvatar>
 
-                    @if (string.IsNullOrWhiteSpace(_search))
-                    {
-                        <MudText Typo="Typo.h5" Class="fw-bold">You have no services yet</MudText>
-                        <MudText Align="Align.Center" Class="my-services-sub">
-                            Create your first service and start receiving orders.
-                        </MudText>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="hero-side pa-5 h-100" Elevation="0">
+                            <MudText Typo="Typo.h6" Class="side-box-title">Overview</MudText>
 
-                        <MudButton Href="/services/create"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.AddCircleOutline">
-                            Create Service
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.h5" Class="fw-bold">Nothing found</MudText>
-                        <MudText Align="Align.Center" Class="my-services-sub">
-                            No services match your search.
-                        </MudText>
-                    }
-                </MudStack>
-            </MudPaper>
-        }
-        else
-        {
-            <MudGrid Spacing="3">
-                @foreach (var service in _pagedServices)
-                {
-                    <MudItem xs="12" md="6" xl="4">
-                        <MudPaper Class="my-service-card">
-                            <MudStack Spacing="2" Class="h-100">
-                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="2">
-                                    <MudChip T="string" Text="@($"Service #{service.Id}")" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small" />
-
-                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert">
-                                        <MudMenuItem Href="@GetServiceUrl(service.Id)" Icon="@Icons.Material.Filled.OpenInNew">
-                                            Open service
-                                        </MudMenuItem>
-
-                                        <MudMenuItem OnClick="@(() => StartEdit(service.Id))" Icon="@Icons.Material.Filled.Edit">
-                                            Edit
-                                        </MudMenuItem>
-
-                                        <MudMenuItem OnClick="@(() => DeleteService(service.Id))" Icon="@Icons.Material.Filled.Delete" Class="text-danger">
-                                            Delete
-                                        </MudMenuItem>
-                                    </MudMenu>
-                                </MudStack>
-
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.h6" Class="fw-bold my-service-title">@service.Title</MudText>
-                                    <MudText Class="my-service-price">@($"{service.Price:0.##} zł")</MudText>
-                                </MudStack>
-
-                                <MudText Class="my-service-desc">@service.Description</MudText>
-
-                                @if (_editingServiceId == service.Id)
-                                {
-                                    <MudPaper Class="my-service-editor">
-                                        <MudStack Spacing="2">
-                                            <MudTextField T="string"
-                                                          Label="Title"
-                                                          Variant="Variant.Outlined"
-                                                          @bind-Value="_editTitle" />
-
-                                            <MudTextField T="string"
-                                                          Label="Description"
-                                                          Variant="Variant.Outlined"
-                                                          Lines="5"
-                                                          Text="@_editDescription"
-                                                          TextChanged="@(v => _editDescription = v ?? string.Empty)" />
-
-                                            <MudNumericField T="decimal"
-                                                             Label="Price"
-                                                             Variant="Variant.Outlined"
-                                                             Min="1"
-                                                             HideSpinButtons="true"
-                                                             @bind-Value="_editPrice" />
-
-                                            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
-                                                <MudButton Variant="Variant.Text"
-                                                           OnClick="CancelEdit">
-                                                    Cancel
-                                                </MudButton>
-
-                                                <MudButton Variant="Variant.Filled"
-                                                           Color="Color.Primary"
-                                                           Loading="_isSaving && _editingServiceId == service.Id"
-                                                           OnClick="@(() => SaveService(service.Id))">
-                                                    Save changes
-                                                </MudButton>
-                                            </MudStack>
-                                        </MudStack>
+                            <MudGrid Spacing="2" Class="mt-2">
+                                <MudItem xs="12" sm="4" md="12">
+                                    <MudPaper Class="my-stat-card pa-4" Elevation="0">
+                                        <MudText Class="my-stat-label">Total services</MudText>
+                                        <MudText Typo="Typo.h5" Class="stat-value">@_totalItems</MudText>
                                     </MudPaper>
-                                }
-                                else
-                                {
-                                    <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-auto">
-                                        <MudButton Href="@GetServiceUrl(service.Id)"
-                                                   Variant="Variant.Filled"
-                                                   Color="Color.Primary"
-                                                   StartIcon="@Icons.Material.Filled.Visibility">
-                                            Open
-                                        </MudButton>
+                                </MudItem>
 
-                                        <MudButton Variant="Variant.Outlined"
-                                                   Color="Color.Primary"
-                                                   StartIcon="@Icons.Material.Filled.Edit"
-                                                   OnClick="@(() => StartEdit(service.Id))">
-                                            Edit
-                                        </MudButton>
+                                <MudItem xs="12" sm="4" md="12">
+                                    <MudPaper Class="my-stat-card pa-4" Elevation="0">
+                                        <MudText Class="my-stat-label">Average price</MudText>
+                                        <MudText Typo="Typo.h5" Class="stat-value">@($"{AveragePrice:0.##} zł")</MudText>
+                                    </MudPaper>
+                                </MudItem>
 
-                                        <MudButton Variant="Variant.Outlined"
-                                                   Color="Color.Error"
-                                                   StartIcon="@Icons.Material.Filled.DeleteOutline"
-                                                   OnClick="@(() => DeleteService(service.Id))">
-                                            Delete
-                                        </MudButton>
-                                    </MudStack>
-                                }
-                            </MudStack>
+                                <MudItem xs="12" sm="4" md="12">
+                                    <MudPaper Class="my-stat-card pa-4" Elevation="0">
+                                        <MudText Class="my-stat-label">Highest price</MudText>
+                                        <MudText Typo="Typo.h5" Class="stat-value">@($"{HighestPrice:0.##} zł")</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
                         </MudPaper>
                     </MudItem>
-                }
-            </MudGrid>
+                </MudGrid>
+            </MudPaper>
 
-            <div class="my-services-pagination">
-                <MudPagination Count="@_totalPages"
-                               Selected="@_page"
-                               SelectedChanged="OnPageChanged"
-                               Color="Color.Primary"
-                               Variant="Variant.Outlined" />
-            </div>
-        }
-    </MudStack>
+            <MudPaper Class="my-toolbar pa-4" Elevation="0">
+                <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudTextField T="string"
+                                  Placeholder="Search in my services..."
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  Value="@_search"
+                                  ValueChanged="OnSearchChanged"
+                                  Class="toolbar-search" />
+
+                    <MudSpacer />
+
+                    <MudSelect T="string"
+                               Label="Sort"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Value="@_sort"
+                               ValueChanged="OnSortChanged"
+                               Class="toolbar-sort">
+                        <MudSelectItem T="string" Value="@("newest")">Newest</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("oldest")">Oldest</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("price_desc")">Price: high to low</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("price_asc")">Price: low to high</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("title_asc")">Title: A-Z</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("title_desc")">Title: Z-A</MudSelectItem>
+                    </MudSelect>
+                </MudStack>
+            </MudPaper>
+
+            @if (_isLoading)
+            {
+                <MudGrid Spacing="3">
+                    @for (var i = 0; i < 6; i++)
+                    {
+                        <MudItem xs="12" md="6" xl="4">
+                            <div class="my-service-card skeleton"></div>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else if (!_pagedServices.Any())
+            {
+                <MudPaper Class="my-services-empty" Elevation="0">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                        <MudAvatar Size="Size.Large" Class="my-services-empty-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.Storefront" />
+                        </MudAvatar>
+
+                        @if (string.IsNullOrWhiteSpace(_search))
+                        {
+                            <MudText Typo="Typo.h5" Class="empty-title">You have no services yet</MudText>
+                            <MudText Align="Align.Center" Class="empty-sub">
+                                Create your first service and start receiving orders.
+                            </MudText>
+
+                            <MudButton Href="/services/create"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.AddCircleOutline"
+                                       Class="btn-strong">
+                                Create Service
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.h5" Class="empty-title">Nothing found</MudText>
+                            <MudText Align="Align.Center" Class="empty-sub">
+                                No services match your search.
+                            </MudText>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+            else
+            {
+                <MudGrid Spacing="3">
+                    @foreach (var service in _pagedServices)
+                    {
+                        <MudItem xs="12" md="6" xl="4">
+                            <MudPaper Class="my-service-card" Elevation="0">
+                                <MudStack Spacing="2" Class="h-100">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Spacing="2">
+                                        <MudChip T="string"
+                                                 Text="@($"Service #{service.Id}")"
+                                                 Variant="Variant.Outlined"
+                                                 Size="Size.Small"
+                                                 Class="service-chip" />
+
+                                        <MudMenu Icon="@Icons.Material.Filled.MoreVert">
+                                            <MudMenuItem Href="@GetServiceUrl(service.Id)" Icon="@Icons.Material.Filled.OpenInNew">
+                                                Open service
+                                            </MudMenuItem>
+
+                                            <MudMenuItem OnClick="@(() => StartEdit(service.Id))" Icon="@Icons.Material.Filled.Edit">
+                                                Edit
+                                            </MudMenuItem>
+
+                                            <MudMenuItem OnClick="@(() => DeleteService(service.Id))" Icon="@Icons.Material.Filled.Delete" Class="text-danger">
+                                                Delete
+                                            </MudMenuItem>
+                                        </MudMenu>
+                                    </MudStack>
+
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.h6" Class="my-service-title">@service.Title</MudText>
+                                        <MudText Class="my-service-price">@($"{service.Price:0.##} zł")</MudText>
+                                    </MudStack>
+
+                                    <MudText Class="my-service-desc">@service.Description</MudText>
+
+                                    @if (_editingServiceId == service.Id)
+                                    {
+                                        <MudPaper Class="my-service-editor" Elevation="0">
+                                            <MudStack Spacing="2">
+                                                <MudTextField T="string"
+                                                              Label="Title"
+                                                              Variant="Variant.Outlined"
+                                                              @bind-Value="_editTitle" />
+
+                                                <MudTextField T="string"
+                                                              Label="Description"
+                                                              Variant="Variant.Outlined"
+                                                              Lines="5"
+                                                              Text="@_editDescription"
+                                                              TextChanged="@(v => _editDescription = v ?? string.Empty)" />
+
+                                                <MudNumericField T="decimal"
+                                                                 Label="Price"
+                                                                 Variant="Variant.Outlined"
+                                                                 Min="1"
+                                                                 HideSpinButtons="true"
+                                                                 @bind-Value="_editPrice" />
+
+                                                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                                                    <MudButton Variant="Variant.Text"
+                                                               OnClick="CancelEdit">
+                                                        Cancel
+                                                    </MudButton>
+
+                                                    <MudButton Variant="Variant.Filled"
+                                                               Color="Color.Primary"
+                                                               Loading="_isSaving && _editingServiceId == service.Id"
+                                                               OnClick="@(() => SaveService(service.Id))"
+                                                               Class="btn-strong">
+                                                        Save changes
+                                                    </MudButton>
+                                                </MudStack>
+                                            </MudStack>
+                                        </MudPaper>
+                                    }
+                                    else
+                                    {
+                                        <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mt-auto action-wrap">
+                                            <MudButton Href="@GetServiceUrl(service.Id)"
+                                                       Variant="Variant.Filled"
+                                                       Color="Color.Primary"
+                                                       StartIcon="@Icons.Material.Filled.Visibility"
+                                                       Class="btn-strong">
+                                                Open
+                                            </MudButton>
+
+                                            <MudButton Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       StartIcon="@Icons.Material.Filled.Edit"
+                                                       OnClick="@(() => StartEdit(service.Id))"
+                                                       Class="btn-strong">
+                                                Edit
+                                            </MudButton>
+
+                                            <MudButton Variant="Variant.Outlined"
+                                                       Color="Color.Error"
+                                                       StartIcon="@Icons.Material.Filled.DeleteOutline"
+                                                       OnClick="@(() => DeleteService(service.Id))"
+                                                       Class="btn-strong">
+                                                Delete
+                                            </MudButton>
+                                        </MudStack>
+                                    }
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <div class="my-services-pagination">
+                    <MudPagination Count="@_totalPages"
+                                   Selected="@_page"
+                                   SelectedChanged="OnPageChanged"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Outlined" />
+                </div>
+            }
+        </MudStack>
+    </MudContainer>
 </MudContainer>
 
 <style>
-    .my-services-hero {
-        padding: 24px;
-        border-radius: 24px;
-        background: linear-gradient(135deg, rgba(79,70,229,.10), rgba(99,102,241,.04));
-        border: 1px solid rgba(79,70,229,.10);
-        box-shadow: 0 14px 34px rgba(15,23,42,.05);
+    .my-services-shell {
+        min-height: calc(100vh - 78px);
+        background:
+            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
+            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
+            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
-    .my-services-sub {
-        color: rgba(17,24,39,.62);
+    .my-services-hero {
+        border-radius: 32px;
+        background: linear-gradient(135deg, #2e1065 0%, #4c1d95 46%, #5b21b6 100%);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.10);
+        box-shadow: 0 22px 60px rgba(76,29,149,.18);
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .hero-title {
+        font-weight: 900;
+        line-height: 1.02;
+        letter-spacing: -.03em;
+        max-width: 760px;
+    }
+
+    .hero-sub {
+        color: rgba(255,255,255,.82);
+        max-width: 720px;
+        line-height: 1.8;
+        font-size: 16px;
+    }
+
+    .hero-side,
+    .my-stat-card,
+    .my-toolbar,
+    .my-services-empty,
+    .my-service-card,
+    .my-service-editor {
+        border-radius: 26px;
+        background: rgba(255,255,255,.94);
+        border: 1px solid rgba(109,40,217,.10);
+        box-shadow: 0 14px 38px rgba(88,28,135,.06);
+    }
+
+    .side-box-title,
+    .empty-title,
+    .my-service-title {
+        color: #1f1147;
+        font-weight: 900;
     }
 
     .my-stat-card {
-        padding: 16px;
-        border-radius: 18px;
-        background: rgba(255,255,255,.72);
-        border: 1px solid rgba(79,70,229,.08);
-        box-shadow: 0 8px 22px rgba(15,23,42,.03);
+        background: linear-gradient(180deg, #faf7ff 0%, #ffffff 100%);
     }
 
-    .my-stat-label {
-        color: rgba(17,24,39,.55);
-        font-size: .82rem;
-        font-weight: 800;
-        margin-bottom: 4px;
+    .my-stat-label,
+    .empty-sub,
+    .my-services-sub,
+    .my-service-desc {
+        color: #6b5f8d;
+    }
+
+    .stat-value,
+    .my-service-price {
+        color: #4c1d95;
+        font-weight: 900;
     }
 
     .my-toolbar {
         padding: 16px;
-        border-radius: 22px;
-        background: rgba(255,255,255,.88);
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 10px 28px rgba(15,23,42,.04);
+    }
+
+    .toolbar-search {
+        min-width: 320px;
+    }
+
+    .toolbar-sort {
+        min-width: 220px;
     }
 
     .my-services-empty {
         padding: 48px 24px;
-        border-radius: 24px;
-        border: 1px dashed rgba(79,70,229,.18);
+        border: 1px dashed rgba(109,40,217,.18);
         background: rgba(255,255,255,.82);
     }
 
     .my-services-empty-icon {
-        background: linear-gradient(135deg, rgba(79,70,229,.12), rgba(99,102,241,.08));
-        color: #4338ca;
+        background: linear-gradient(135deg, rgba(109,40,217,.12), rgba(139,92,246,.08));
+        color: #6d28d9;
     }
 
     .my-service-card {
         height: 100%;
         padding: 22px;
-        border-radius: 24px;
-        background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.93));
-        border: 1px solid rgba(15,23,42,.06);
-        box-shadow: 0 14px 34px rgba(15,23,42,.05);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+    .my-service-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(109,40,217,.22);
+        box-shadow: 0 18px 42px rgba(88,28,135,.10);
+    }
+
+    .service-chip {
+        color: #5b21b6 !important;
+        border-color: rgba(109,40,217,.18) !important;
+        background: rgba(109,40,217,.06) !important;
+        font-weight: 800;
     }
 
     .my-service-title {
@@ -307,13 +401,10 @@
 
     .my-service-price {
         margin-top: 4px;
-        color: #4338ca;
-        font-weight: 900;
         font-size: 1rem;
     }
 
     .my-service-desc {
-        color: rgba(17,24,39,.70);
         line-height: 1.6;
         min-height: 88px;
         white-space: pre-wrap;
@@ -322,9 +413,15 @@
 
     .my-service-editor {
         padding: 16px;
-        border-radius: 20px;
-        background: rgba(79,70,229,.04);
-        border: 1px solid rgba(79,70,229,.10);
+        background: rgba(109,40,217,.04);
+    }
+
+    .btn-strong {
+        border-radius: 14px;
+        font-weight: 900;
+        letter-spacing: .2px;
+        padding: 10px 14px;
+        text-transform: none;
     }
 
     .my-services-pagination {
@@ -335,6 +432,61 @@
 
     .text-danger {
         color: #b91c1c !important;
+    }
+
+    .skeleton {
+        position: relative;
+        overflow: hidden;
+        min-height: 300px;
+    }
+
+    .skeleton::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+        background-size: 200% 100%;
+        animation: shimmer 1.2s infinite linear;
+    }
+
+    @@keyframes shimmer {
+        0% {
+            background-position: 0% 0;
+        }
+
+        100% {
+            background-position: 200% 0;
+        }
+    }
+
+    @@media (max-width: 960px) {
+        .toolbar-search,
+        .toolbar-sort {
+            min-width: 0;
+            width: 100%;
+        }
+    }
+
+    @@media (max-width: 700px) {
+        .my-services-hero,
+        .hero-side,
+        .my-stat-card,
+        .my-toolbar,
+        .my-services-empty,
+        .my-service-card,
+        .my-service-editor {
+            border-radius: 22px;
+        }
+
+        .hero-title {
+            font-size: 2rem !important;
+        }
+
+        .hero-actions,
+        .action-wrap {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
     }
 </style>
 
@@ -460,7 +612,7 @@
 
     private string GetServiceUrl(int id)
     {
-        return $"/service/{id}";
+        return $"/services/{id}";
     }
 
     private void StartEdit(int id)

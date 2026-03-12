@@ -81,8 +81,7 @@
 
                 <MudButton Href="/admin/users"
                            FullWidth="true"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
+                           Class="admin-btn-users"
                            StartIcon="@Icons.Material.Filled.PeopleAlt">
                     Manage users
                 </MudButton>
@@ -195,6 +194,19 @@
         font-size: 1.25rem;
         font-weight: 900;
     }
+
+    .admin-btn-users {
+        background: linear-gradient(135deg,#2563eb 0%,#3b82f6 100%);
+        color: white;
+        font-weight: 800;
+        border-radius: 14px;
+        padding: 12px;
+        box-shadow: 0 8px 18px rgba(37,99,235,.35);
+    }
+
+        .admin-btn-users:hover {
+            background: linear-gradient(135deg,#1d4ed8 0%,#2563eb 100%);
+        }
 
     @@media (max-width: 760px) {
         .admin-overview-grid {

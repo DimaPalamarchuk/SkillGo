@@ -140,11 +140,11 @@
                                         <div class="ard-object-sub">@_message.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
                                     </div>
 
-                                    @if (_message.ConversationId > 0)
+                                    @if (_report.Status == ReportStatus.Open && _message.ConversationId > 0)
                                     {
                                         <MudButton Variant="Variant.Outlined"
                                                    Color="Color.Primary"
-                                                   OnClick="@(() => Nav.NavigateTo($"/chat/{_message.ConversationId}"))">
+                                                   OnClick="OpenReportedMessageChat">
                                             Open chat
                                         </MudButton>
                                     }
@@ -217,17 +217,23 @@
                                 </div>
 
                                 <div class="ard-object-actions">
-                                    <MudButton Variant="Variant.Outlined"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => Nav.NavigateTo($"/orders/{_order.Id}"))">
-                                        Open order
-                                    </MudButton>
+                                    @if (_report.Status == ReportStatus.Open)
+                                    {
+                                        <MudButton Variant="Variant.Outlined"
+                                                   Color="Color.Primary"
+                                                   OnClick="OpenReportedOrder">
+                                            Open order
+                                        </MudButton>
 
-                                    <MudButton Variant="Variant.Outlined"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => Nav.NavigateTo($"/chat/{_order.ConversationId}"))">
-                                        Open chat
-                                    </MudButton>
+                                        @if (_order.ConversationId > 0)
+                                        {
+                                            <MudButton Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       OnClick="OpenReportedOrderChat">
+                                                Open chat
+                                            </MudButton>
+                                        }
+                                    }
                                 </div>
                             </div>
                         }
@@ -321,6 +327,33 @@
                                    OnClick="@(() => Nav.NavigateTo($"/profile/{_report.TargetUser!.UserName}"))">
                             Open target
                         </MudButton>
+                    }
+
+                    @if (_report.TargetType == ReportTargetType.Message && _message is not null && _report.Status == ReportStatus.Open && _message.ConversationId > 0)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   OnClick="OpenReportedMessageChat">
+                            Open reported chat
+                        </MudButton>
+                    }
+
+                    @if (_report.TargetType == ReportTargetType.Order && _order is not null && _report.Status == ReportStatus.Open)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   OnClick="OpenReportedOrder">
+                            Open reported order
+                        </MudButton>
+
+                        @if (_order.ConversationId > 0)
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       OnClick="OpenReportedOrderChat">
+                                Open order chat
+                            </MudButton>
+                        }
                     }
                 </MudStack>
 
@@ -825,6 +858,30 @@
         StateHasChanged();
     }
 
+    private void OpenReportedMessageChat()
+    {
+        if (_report is null || _message is null || _report.Status != ReportStatus.Open || _message.ConversationId <= 0)
+            return;
+
+        Nav.NavigateTo($"/chat/{_message.ConversationId}?reportId={_report.Id}");
+    }
+
+    private void OpenReportedOrder()
+    {
+        if (_report is null || _order is null || _report.Status != ReportStatus.Open)
+            return;
+
+        Nav.NavigateTo($"/orders/{_order.Id}?reportId={_report.Id}");
+    }
+
+    private void OpenReportedOrderChat()
+    {
+        if (_report is null || _order is null || _report.Status != ReportStatus.Open || _order.ConversationId <= 0)
+            return;
+
+        Nav.NavigateTo($"/chat/{_order.ConversationId}?reportId={_report.Id}");
+    }
+
     private async Task CloseAsResolvedAsync()
     {
         if (_moderating || _report is null || _report.Status != ReportStatus.Open)
@@ -975,13 +1032,13 @@
             else
             {
                 db.UserBans.Add(new UserBan
-                {
-                    UserId = _report.TargetUserId,
-                    CreatedByUserId = adminId,
-                    Reason = _banReason.Trim(),
-                    StartsAtUtc = now,
-                    EndsAtUtc = endsAt
-                });
+                    {
+                        UserId = _report.TargetUserId,
+                        CreatedByUserId = adminId,
+                        Reason = _banReason.Trim(),
+                        StartsAtUtc = now,
+                        EndsAtUtc = endsAt
+                    });
             }
 
             await db.SaveChangesAsync();
@@ -1136,6 +1193,9 @@
         if (_moderating || _report is null || _order is null)
             return;
 
+        var auth = await AuthenticationStateTask;
+        var adminId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
         _moderating = true;
         StateHasChanged();
 
@@ -1168,13 +1228,13 @@
             buyer.Balance += refundAmount;
 
             db.WalletTransactions.Add(new WalletTransaction
-            {
-                UserId = buyer.Id,
-                Amount = refundAmount,
-                Type = WalletTransactionType.Refund,
-                Note = $"Admin refund for order #{order.Id}",
-                CreatedAt = DateTime.UtcNow
-            });
+                {
+                    UserId = buyer.Id,
+                    Amount = refundAmount,
+                    Type = WalletTransactionType.Refund,
+                    Note = $"Admin refund for order #{order.Id}",
+                    CreatedAt = DateTime.UtcNow
+                });
 
             order.Status = OrderStatus.Cancelled;
             order.CompletedAtUtc = DateTime.UtcNow;
@@ -1190,6 +1250,7 @@
             if (report is not null && report.Status == ReportStatus.Open)
             {
                 report.Status = ReportStatus.Resolved;
+                report.ResolvedByUserId = string.IsNullOrWhiteSpace(adminId) ? null : adminId;
                 report.ResolvedAtUtc = DateTime.UtcNow;
                 report.ResolutionResult = "Refund issued to client";
                 report.ResolutionNote = $"Refund amount: {refundAmount:0.##} zł";

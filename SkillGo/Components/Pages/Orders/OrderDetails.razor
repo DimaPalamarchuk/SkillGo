@@ -1,11 +1,14 @@
 ﻿@page "/orders/{OrderId:int}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using SkillGo.Data
 @using SkillGo.Data.Models
 @using SkillGo.Data.Models.Orders
+@using SkillGo.Data.Models.Reports
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
 @inject IDialogService DialogService
@@ -33,7 +36,7 @@
         {
             <MudPaper Class="state-paper pa-8 text-center" Elevation="0">
                 <MudText Typo="Typo.h5" Class="state-title">Access denied</MudText>
-                <MudText Typo="Typo.body2" Class="state-sub mt-2">You do not have access to this order.</MudText>
+                <MudText Typo="Typo.body2" Class="state-sub mt-2">@_forbiddenMessage</MudText>
             </MudPaper>
         }
         else if (_order == null)
@@ -65,6 +68,13 @@
                             <MudChip T="string" Variant="Variant.Outlined" Class="hero-chip">Amount: @_order.Amount.ToString("0.00") zł</MudChip>
                             <MudChip T="string" Variant="Variant.Outlined" Class="hero-chip">Escrow: @_order.EscrowAmount.ToString("0.00") zł</MudChip>
                             <MudChip T="string" Variant="Variant.Outlined" Class="hero-chip">Chat #@_order.ConversationId</MudChip>
+
+                            @if (_isAdmin && _reportId.HasValue)
+                            {
+                                <MudChip T="string" Variant="Variant.Outlined" Color="Color.Warning" Class="hero-chip">
+                                    Admin Report #@_reportId.Value
+                                </MudChip>
+                            }
                         </MudStack>
                     </MudItem>
 
@@ -100,6 +110,14 @@
                 </MudGrid>
             </MudPaper>
 
+            @if (_isAdmin && _reportId.HasValue)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-4">
+                    You are viewing this order as administrator in the context of report #@_reportId.Value.
+                    After the report is resolved or rejected, access to this order will be denied.
+                </MudAlert>
+            }
+
             <MudGrid Spacing="3" Class="mt-4">
                 <MudItem xs="12" md="8">
                     <MudPaper Class="shell" Elevation="0">
@@ -121,19 +139,23 @@
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Primary"
                                            Class="btn-strong"
-                                           OnClick="GoChat">
+                                           OnClick="GoChat"
+                                           Disabled="@(_order.ConversationId <= 0)">
                                     Open chat
                                 </MudButton>
 
-                                <MudButton Variant="Variant.Outlined"
-                                           Color="Color.Error"
-                                           Class="btn-strong"
-                                           OnClick="OpenDispute">
-                                    Report to admin
-                                </MudButton>
+                                @if (!_isAdmin)
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Error"
+                                               Class="btn-strong"
+                                               OnClick="OpenDispute">
+                                        Report to admin
+                                    </MudButton>
+                                }
                             </MudStack>
 
-                            @if (_order.Status == OrderStatus.Completed && _order.ReviewId == null && _meId == _order.BuyerId)
+                            @if (_order.Status == OrderStatus.Completed && _order.ReviewId == null && _meId == _order.BuyerId && !_isAdmin)
                             {
                                 <MudPaper Class="review-callout pa-4 mt-4" Elevation="0">
                                     <MudText Typo="Typo.subtitle1" Class="review-callout-title">Order completed</MudText>
@@ -229,10 +251,7 @@
 <style>
     .order-details-page-shell {
         min-height: calc(100vh - 78px);
-        background:
-            radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%),
-            radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%),
-            linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
+        background: radial-gradient(circle at top left, rgba(124,58,237,.10), transparent 22%), radial-gradient(circle at top right, rgba(99,102,241,.08), transparent 24%), linear-gradient(180deg, #fbfaff 0%, #f7f4ff 42%, #ffffff 100%);
     }
 
     .hero-paper {
@@ -371,19 +390,24 @@
         min-height: 240px;
     }
 
-    .hero-skeleton::before,
-    .skeleton::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
-        background-size: 200% 100%;
-        animation: shimmer 1.2s infinite linear;
-    }
+        .hero-skeleton::before,
+        .skeleton::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg,#f3f4f6,#fafafa,#f3f4f6);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite linear;
+        }
 
     @@keyframes shimmer {
-        0% { background-position: 0% 0; }
-        100% { background-position: 200% 0; }
+        0% {
+            background-position: 0% 0;
+        }
+
+        100% {
+            background-position: 200% 0;
+        }
     }
 
     @@media (max-width: 700px) {
@@ -408,12 +432,22 @@
 
 @code {
     [Parameter] public int OrderId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "reportId")]
+    public int? ReportId { get; set; }
+
     [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     bool _loading = true;
     bool _forbidden;
+    bool _isAdmin;
 
+    string _forbiddenMessage = "You do not have access to this order.";
     string? _meId;
+
+    int? _reportId;
+    Report? _adminReport;
+
     Order? _order;
     List<OrderDispute> _disputes = new();
 
@@ -421,8 +455,11 @@
     {
         _loading = true;
         _forbidden = false;
+        _forbiddenMessage = "You do not have access to this order.";
         _order = null;
         _disputes = new();
+        _adminReport = null;
+        _reportId = ReportId;
         StateHasChanged();
 
         var authState = await AuthenticationStateTask;
@@ -435,7 +472,9 @@
             return;
         }
 
-        _meId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _meId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        _isAdmin = principal.IsInRole("Admin");
+
         if (string.IsNullOrWhiteSpace(_meId))
         {
             _forbidden = true;
@@ -455,11 +494,40 @@
             return;
         }
 
-        if (_order.BuyerId != _meId && _order.SellerId != _meId)
+        if (_isAdmin)
         {
-            _forbidden = true;
-            _loading = false;
-            return;
+            if (!_reportId.HasValue)
+            {
+                _forbidden = true;
+                _forbiddenMessage = "Admin access requires reportId in URL.";
+                _loading = false;
+                return;
+            }
+
+            _adminReport = await db.Reports
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.Id == _reportId.Value &&
+                    x.Status == ReportStatus.Open &&
+                    x.TargetType == ReportTargetType.Order &&
+                    x.OrderId == OrderId);
+
+            if (_adminReport == null)
+            {
+                _forbidden = true;
+                _forbiddenMessage = "This report is closed, invalid, or does not belong to this order.";
+                _loading = false;
+                return;
+            }
+        }
+        else
+        {
+            if (_order.BuyerId != _meId && _order.SellerId != _meId)
+            {
+                _forbidden = true;
+                _loading = false;
+                return;
+            }
         }
 
         _disputes = await db.OrderDisputes.AsNoTracking()
@@ -480,19 +548,24 @@
     void GoChat()
     {
         if (_order == null) return;
-        Nav.NavigateTo($"/chat/{_order.ConversationId}");
+
+        if (_isAdmin && _reportId.HasValue)
+            Nav.NavigateTo($"/chat/{_order.ConversationId}?reportId={_reportId.Value}");
+        else
+            Nav.NavigateTo($"/chat/{_order.ConversationId}");
     }
 
     async Task OpenDispute()
     {
+        if (_isAdmin) return;
         if (_order == null) return;
         if (string.IsNullOrWhiteSpace(_meId)) return;
 
         var p = new DialogParameters
-        {
-            ["OrderId"] = _order.Id,
-            ["ReporterId"] = _meId
-        };
+            {
+                ["OrderId"] = _order.Id,
+                ["ReporterId"] = _meId
+            };
 
         var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var d = DialogService.Show<OrderDisputeDialog>("Report to admin", p, o);
@@ -507,15 +580,16 @@
 
     async Task OpenReview()
     {
+        if (_isAdmin) return;
         if (_order == null) return;
         if (string.IsNullOrWhiteSpace(_meId)) return;
 
         var p = new DialogParameters
-        {
-            ["OrderId"] = _order.Id,
-            ["TargetUserId"] = _order.SellerId,
-            ["AuthorUserId"] = _meId
-        };
+            {
+                ["OrderId"] = _order.Id,
+                ["TargetUserId"] = _order.SellerId,
+                ["AuthorUserId"] = _meId
+            };
 
         var o = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var d = DialogService.Show<OrderReviewDialog>("Leave review", p, o);

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
@@ -50,7 +51,7 @@
             {
                 <MudPaper Class="pa-4 sg-chat-paper" Elevation="0">
                     <MudText Typo="Typo.h6" Class="fw-bold">Access denied</MudText>
-                    <MudText Color="Color.Secondary">You don’t have access to this conversation.</MudText>
+                    <MudText Color="Color.Secondary">@_forbiddenMessage</MudText>
                 </MudPaper>
             }
             else
@@ -64,14 +65,14 @@
                                                OnClick="GoBack"
                                                Class="sg-back-btn" />
 
-                                @if (!string.IsNullOrWhiteSpace(_otherAvatarUrl))
+                                @if (!string.IsNullOrWhiteSpace(_headerAvatarUrl))
                                 {
-                                    <img src="@_otherAvatarUrl" alt="@_title" class="sg-header-avatar-image" />
+                                    <img src="@_headerAvatarUrl" alt="@_title" class="sg-header-avatar-image" />
                                 }
                                 else
                                 {
                                     <MudAvatar Size="Size.Medium" Class="sg-header-avatar">
-                                        @_otherInitials
+                                        @_headerInitials
                                     </MudAvatar>
                                 }
 
@@ -81,10 +82,23 @@
                                     </MudText>
 
                                     <div class="sg-chat-title-sub">
-                                        <span class="sg-chat-status-dot" style="background:@(_otherOnline ? "#22c55e" : "#94a3b8");"></span>
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
-                                            @(_otherOnline ? "Online" : _otherLastSeenText)
-                                        </MudText>
+                                        @if (_isAdmin && _reportId.HasValue)
+                                        {
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Variant="Variant.Outlined"
+                                                     Color="Color.Warning">
+                                                Admin Report #@_reportId.Value
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <span class="sg-chat-status-dot" style="background:@(_otherOnline ? "#22c55e" : "#94a3b8");"></span>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
+                                                @(_otherOnline ? "Online" : _otherLastSeenText)
+                                            </MudText>
+                                        }
+
                                         <MudText Typo="Typo.caption" Color="Color.Secondary" Style="margin:0;">
                                             • #@ConversationId
                                         </MudText>
@@ -92,6 +106,17 @@
                                 </div>
                             </div>
                         </div>
+
+                        @if (_isAdmin && _reportId.HasValue)
+                        {
+                            <div class="sg-admin-banner">
+                                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
+                                <span>
+                                    You are replying as admin in the context of report #@_reportId.Value.
+                                    After the report is resolved or rejected, access to this chat will be denied.
+                                </span>
+                            </div>
+                        }
                     </div>
 
                     <div class="sg-chat-messages" id="sg-chat-messages-host">
@@ -132,31 +157,15 @@
 
                                         <div class="sg-message-row @(mine ? "mine" : "other")">
                                             <div class="sg-message-row-inner @(mine ? "mine" : "other")">
-                                                @if (!mine)
+                                                @if (!string.IsNullOrWhiteSpace(GetAvatarUrlForMessage(m)))
                                                 {
-                                                    @if (!string.IsNullOrWhiteSpace(_otherAvatarUrl))
-                                                    {
-                                                        <img src="@_otherAvatarUrl" alt="@_otherDisplay" class="sg-message-avatar-image" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <MudAvatar Size="Size.Small" Class="sg-message-avatar">
-                                                            @_otherInitials
-                                                        </MudAvatar>
-                                                    }
+                                                    <img src="@GetAvatarUrlForMessage(m)" alt="@GetDisplayNameForMessage(m)" class="sg-message-avatar-image" />
                                                 }
                                                 else
                                                 {
-                                                    @if (!string.IsNullOrWhiteSpace(_myAvatarUrl))
-                                                    {
-                                                        <img src="@_myAvatarUrl" alt="Me" class="sg-message-avatar-image" />
-                                                    }
-                                                    else
-                                                    {
-                                                        <MudAvatar Size="Size.Small" Class="sg-message-avatar sg-message-avatar-mine">
-                                                            @_myInitials
-                                                        </MudAvatar>
-                                                    }
+                                                    <MudAvatar Size="Size.Small" Class="@(mine ? "sg-message-avatar sg-message-avatar-mine" : "sg-message-avatar")">
+                                                        @GetInitialsForMessage(m)
+                                                    </MudAvatar>
                                                 }
 
                                                 <div class="sg-message-content-wrap">
@@ -167,7 +176,7 @@
                                                                               CurrentUserId="@(_meId ?? "")"
                                                                               OnChanged="ReloadAsync" />
 
-                                                            @if (!mine && !m.IsDeleted)
+                                                            @if (!mine && !m.IsDeleted && !_isAdmin)
                                                             {
                                                                 <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
                                                                     <ActivatorContent>
@@ -194,6 +203,13 @@
                                                     {
                                                         <div class="sg-bubble-with-menu">
                                                             <div class="sg-message-bubble @(mine ? "mine" : "other")">
+                                                                @if (!mine)
+                                                                {
+                                                                    <div class="sg-message-author">
+                                                                        @GetDisplayNameForMessage(m)
+                                                                    </div>
+                                                                }
+
                                                                 @if (m.IsOrderDelivery)
                                                                 {
                                                                     <div class="sg-delivery-head">
@@ -295,7 +311,7 @@
                                                                 }
                                                             </div>
 
-                                                            @if (mine && _editingId != m.Id && !m.IsDeleted && !m.IsOrderDelivery && m.OrderId == null && !m.Attachments.Any())
+                                                            @if (mine && _editingId != m.Id && !m.IsDeleted && !m.IsOrderDelivery && m.OrderId == null && !m.Attachments.Any() && !_isAdmin)
                                                             {
                                                                 <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
                                                                     <ActivatorContent>
@@ -316,7 +332,7 @@
                                                                     </ChildContent>
                                                                 </MudMenu>
                                                             }
-                                                            else if (!mine && !m.IsDeleted)
+                                                            else if (!mine && !m.IsDeleted && !_isAdmin)
                                                             {
                                                                 <MudMenu Dense="true" AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
                                                                     <ActivatorContent>
@@ -383,6 +399,13 @@
                                 </div>
                             }
 
+                            @if (_isAdmin && _reportId.HasValue)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined">
+                                    Every admin message will be sent with prefix: [Admin Report #@_reportId.Value]
+                                </MudAlert>
+                            }
+
                             <div class="sg-chat-composer-row">
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Primary"
@@ -394,7 +417,7 @@
                                 </MudButton>
 
                                 <MudTextField @bind-Value="_text"
-                                              Placeholder="Write a message..."
+                                              Placeholder="@(_isAdmin && _reportId.HasValue ? "Write an admin reply..." : "Write a message...")"
                                               Variant="Variant.Outlined"
                                               Margin="Margin.Dense"
                                               Immediate="true"
@@ -591,6 +614,19 @@
         display: inline-block;
     }
 
+    .sg-admin-banner {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(245, 158, 11, .10);
+        border: 1px solid rgba(245, 158, 11, .22);
+        color: #92400e;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
     .sg-chat-messages {
         flex: 1 1 auto;
         overflow: auto;
@@ -716,6 +752,13 @@
         background: rgba(255,255,255,.92);
         border: 1px solid rgba(0,0,0,.08);
         color: #0f172a;
+    }
+
+    .sg-message-author {
+        font-size: .78rem;
+        font-weight: 900;
+        opacity: .72;
+        margin-bottom: 6px;
     }
 
     .sg-chat-composer {
@@ -999,14 +1042,27 @@
 
 @code {
     [Parameter] public int ConversationId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "reportId")]
+    public int? ReportId { get; set; }
+
     [CascadingParameter] public Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     private bool _loading = true;
     private bool _forbidden;
+    private string _forbiddenMessage = "You don’t have access to this conversation.";
+
     private bool _sending;
     private bool _pendingScrollToBottom;
 
+    private bool _isAdmin;
+    private int? _reportId;
+    private Report? _adminReport;
+
     private string _title = "Chat";
+    private string _headerInitials = "?";
+    private string? _headerAvatarUrl;
+
     private string _otherDisplay = "User";
     private string _otherInitials = "?";
     private string _myInitials = "M";
@@ -1015,6 +1071,11 @@
     private string? _otherId;
     private string? _myAvatarUrl;
     private string? _otherAvatarUrl;
+
+    private string? _userAId;
+    private string? _userBId;
+
+    private readonly Dictionary<string, UserMini> _userMap = new();
 
     private string? _text;
     private string? _error;
@@ -1049,6 +1110,7 @@
 
         _loading = true;
         _forbidden = false;
+        _forbiddenMessage = "You don’t have access to this conversation.";
         _error = null;
         _editingId = null;
         _editingText = null;
@@ -1060,6 +1122,9 @@
         _reportReason = null;
         _reportError = null;
         _reportTargetMessage = null;
+        _reportId = ReportId;
+        _adminReport = null;
+        _userMap.Clear();
         StateHasChanged();
 
         try
@@ -1074,6 +1139,8 @@
             }
 
             _meId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            _isAdmin = principal.IsInRole("Admin");
+
             if (string.IsNullOrWhiteSpace(_meId))
             {
                 _forbidden = true;
@@ -1083,7 +1150,8 @@
             await LoadConversationAndMessagesAsync();
             if (_forbidden) return;
 
-            await MarkConversationAsReadAsync();
+            if (!_isAdmin)
+                await MarkConversationAsReadAsync();
 
             _pendingScrollToBottom = true;
 
@@ -1102,24 +1170,29 @@
 
                 _ = InvokeAsync(async () =>
                 {
-                    await MarkConversationAsReadAsync();
+                    if (!_isAdmin)
+                        await MarkConversationAsReadAsync();
+
                     _pendingScrollToBottom = true;
                     StateHasChanged();
                 });
             });
 
-            _presenceSub = PresenceBroadcast.Subscribe(dto =>
+            if (!_isAdmin)
             {
-                if (string.IsNullOrWhiteSpace(_otherId)) return;
-                if (dto.UserId != _otherId) return;
+                _presenceSub = PresenceBroadcast.Subscribe(dto =>
+                {
+                    if (string.IsNullOrWhiteSpace(_otherId)) return;
+                    if (dto.UserId != _otherId) return;
 
-                _otherOnline = dto.IsOnline;
-                _otherLastSeenText = dto.IsOnline ? "Online" : BuildLastSeenText(dto.SeenAtUtc);
+                    _otherOnline = dto.IsOnline;
+                    _otherLastSeenText = dto.IsOnline ? "Online" : BuildLastSeenText(dto.SeenAtUtc);
 
-                _ = InvokeAsync(StateHasChanged);
-            });
+                    _ = InvokeAsync(StateHasChanged);
+                });
 
-            RefreshOtherPresence();
+                RefreshOtherPresence();
+            }
         }
         finally
         {
@@ -1139,7 +1212,7 @@
 
     private async Task MarkConversationAsReadAsync()
     {
-        if (string.IsNullOrWhiteSpace(_meId))
+        if (string.IsNullOrWhiteSpace(_meId) || _isAdmin)
             return;
 
         await using var db = await DbFactory.CreateDbContextAsync();
@@ -1162,7 +1235,7 @@
 
     private void RefreshOtherPresence()
     {
-        if (string.IsNullOrWhiteSpace(_otherId))
+        if (_isAdmin || string.IsNullOrWhiteSpace(_otherId))
         {
             _otherOnline = false;
             _otherLastSeenText = "Offline";
@@ -1194,48 +1267,93 @@
         if (conv == null)
         {
             _forbidden = true;
+            _forbiddenMessage = "Conversation not found.";
             return;
         }
+
+        _userAId = conv.UserAId;
+        _userBId = conv.UserBId;
 
         var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
-        if (!isMember)
+
+        if (_isAdmin)
+        {
+            if (!_reportId.HasValue)
+            {
+                _forbidden = true;
+                _forbiddenMessage = "Admin access requires reportId in URL.";
+                return;
+            }
+
+            _adminReport = await LoadAndValidateAdminReportAsync(db, _reportId.Value, ConversationId);
+            if (_adminReport == null)
+            {
+                _forbidden = true;
+                _forbiddenMessage = "This report is closed, invalid, or does not belong to this conversation.";
+                return;
+            }
+        }
+        else if (!isMember)
         {
             _forbidden = true;
+            _forbiddenMessage = "You don’t have access to this conversation.";
             return;
         }
 
-        _otherId = conv.UserAId == _meId ? conv.UserBId : conv.UserAId;
+        var userIds = new List<string>();
+        if (!string.IsNullOrWhiteSpace(conv.UserAId)) userIds.Add(conv.UserAId);
+        if (!string.IsNullOrWhiteSpace(conv.UserBId)) userIds.Add(conv.UserBId);
+        if (!string.IsNullOrWhiteSpace(_meId)) userIds.Add(_meId);
 
         var users = await db.Users
             .AsNoTracking()
-            .Where(x => x.Id == _otherId || x.Id == _meId)
-            .Select(x => new
+            .Where(x => userIds.Contains(x.Id))
+            .Select(x => new UserMini
             {
-                x.Id,
-                x.UserName,
-                x.DisplayName,
-                x.AvatarUrl
+                Id = x.Id,
+                UserName = x.UserName,
+                DisplayName = x.DisplayName,
+                AvatarUrl = x.AvatarUrl
             })
             .ToListAsync();
 
-        var otherUser = users.FirstOrDefault(x => x.Id == _otherId);
-        var myUser = users.FirstOrDefault(x => x.Id == _meId);
+        foreach (var user in users)
+        {
+            if (!string.IsNullOrWhiteSpace(user.Id))
+                _userMap[user.Id] = user;
+        }
 
-        _otherDisplay = !string.IsNullOrWhiteSpace(otherUser?.DisplayName)
-            ? otherUser.DisplayName!
-            : (!string.IsNullOrWhiteSpace(otherUser?.UserName) ? otherUser.UserName! : "User");
+        if (_isAdmin)
+        {
+            var userA = GetUserMini(conv.UserAId);
+            var userB = GetUserMini(conv.UserBId);
 
-        _otherAvatarUrl = otherUser?.AvatarUrl;
-        _otherInitials = string.IsNullOrWhiteSpace(_otherDisplay) ? "U" : _otherDisplay.Substring(0, 1).ToUpperInvariant();
+            var nameA = DisplayUser(userA);
+            var nameB = DisplayUser(userB);
 
-        var myName = !string.IsNullOrWhiteSpace(myUser?.DisplayName)
-            ? myUser.DisplayName!
-            : (!string.IsNullOrWhiteSpace(myUser?.UserName) ? myUser.UserName! : "Me");
+            _title = $"{nameA} ↔ {nameB}";
+            _headerAvatarUrl = null;
+            _headerInitials = "A";
+        }
+        else
+        {
+            _otherId = conv.UserAId == _meId ? conv.UserBId : conv.UserAId;
 
-        _myAvatarUrl = myUser?.AvatarUrl;
-        _myInitials = string.IsNullOrWhiteSpace(myName) ? "M" : myName.Substring(0, 1).ToUpperInvariant();
+            var otherUser = GetUserMini(_otherId);
+            var myUser = GetUserMini(_meId);
 
-        _title = $"@{_otherDisplay}";
+            _otherDisplay = DisplayUser(otherUser);
+            _otherAvatarUrl = otherUser?.AvatarUrl;
+            _otherInitials = BuildInitials(_otherDisplay);
+
+            var myName = DisplayUser(myUser);
+            _myAvatarUrl = myUser?.AvatarUrl;
+            _myInitials = BuildInitials(myName);
+
+            _title = $"@{_otherDisplay}";
+            _headerAvatarUrl = _otherAvatarUrl;
+            _headerInitials = _otherInitials;
+        }
 
         var list = await db.Messages
             .AsNoTracking()
@@ -1278,6 +1396,65 @@
         _messages.AddRange(list);
     }
 
+    private async Task<Report?> LoadAndValidateAdminReportAsync(ApplicationDbContext db, int reportId, int conversationId)
+    {
+        var report = await db.Reports
+            .AsNoTracking()
+            .Include(x => x.Message)
+            .Include(x => x.Order)
+            .FirstOrDefaultAsync(x => x.Id == reportId);
+
+        if (report == null)
+            return null;
+
+        if (report.Status != ReportStatus.Open)
+            return null;
+
+        if (report.TargetType == ReportTargetType.Message)
+        {
+            if (report.MessageId == null)
+                return null;
+
+            var msgConversationId = report.Message?.ConversationId;
+
+            if (!msgConversationId.HasValue)
+            {
+                msgConversationId = await db.Messages
+                    .Where(x => x.Id == report.MessageId.Value)
+                    .Select(x => (int?)x.ConversationId)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (!msgConversationId.HasValue || msgConversationId.Value != conversationId)
+                return null;
+
+            return report;
+        }
+
+        if (report.TargetType == ReportTargetType.Order)
+        {
+            if (report.OrderId == null)
+                return null;
+
+            var orderConversationId = report.Order?.ConversationId;
+
+            if (!orderConversationId.HasValue)
+            {
+                orderConversationId = await db.Orders
+                    .Where(x => x.Id == report.OrderId.Value)
+                    .Select(x => (int?)x.ConversationId)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (!orderConversationId.HasValue || orderConversationId.Value != conversationId)
+                return null;
+
+            return report;
+        }
+
+        return null;
+    }
+
     private async Task ReloadAsync()
     {
         if (_sending) return;
@@ -1287,7 +1464,10 @@
         try
         {
             await LoadConversationAndMessagesAsync();
-            await MarkConversationAsReadAsync();
+
+            if (!_isAdmin)
+                await MarkConversationAsReadAsync();
+
             RefreshOtherPresence();
             _pendingScrollToBottom = true;
             StateHasChanged();
@@ -1361,7 +1541,26 @@
             }
 
             var isMember = conv.UserAId == _meId || conv.UserBId == _meId;
-            if (!isMember)
+
+            if (_isAdmin)
+            {
+                if (!_reportId.HasValue)
+                {
+                    _error = "Admin message requires reportId.";
+                    return;
+                }
+
+                var report = await LoadAndValidateAdminReportAsync(db, _reportId.Value, ConversationId);
+                if (report == null)
+                {
+                    _error = "This report is already closed or no longer linked to this chat.";
+                    return;
+                }
+
+                var prefix = $"[Admin Report #{_reportId.Value}]";
+                body = string.IsNullOrWhiteSpace(body) ? prefix : $"{prefix} {body}";
+            }
+            else if (!isMember)
             {
                 _error = "Access denied.";
                 return;
@@ -1429,7 +1628,9 @@
 
             _pendingScrollToBottom = true;
             Broadcast.PublishMessage(dto);
-            await MarkConversationAsReadAsync();
+
+            if (!_isAdmin)
+                await MarkConversationAsReadAsync();
         }
         finally
         {
@@ -1515,6 +1716,7 @@
 
     private void BeginEdit(MessageDto m)
     {
+        if (_isAdmin) return;
         if (m.SenderId != _meId) return;
         if (m.IsDeleted) return;
         if (m.OrderId != null) return;
@@ -1537,6 +1739,7 @@
 
     private async Task SaveEditAsync(int messageId)
     {
+        if (_isAdmin) return;
         if (_savingEdit) return;
         if (string.IsNullOrWhiteSpace(_meId)) return;
         if (_editingId != messageId) return;
@@ -1609,6 +1812,7 @@
 
     private async Task DeleteAsync(int messageId)
     {
+        if (_isAdmin) return;
         if (string.IsNullOrWhiteSpace(_meId)) return;
 
         var ok = await DialogService.ShowMessageBox(
@@ -1684,6 +1888,8 @@
 
     private void OpenReportPopup(MessageDto message)
     {
+        if (_isAdmin) return;
+
         _reportTargetMessage = message;
         _reportReason = null;
         _reportError = null;
@@ -1704,6 +1910,7 @@
 
     private async Task SubmitReportAsync()
     {
+        if (_isAdmin) return;
         if (_reportSubmitting) return;
         if (_reportTargetMessage is null) return;
         if (string.IsNullOrWhiteSpace(_reportReason)) return;
@@ -1803,6 +2010,53 @@
         return ext is ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp";
     }
 
+    private string GetDisplayNameForMessage(MessageDto message)
+    {
+        var user = GetUserMini(message.SenderId);
+        return DisplayUser(user);
+    }
+
+    private string GetInitialsForMessage(MessageDto message)
+    {
+        return BuildInitials(GetDisplayNameForMessage(message));
+    }
+
+    private string? GetAvatarUrlForMessage(MessageDto message)
+    {
+        var user = GetUserMini(message.SenderId);
+        return user?.AvatarUrl;
+    }
+
+    private UserMini? GetUserMini(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+            return null;
+
+        return _userMap.TryGetValue(id, out var user) ? user : null;
+    }
+
+    private static string DisplayUser(UserMini? user)
+    {
+        if (user is null)
+            return "User";
+
+        if (!string.IsNullOrWhiteSpace(user.DisplayName))
+            return user.DisplayName!;
+
+        if (!string.IsNullOrWhiteSpace(user.UserName))
+            return user.UserName!;
+
+        return "User";
+    }
+
+    private static string BuildInitials(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "?";
+
+        return text.Substring(0, 1).ToUpperInvariant();
+    }
+
     private RenderFragment SendButtonContent() => builder =>
     {
         var seq = 0;
@@ -1822,13 +2076,16 @@
             builder.AddAttribute(seq++, "Icon", Icons.Material.Filled.Send);
             builder.AddAttribute(seq++, "Class", "me-2");
             builder.CloseComponent();
-            builder.AddContent(seq++, "Send");
+            builder.AddContent(seq++, _isAdmin ? "Send admin reply" : "Send");
         }
     };
 
     private void GoBack()
     {
-        Nav.NavigateTo("/chats");
+        if (_isAdmin && _reportId.HasValue)
+            Nav.NavigateTo($"/admin/reports/{_reportId.Value}");
+        else
+            Nav.NavigateTo("/chats");
     }
 
     private void CleanupSubs()
@@ -1857,5 +2114,13 @@
         public IBrowserFile File { get; }
         public string Name { get; }
         public long Size { get; }
+    }
+
+    private sealed class UserMini
+    {
+        public string Id { get; set; } = default!;
+        public string? UserName { get; set; }
+        public string? DisplayName { get; set; }
+        public string? AvatarUrl { get; set; }
     }
 }
